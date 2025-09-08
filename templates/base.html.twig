@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Welcome!{% endblock %}</title>
+
+    {# Favicon #}
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
+
+    {# Stylesheets block (can be overridden on child pages) #}
+    {% block stylesheets %}{% endblock %}
+
+    {# JavaScripts block (can be overridden on child pages) #}
+    {% block javascripts %}
+        {% block importmap %}{{ importmap('app') }}{% endblock %}
+    {% endblock %}
+</head>
+<body>
+    {# Include header partial (navigation) #}
+    {% include 'partials/header.html.twig' %}
+
+    {# Hero/banner block – can be overridden on each page #}
+    {% block hero %}{% endblock %}
+
+    {# Main content block for each page #}
+    {% block body %}{% endblock %}
+
+    {# Include footer partial #}
+    {% include 'partials/footer.html.twig' %}
+</body>
+</html>
+

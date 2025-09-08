@@ -1,0 +1,51 @@
+<footer class="text-white py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-4 mb-4">
+                <div class="d-flex align-items-center footer-logo-row">
+                    <a href="{{ path('app_home') }}">
+                        <img src="{{ asset('logo-footer1.png') }}" alt="Le Trois Quarts" height="96" class="me-4">
+                    </a>
+                    <p class="mb-0">
+                        Votre brasserie conviviale au cœur du quartier du Camas.<br>
+                        Une cuisine généreuse dans une ambiance chaleureuse.
+                    </p>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4 ps-lg-custom">
+                <div class="mx-auto text-start footer-content-width">
+                    <h5>Horaires d'ouverture</h5>
+                    <ul class="list-unstyled">
+                        <li>Lundi - Dimanche: 8h00 - 23h00</li>
+                        <li>Service continu</li>
+                        <li>Terrasse ouverte selon météo</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="mx-auto text-start footer-content-width">
+                    <h5>Suivez-nous</h5>
+                    <div class="social-links">
+                        <a href="https://www.facebook.com/letroisquarts" target="_blank" class="text-white me-3"><i class="bi bi-facebook"></i></a>
+                        <a href="https://www.instagram.com/letroisquarts" target="_blank" class="text-white me-3"><i class="bi bi-instagram"></i></a>
+                    </div>
+                    <div class="mt-3">
+                        <p><i class="bi bi-telephone me-2"></i><a href="tel:0491929616" class="footer-phone-link text-white">04 91 92 96 16</a></p>
+                        <p><i class="bi bi-envelope me-2"></i><a href="mailto:letroisquarts@gmail.com" class="text-white footer-email-link">letroisquarts@gmail.com</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <hr class="my-4">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <p class="mb-0">&copy; 2025 Le Trois Quarts. Tous droits réservés.</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <a href="{{ path('admin') }}" class="text-white me-3">Administration</a>
+                <a href="{{ path('app_404') }}" class="text-white me-3">Mentions légales</a>
+                <a href="{{ path('app_404') }}" class="text-white">Politique de confidentialité</a>
+            </div>
+        </div>
+    </div>
+</footer>
