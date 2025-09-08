@@ -1,0 +1,73 @@
+<!-- Hero Section -->
+<section id="home" class="hero-section p-0">
+  <div id="mainCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel">
+    <div class="carousel-inner">
+      <!-- Slide 1 -->
+      <div class="carousel-item active">
+        <div class="carousel-banner slide-1">
+          <div class="carousel-overlay"></div>
+          <div class="container h-100">
+            <div class="row h-100 align-items-center">
+              <div class="col-lg-8 mx-auto text-center text-white">
+                <h1 class="hero-title mb-4 display-1 display-md-2 display-lg-1">Bienvenue au Trois Quarts</h1>
+                <p class="hero-subtitle mb-5 fs-4 fs-md-5 fs-lg-4">Votre brasserie conviviale au cœur du quartier du Camas</p>
+                <div class="hero-buttons d-flex flex-column flex-sm-row justify-content-center align-items-center gap-3">
+                  <a href="{{ path('app_menu') }}" class="btn btn-primary btn-lg">Découvrir la carte</a>
+                  <a href="{{ path('app_reservation') }}" class="btn btn-outline-light btn-lg">Réserver une table</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 2 -->
+      <div class="carousel-item">
+        <div class="carousel-banner slide-2">
+          <div class="carousel-overlay"></div>
+          <div class="container h-100">
+            <div class="row h-100 align-items-center">
+              <div class="col-lg-8 mx-auto text-center text-white">
+                <h1 class="hero-title mb-4 display-1 display-md-2 display-lg-1">Terrasse ensoleillée</h1>
+                <p class="hero-subtitle mb-5 fs-4 fs-md-5 fs-lg-4">Profitez du soleil de Marseille sur notre belle terrasse</p>
+                <div class="hero-buttons d-flex flex-column flex-sm-row justify-content-center align-items-center gap-3">
+                  <a href="{{ path('app_gallery') }}" class="btn btn-primary btn-lg">Voir la galerie</a>
+                  <a href="{{ path('app_reservation') }}" class="btn btn-outline-light btn-lg">Réserver une table</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 3 -->
+      <div class="carousel-item">
+        <div class="carousel-banner slide-3">
+          <div class="carousel-overlay"></div>
+          <div class="container h-100">
+            <div class="row h-100 align-items-center">
+              <div class="col-lg-8 mx-auto text-center text-white">
+                <h1 class="hero-title mb-4 display-1 display-md-2 display-lg-1">Cuisine généreuse</h1>
+                <p class="hero-subtitle mb-5 fs-4 fs-md-5 fs-lg-4">Découvrez une carte alliant tradition et créativité</p>
+                <div class="hero-buttons d-flex flex-column flex-sm-row justify-content-center align-items-center gap-3">
+                  <a href="{{ path('app_menu') }}" class="btn btn-primary btn-lg">Découvrir la carte</a>
+                  <a href="{{ path('app_contact') }}" class="btn btn-outline-light btn-lg">Nous contacter</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <button class="carousel-control-prev" type="button" data-bs-target="#mainCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Précédent</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#mainCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Suivant</span>
+    </button>
+  </div>
+</section>

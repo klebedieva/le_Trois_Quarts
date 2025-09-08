@@ -1,0 +1,347 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Le Trois Quarts - Brasserie Marseille | Boulevard Chave{% endblock %}
+
+{% block stylesheets %}
+    <meta name="description" content="Bienvenue au Trois Quarts, votre brasserie conviviale au cœur du quartier du Camas à Marseille. Terrasse ensoleillée, cuisine généreuse et ambiance chaleureuse.">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
+{% endblock %}
+
+{% block hero %}
+    {% include 'partials/hero-home.html.twig' %}
+{% endblock %}
+
+{% block body %}
+    <!-- About Section -->
+    <section id="about" class="py-5 bg-light">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <div class="about-content py-4 text-center text-lg-start">
+                        <h2 class="section-title mb-4 display-4 display-md-5 display-lg-4">Bienvenue au Trois Quarts</h2>
+                        <p class="lead mb-4 fs-5 fs-md-6 fs-lg-5">Votre brasserie conviviale au cœur du quartier du Camas, sur le boulevard Chave.</p>
+                        <p class="fs-6 fs-md-5 fs-lg-6 mb-3">Installez-vous en terrasse et profitez d'un moment gourmand dans une ambiance chaleureuse. Que ce soit pour un café, un déjeuner entre amis ou un verre en soirée, notre équipe vous accueille avec le sourire.</p>
+                        <p class="fs-6 fs-md-5 fs-lg-6">Venez découvrir notre carte alliant tradition et créativité ! Situé sur le boulevard Chave, en plein cœur du Camas, Le Trois Quarts est une brasserie où il fait bon se retrouver. Terrasse ensoleillée, ambiance décontractée et une cuisine généreuse : tout est réuni pour un moment agréable.</p>
+                        
+                        <div class="features mt-4">
+                            <div class="row justify-content-center">
+                                <div class="col-md-6 mb-3">
+                                    <div class="feature-item text-center p-3">
+                                        <i class="bi bi-sun feature-icon mb-3 fs-1"></i>
+                                        <h5 class="fs-5 fs-md-4">Terrasse ensoleillée</h5>
+                                        <p class="fs-6 fs-md-5">Profitez du soleil de Marseille sur notre belle terrasse</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="feature-item text-center p-3">
+                                        <i class="bi bi-heart feature-icon mb-3 fs-1"></i>
+                                        <h5 class="fs-5 fs-md-4">Ambiance conviviale</h5>
+                                        <p class="fs-6 fs-md-5">Un cadre chaleureux pour tous vos moments de partage</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="about-image text-center">
+                        <img src="{{ asset('images/about.jpeg') }}" alt="À propos du restaurant" class="img-fluid rounded shadow">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Avis Clients Section -->
+    <section id="avis" class="py-5">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="section-title display-4 display-md-5 display-lg-4">Avis de nos clients</h2>
+                <p class="section-subtitle fs-5 fs-md-6 fs-lg-5">Ce que pensent nos clients de leur expérience au Trois Quarts</p>
+            </div>
+            
+            <div class="row" id="reviewsContainer">
+                {% if reviews is empty %}
+                    <div class="col-12 text-center">
+                        <div class="py-5">
+                            <i class="bi bi-chat-dots icon-large"></i>
+                            <h4 class="mt-3">Aucun avis trouvé</h4>
+                            <p class="text-muted">Aucun avis disponible pour le moment.</p>
+                        </div>
+                    </div>
+                {% else %}
+                    {% for review in reviews %}
+                        <div class="col-lg-4 mb-4">
+                            <div class="review-card p-4">
+                                <div class="review-stars mb-3">
+                                    {% for i in 1..5 %}
+                                        {% if i <= review.rating %}
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        {% else %}
+                                            <i class="bi bi-star text-warning"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <p class="review-text mb-3 fs-6 fs-md-5">"{{ review.comment }}"</p>
+                                <div class="review-author">
+                                    <strong class="fs-6 fs-md-5">{{ review.name }}</strong>
+                                    <small class="text-muted fs-7">{{ review.createdAt|date('d/m/Y') }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            <div class="text-center mt-4">
+                <div class="d-flex flex-column flex-sm-row justify-content-center align-items-center gap-3">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addReviewModal">
+                        <i class="bi bi-chat-dots me-2"></i>Ajouter un avis
+                    </button>
+                    <a href="{{ path('app_reviews') }}" class="btn btn-custom-outline">
+                        <i class="bi bi-eye me-2"></i>Voir tous les avis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section id="gallery" class="py-5">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="section-title display-4 display-md-5 display-lg-4">Galerie</h2>
+                <p class="section-subtitle fs-5 fs-md-6 fs-lg-5">Découvrez l'ambiance du Trois Quarts</p>
+            </div>
+            
+            <div class="row g-3">
+                <div class="col-lg-4 col-md-6">
+                    <div class="gallery-item rounded-2" data-bs-toggle="modal" data-bs-target="#galleryModal" data-image="{{ asset('images/about.jpeg') }}">
+                        <img src="{{ asset('images/about.jpeg') }}" alt="À propos" class="img-fluid">
+                        <div class="gallery-overlay">
+                            <i class="bi bi-zoom-in"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="gallery-item rounded-2" data-bs-toggle="modal" data-bs-target="#galleryModal" data-image="{{ asset('images/kitchen.jpeg') }}">
+                        <img src="{{ asset('images/kitchen.jpeg') }}" alt="Cuisine" class="img-fluid">
+                        <div class="gallery-overlay">
+                            <i class="bi bi-zoom-in"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="gallery-item rounded-2" data-bs-toggle="modal" data-bs-target="#galleryModal" data-image="{{ asset('images/dishes.jpeg') }}">
+                        <img src="{{ asset('images/dishes.jpeg') }}" alt="Plats" class="img-fluid">
+                        <div class="gallery-overlay">
+                            <i class="bi bi-zoom-in"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="gallery-item rounded-2" data-bs-toggle="modal" data-bs-target="#galleryModal" data-image="https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=800">
+                        <img src="https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Cuisine" class="img-fluid">
+                        <div class="gallery-overlay">
+                            <i class="bi bi-zoom-in"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="gallery-item rounded-2" data-bs-toggle="modal" data-bs-target="#galleryModal" data-image="https://images.pexels.com/photos/1126728/pexels-photo-1126728.jpeg?auto=compress&cs=tinysrgb&w=800">
+                        <img src="https://images.pexels.com/photos/1126728/pexels-photo-1126728.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Desserts" class="img-fluid">
+                        <div class="gallery-overlay">
+                            <i class="bi bi-zoom-in"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="gallery-item rounded-2" data-bs-toggle="modal" data-bs-target="#galleryModal" data-image="https://images.pexels.com/photos/1307698/pexels-photo-1307698.jpeg?auto=compress&cs=tinysrgb&w=800">
+                        <img src="https://images.pexels.com/photos/1307698/pexels-photo-1307698.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Bar" class="img-fluid">
+                        <div class="gallery-overlay">
+                            <i class="bi bi-zoom-in"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-5">
+                <a href="{{ path('app_gallery') }}" class="btn btn-primary">
+                    <i class="bi bi-images me-2"></i>Voir toute la galerie
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Reservation Section -->
+    <section id="reservation" class="py-5 bg-primary text-white">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6 text-center text-lg-start">
+                    <h2 class="section-title text-white mb-4 display-4 display-md-5 display-lg-4">Réservez votre table</h2>
+                    <p class="lead mb-4 fs-5 fs-md-6 fs-lg-5">Garantissez-vous une place sur notre terrasse ensoleillée ou dans notre salle chaleureuse.</p>
+                    <div class="reservation-info">
+                        <div class="info-item mb-3 d-flex align-items-center justify-content-center justify-content-lg-start">
+                            <i class="bi bi-clock me-2 fs-5"></i>
+                            <span class="fs-6 fs-md-5">Ouvert tous les jours de 8h à 23h</span>
+                        </div>
+                        <div class="info-item mb-3 d-flex align-items-center justify-content-center justify-content-lg-start">
+                            <i class="bi bi-people me-2 fs-5"></i>
+                            <span class="fs-6 fs-md-5">Groupes jusqu'à 20 personnes</span>
+                        </div>
+                        <div class="info-item d-flex align-items-center justify-content-center justify-content-lg-start">
+                            <i class="bi bi-telephone me-2 fs-5"></i>
+                            <a href="tel:0491929616" class="fs-6 fs-md-5 text-decoration-none phone-link">04 91 92 96 16</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="reservation-form bg-white p-4 rounded shadow">
+                        <div class="text-center">
+                            <h4 class="text-dark mb-3 fs-5 fs-md-4">Réservation rapide</h4>
+                            <p class="text-muted mb-4 fs-6 fs-md-5">Réservez votre table en quelques clics</p>
+                            <a href="{{ path('app_reservation') }}" class="btn btn-custom-secondary w-100">
+                                <i class="bi bi-calendar-check me-2"></i>Réserver une table
+                            </a>
+                            <div class="mt-3">
+                                <small class="text-muted fs-7">Ou appelez-nous au <a href="tel:0491929616" class="text-muted text-decoration-none">04 91 92 96 16</a></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Gallery Modal -->
+    <div class="modal fade" id="galleryModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0 position-relative">
+                    <img id="modalImage" src="" alt="" class="img-fluid w-100">
+                    
+                    <!-- Navigation arrows -->
+                    <button class="gallery-nav-btn gallery-prev" id="galleryPrev">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <button class="gallery-nav-btn gallery-next" id="galleryNext">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                    
+                    <!-- Image counter -->
+                    <div class="gallery-counter">
+                        <span id="currentImageIndex">1</span> / <span id="totalImages">6</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Review Modal -->
+    <div class="modal fade" id="addReviewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-chat-dots me-2"></i>Ajouter votre avis
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="reviewForm">
+                        <div class="mb-3">
+                            <label for="reviewerName" class="form-label">Votre nom *</label>
+                            <input type="text" class="form-control" id="reviewerName" name="name" required>
+                            <div class="invalid-feedback" id="nameError"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Note *</label>
+                            <div class="rating-stars">
+                                <i class="bi bi-star star-rating" data-rating="1"></i>
+                                <i class="bi bi-star star-rating" data-rating="2"></i>
+                                <i class="bi bi-star star-rating" data-rating="3"></i>
+                                <i class="bi bi-star star-rating" data-rating="4"></i>
+                                <i class="bi bi-star star-rating" data-rating="5"></i>
+                            </div>
+                            <input type="hidden" id="ratingValue" name="rating" value="0">
+                            <div class="invalid-feedback" id="ratingError"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reviewText" class="form-label">Votre avis *</label>
+                            <textarea class="form-control" id="reviewText" name="comment" rows="4" placeholder="Partagez votre expérience au Trois Quarts..." required></textarea>
+                            <div class="invalid-feedback" id="commentError"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reviewEmail" class="form-label">Email (optionnel)</label>
+                            <input type="email" class="form-control" id="reviewEmail" name="email" placeholder="votre@email.com">
+                            <div class="invalid-feedback" id="emailError"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="submitReview">
+                        <i class="bi bi-send me-2"></i>Envoyer l'avis
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3><i class="bi bi-basket me-2"></i>Votre Commande</h3>
+            <button class="cart-close" id="closeCart">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="cart-content">
+            <div id="cartItems">
+                <div class="cart-empty">
+                    <i class="bi bi-basket"></i>
+                    <h4>Votre panier est vide</h4>
+                    <p>Ajoutez des plats depuis le menu</p>
+                </div>
+            </div>
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total:</span>
+                <span id="cartTotal">0€</span>
+            </div>
+            <div class="cart-actions">
+                <button class="btn btn-primary w-100" id="orderBtn">
+                    <i class="bi bi-check-circle me-2"></i>Commander
+                </button>
+                <button class="btn btn-outline-secondary w-100" id="clearCart">
+                    <i class="bi bi-trash me-2"></i>Vider le panier
+                </button>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block javascripts %}
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ asset('assets/js/main.js') }}"></script>
+    <script src="{{ asset('assets/js/reviews.js') }}"></script>
+{% endblock %}
