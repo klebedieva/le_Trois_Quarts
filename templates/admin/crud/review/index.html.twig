@@ -1,0 +1,95 @@
+{% extends '@EasyAdmin/crud/index.html.twig' %}
+
+{% block content_title %}
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="title">{{ page_title }}</h1>
+        <div class="btn-group" role="group">
+            <a href="{{ ea_url().setController('App\\Controller\\Admin\\ReviewCrudController').setAction('index').setQueryParameter('filters[isApproved]', '1') }}" 
+               class="btn btn-success btn-sm">
+                <i class="fas fa-check"></i> Approuvés ({{ statistics.approvedReviews }})
+            </a>
+            <a href="{{ ea_url().setController('App\\Controller\\Admin\\ReviewCrudController').setAction('index').setQueryParameter('filters[isApproved]', '0') }}" 
+               class="btn btn-warning btn-sm">
+                <i class="fas fa-clock"></i> En attente ({{ statistics.pendingReviews }})
+            </a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block main %}
+    {# Reviews statistics #}
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">{{ statistics.totalReviews }}</h5>
+                    <p class="card-text">Total des avis</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-success">{{ statistics.approvedReviews }}</h5>
+                    <p class="card-text">Avis approuvés</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">{{ statistics.pendingReviews }}</h5>
+                    <p class="card-text">En attente</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-info">{{ statistics.avgRating }}/5</h5>
+                    <p class="card-text">Note moyenne</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Recent reviews #}
+    {% if statistics.recentReviews|length > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Derniers avis approuvés</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for review in statistics.recentReviews %}
+                        <div class="col-md-6 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="mb-0">{{ review.name }}</h6>
+                                    <div class="text-warning">
+                                        {% for i in 1..5 %}
+                                            {% if i <= review.rating %}
+                                                <i class="fas fa-star"></i>
+                                            {% else %}
+                                                <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <p class="text-muted small mb-2">{{ review.comment|slice(0, 100) }}{% if review.comment|length > 100 %}...{% endif %}</p>
+                                <small class="text-muted">{{ review.createdAt|date('d/m/Y H:i') }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Reviews table #}
+    {{ parent() }}
+{% endblock %}

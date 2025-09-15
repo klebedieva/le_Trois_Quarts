@@ -1,0 +1,240 @@
+/* Contact Header Banner */
+.contact-header {
+    height: 65vh !important;
+    min-height: 65vh !important;
+    max-height: 65vh !important;
+    background: url('https://images.pexels.com/photos/1267320/pexels-photo-1267320.jpeg?auto=compress&cs=tinysrgb&w=1600') center/cover;
+    color: white;
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-top: 0;
+    padding: 0 !important;
+}
+
+.contact-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(212, 165, 116, 0.3), rgba(139, 69, 19, 0.3)), rgba(0,0,0,0.25);
+}
+
+.contact-header .container {
+    position: relative;
+    z-index: 2;
+}
+
+.contact-header h1 {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.contact-header .lead {
+    font-size: 1.5rem;
+    font-weight: 300;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    margin-bottom: 1rem;
+}
+
+/* Contact Hero Divider - decorative line under title */
+.contact-hero-divider {
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    margin: 1rem auto 2rem auto;
+    border-radius: 2px;
+}
+
+
+
+/* Section Horaires d'ouverture — fond en dégradé */
+.contact-hours-section {
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: #2c1810;
+}
+
+/* Carte Google Maps — suppression de la bordure, arrondi et ombre */
+.map-container iframe {
+    border: 0;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+}
+
+/* Contact Form Section - background for feedback form section */
+section:has(.contact-form-card) {
+    background: linear-gradient(135deg, #fefcf8, #fff9f0);
+    padding-top: 5rem !important;
+    padding-bottom: 3rem !important;
+}
+
+/* Contact Section - transition after contact section */
+.contact-section {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 1;
+    padding: 2rem 0 !important;
+}
+
+/* Contact Info Cards - hover effect */
+.contact-info {
+    transition: all 0.3s ease;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.contact-info:hover {
+    background-color: rgba(212, 165, 116, 0.1);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(212, 165, 116, 0.2);
+}
+
+/* Contact Section Titles - titles with decorative lines */
+.contact-form-card h3,
+.map-section h3 {
+    color: var(--dark-color);
+    font-weight: 600;
+    margin-bottom: 3rem !important;
+    position: relative;
+    text-align: center;
+}
+
+.contact-form-card h3::after,
+.map-section h3::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 4px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border-radius: 2px;
+}
+
+/* Map Section - map section background */
+.map-section {
+    background: linear-gradient(135deg, #fefcf8, #fff9f0);
+    padding-bottom: 4rem !important;
+}
+
+/* Amélioration visuelle de la carte */
+.map-container {
+    position: relative;
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.map-container:hover {
+    transform: translateY(-5px);
+}
+
+.map-container iframe {
+    border: 0;
+    border-radius: 1rem;
+    transition: all 0.3s ease;
+}
+
+/* Section Contact Form — séparation visuelle */
+.contact-form-card {
+    background: #fefcf8;
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    padding: 2.5rem;
+    border: 1px solid rgba(212, 165, 116, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+
+
+/* Amélioration des champs de formulaire */
+.contact-form .form-control,
+.contact-form .form-select {
+    border: 2px solid #ced4da;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+    background-color: #fefcf8;
+}
+
+.contact-form .form-control:focus,
+.contact-form .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(212, 165, 116, 0.25);
+    background-color: #fefcf8;
+}
+
+/* Error display styles - custom soft colors */
+.contact-form .form-control.is-invalid,
+.contact-form .form-select.is-invalid {
+    border-color: #e74c3c;
+    border-width: 1px;
+    box-shadow: 0 0 0 0.1rem rgba(231, 76, 60, 0.15);
+}
+
+.contact-form .form-control.is-valid,
+.contact-form .form-select.is-valid {
+    border-color: #27ae60;
+    border-width: 1px;
+    box-shadow: 0 0 0 0.1rem rgba(39, 174, 96, 0.15);
+}
+
+.contact-form .invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #dc3545;
+}
+
+.contact-form .invalid-feedback.show {
+    display: block;
+}
+
+.contact-form .form-check-input.is-invalid {
+    border-color: #e74c3c;
+    border-width: 1px;
+}
+
+.contact-form .form-check-input.is-valid {
+    border-color: #27ae60;
+    border-width: 1px;
+}
+
+/* Keep checkbox label text color unchanged - force black text */
+.contact-form .form-check-label {
+    color: #000 !important;
+}
+
+/* Ensure text stays black even when checkbox is invalid */
+.contact-form .form-check-input.is-invalid + .form-check-label {
+    color: #000 !important;
+}
+
+/* Error message styling */
+.contact-form .alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.contact-form .alert-success {
+    background-color: #d1e7dd;
+    border-color: #badbcc;
+    color: #0f5132;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}

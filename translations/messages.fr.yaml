@@ -1,0 +1,86 @@
+# Traductions pour le français
+# Formulaires de contact
+form:
+  firstName: 'Prénom'
+  lastName: 'Nom'
+  email: 'Email'
+  phone: 'Téléphone'
+  subject: 'Sujet'
+  choose_subject: 'Choisissez un sujet'
+  reservation: 'Réservation'
+  commande: 'Commande'
+  evenement_prive: 'Événement privé'
+  suggestion: 'Suggestion'
+  reclamation: 'Réclamation'
+  autre: 'Autre'
+  message: 'Message'
+  consent: "J'accepte d'être contacté par Le Trois Quarts concernant ma demande"
+
+# Traductions supplémentaires pour les formulaires
+Votre nom: 'Votre nom'
+Votre nom complet: 'Votre nom complet'
+Email (optionnel): 'Email (optionnel)'
+votre@email.com: 'votre@email.com'
+Votre avis: 'Votre avis'
+Partagez votre expérience au Trois Quarts...: 'Partagez votre expérience au Trois Quarts...'
+Envoyer l'avis: "Envoyer l'avis"
+Note: 'Note'
+Sélectionnez une note: 'Sélectionnez une note'
+1 étoile: '1 étoile'
+2 étoiles: '2 étoiles'
+3 étoiles: '3 étoiles'
+4 étoiles: '4 étoiles'
+5 étoiles: '5 étoiles'
+
+# Messages d'erreur
+Le prénom est requis: 'Le prénom est requis'
+Le nom est requis: 'Le nom est requis'
+L'email est requis: "L'email est requis"
+Veuillez sélectionner un sujet: 'Veuillez sélectionner un sujet'
+Le message est requis: 'Le message est requis'
+Vous devez accepter d'être contacté.: "Vous devez accepter d'être contacté."
+Le prénom ne peut contenir que des lettres, espaces et tirets: 'Le prénom ne peut contenir que des lettres, espaces et tirets'
+Le nom ne peut contenir que des lettres, espaces et tirets: 'Le nom ne peut contenir que des lettres, espaces et tirets'
+L'email n'est pas valide: "L'email n'est pas valide"
+Le numéro de téléphone n'est pas valide: "Le numéro de téléphone n'est pas valide"
+Veuillez sélectionner un sujet valide: 'Veuillez sélectionner un sujet valide'
+Le message doit contenir entre 10 et 1000 caractères et ne peut pas contenir de balises HTML: 'Le message doit contenir entre 10 et 1000 caractères et ne peut pas contenir de balises HTML'
+
+# Messages de succès
+Merci! Votre message a été envoyé avec succès.: 'Merci! Votre message a été envoyé avec succès.'
+Merci pour votre avis ! Il sera publié après modération.: 'Merci pour votre avis ! Il sera publié après modération.'
+Réponse envoyée par email avec succès !: 'Réponse envoyée par email avec succès !'
+
+# Éléments généraux de l'interface
+Envoyer le message: 'Envoyer le message'
+Réserver une table: 'Réserver une table'
+Voir le menu: 'Voir le menu'
+Galerie: 'Galerie'
+Contact: 'Contact'
+Avis: 'Avis'
+
+# Traductions pour l'administration
+Dashboard: 'Tableau de bord'
+Messages de contact: 'Messages de contact'
+Retour au site: 'Retour au site'
+Gestion des avis: 'Gestion des avis'
+Gestion des messages de contact: 'Gestion des messages de contact'
+Message de contact: 'Message de contact'
+Nom: 'Nom'
+Email: 'Email'
+Commentaire: 'Commentaire'
+Approuvé: 'Approuvé'
+Date de création: 'Date de création'
+Modifier: 'Modifier'
+Supprimer: 'Supprimer'
+Prénom: 'Prénom'
+Téléphone: 'Téléphone'
+Sujet: 'Sujet'
+Message: 'Message'
+Consentement: 'Consentement'
+Date de réception: 'Date de réception'
+Répondu: 'Répondu'
+Date de réponse: 'Date de réponse'
+Réponse: 'Réponse'
+Réservation: 'Réservation'
+Voir: 'Voir'

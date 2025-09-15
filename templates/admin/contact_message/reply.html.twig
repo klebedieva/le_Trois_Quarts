@@ -1,0 +1,223 @@
+{% extends '@EasyAdmin/layout.html.twig' %}
+
+{% block content_title %}
+    <i class="fa fa-reply"></i> Répondre à {{ contactMessage.firstName }} {{ contactMessage.lastName }}
+{% endblock %}
+
+{% block main %}
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Informations du client</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Nom:</strong> {{ contactMessage.firstName }} {{ contactMessage.lastName }}<br>
+                            <strong>Email:</strong> {{ contactMessage.email }}<br>
+                            <strong>Téléphone:</strong> {{ contactMessage.phone ?? 'Non renseigné' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Sujet:</strong> {{ contactMessage.subject|trans }}<br>
+                            <strong>Date:</strong> {{ contactMessage.createdAt|date('d/m/Y H:i') }}<br>
+                            <strong>Consentement:</strong> {{ contactMessage.consent ? 'Oui' : 'Non' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Message original</h5>
+                </div>
+                <div class="card-body">
+                    <div class="bg-light p-3 rounded">
+                        {{ contactMessage.message|nl2br }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Votre réponse</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="subject" class="form-label">Sujet de la réponse *</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="subject" 
+                                   name="subject" 
+                                   value="Re: {{ contactMessage.subject|trans }}"
+                                   required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Message *</label>
+                            <textarea class="form-control" 
+                                      id="message" 
+                                      name="message" 
+                                      rows="8" 
+                                      placeholder="Tapez votre réponse ici..."
+                                      required></textarea>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-send"></i> Envoyer la réponse
+                            </button>
+                            <a href="{{ ea_url().setController('App\\Controller\\Admin\\ContactMessageCrudController').setAction('index') }}" 
+                               class="btn btn-secondary">
+                                <i class="fa fa-arrow-left"></i> Retour à la liste
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Aide</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Conseils pour répondre :</h6>
+                    <ul class="list-unstyled">
+                        <li><i class="fa fa-check text-success"></i> Soyez courtois et professionnel</li>
+                        <li><i class="fa fa-check text-success"></i> Répondez dans les 24h si possible</li>
+                        <li><i class="fa fa-check text-success"></i> Personnalisez votre message</li>
+                        <li><i class="fa fa-check text-success"></i> Vérifiez l'orthographe</li>
+                    </ul>
+                    
+                    <h6 class="mt-3">Templates rapides :</h6>
+                    <div class="btn-group-vertical w-100" role="group">
+                        <button type="button" class="btn btn-outline-primary btn-sm mb-1 template-btn" onclick="insertTemplate('reservation')">
+                            <i class="fa fa-calendar me-1"></i>Réservation
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm mb-1 template-btn" onclick="insertTemplate('commande')">
+                            <i class="fa fa-shopping-cart me-1"></i>Commande
+                        </button>
+                        <button type="button" class="btn btn-outline-info btn-sm mb-1 template-btn" onclick="insertTemplate('evenement_prive')">
+                            <i class="fa fa-star me-1"></i>Événement privé
+                        </button>
+                        <button type="button" class="btn btn-outline-warning btn-sm mb-1 template-btn" onclick="insertTemplate('reclamation')">
+                            <i class="fa fa-exclamation-triangle me-1"></i>Réclamation
+                        </button>
+                        <button type="button" class="btn btn-outline-success btn-sm mb-1 template-btn" onclick="insertTemplate('suggestion')">
+                            <i class="fa fa-lightbulb me-1"></i>Suggestion
+                        </button>
+                        <button type="button" class="btn btn-outline-dark btn-sm mb-1 template-btn" onclick="insertTemplate('general')">
+                            <i class="fa fa-envelope me-1"></i>Général
+                        </button>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-outline-danger btn-sm w-100 template-btn" onclick="clearMessage()">
+                            <i class="fa fa-trash me-1"></i>Effacer le message
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .template-btn {
+            transition: all 0.3s ease;
+            border-width: 2px;
+        }
+        
+        .template-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: #0d6efd !important;
+            border-color: #0d6efd !important;
+            color: white !important;
+        }
+        
+        .btn-outline-secondary:hover {
+            background-color: #6c757d !important;
+            border-color: #6c757d !important;
+            color: white !important;
+        }
+        
+        .btn-outline-info:hover {
+            background-color: #0dcaf0 !important;
+            border-color: #0dcaf0 !important;
+            color: white !important;
+        }
+        
+        .btn-outline-warning:hover {
+            background-color: #ffc107 !important;
+            border-color: #ffc107 !important;
+            color: #000 !important;
+        }
+        
+        .btn-outline-success:hover {
+            background-color: #198754 !important;
+            border-color: #198754 !important;
+            color: white !important;
+        }
+        
+        .btn-outline-dark:hover {
+            background-color: #212529 !important;
+            border-color: #212529 !important;
+            color: white !important;
+        }
+        
+        .btn-outline-danger:hover {
+            background-color: #dc3545 !important;
+            border-color: #dc3545 !important;
+            color: white !important;
+        }
+    </style>
+
+    <script>
+        // Récupérer le prénom du client depuis Twig
+        const clientFirstName = '{{ contactMessage.firstName|e('js') }}';
+        
+        function insertTemplate(type) {
+            const messageTextarea = document.getElementById('message');
+            let template = '';
+            
+            switch(type) {
+                case 'reservation':
+                    template = `Merci pour votre demande de réservation. Nous avons bien reçu votre message et nous vous contacterons dans les plus brefs délais pour confirmer votre réservation.`;
+                    break;
+                case 'reclamation':
+                    template = `Nous vous remercions de nous avoir fait part de votre réclamation. Nous prenons très au sérieux vos commentaires et nous vous contacterons rapidement pour résoudre cette situation.`;
+                    break;
+                case 'general':
+                    template = `Merci pour votre message. Nous avons bien reçu votre demande et nous vous répondrons dans les plus brefs délais.`;
+                    break;
+                case 'commande':
+                    template = `Merci pour votre demande concernant une commande. Nous avons bien pris note de votre demande et nous vous contacterons rapidement pour vous donner plus d'informations.`;
+                    break;
+                case 'evenement_prive':
+                    template = `Merci pour votre intérêt pour l'organisation d'un événement privé. Nous sommes ravis de vous aider et nous vous contacterons dans les plus brefs délais pour discuter de vos besoins.`;
+                    break;
+                case 'suggestion':
+                    template = `Merci pour votre suggestion. Nous apprécions vos idées et nous les prendrons en considération pour améliorer notre service.`;
+                    break;
+            }
+            
+            messageTextarea.value = template;
+            // Focus sur le textarea après insertion
+            messageTextarea.focus();
+        }
+        
+        function clearMessage() {
+            const messageTextarea = document.getElementById('message');
+            if (confirm('Êtes-vous sûr de vouloir effacer le message ?')) {
+                messageTextarea.value = '';
+                messageTextarea.focus();
+            }
+        }
+    </script>
+{% endblock %}

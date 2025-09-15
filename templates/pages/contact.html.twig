@@ -17,6 +17,34 @@
 {% endblock %}
 
 {% block body %}
+    <!-- Success Message -->
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show position-fixed" 
+             style="top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 300px; text-align: center;" 
+             id="successMessage">
+            <i class="bi bi-check-circle me-2"></i>{{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <script>
+            // Auto-hide success message after 5 seconds with smooth fade
+            setTimeout(function() {
+                const successMessage = document.getElementById('successMessage');
+                if (successMessage) {
+                    // Start fade out animation
+                    successMessage.style.transition = 'opacity 0.5s ease-out';
+                    successMessage.style.opacity = '0';
+                    
+                    // Remove element after animation completes
+                    setTimeout(function() {
+                        if (successMessage.parentNode) {
+                            successMessage.remove();
+                        }
+                    }, 500); // Wait for fade animation to complete
+                }
+            }, 5000);
+        </script>
+    {% endfor %}
+
     <!-- Contact Header -->
     <section class="contact-header">
         <div class="container">
@@ -77,23 +105,19 @@
                     <div class="contact-form-card">
                         <h3 class="text-center mb-4">Envoyez-nous un message</h3>
                         
-                        {% for message in app.flashes('success') %}
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <i class="bi bi-check-circle me-2"></i>{{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        {% endfor %}
                         
-                        {{ form_start(contactForm, {'attr': {'class': 'contact-form'}}) }}
+                        {{ form_start(contactForm, {'attr': {'class': 'contact-form', 'novalidate': 'novalidate'}}) }}
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     {{ form_label(contactForm.firstName, null, {'label_attr': {'class': 'form-label'}}) }}
                                     {{ form_widget(contactForm.firstName, {'attr': {'class': 'form-control'}}) }}
+                                    <div class="invalid-feedback" id="firstNameError"></div>
                                     {{ form_errors(contactForm.firstName) }}
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     {{ form_label(contactForm.lastName, null, {'label_attr': {'class': 'form-label'}}) }}
                                     {{ form_widget(contactForm.lastName, {'attr': {'class': 'form-control'}}) }}
+                                    <div class="invalid-feedback" id="lastNameError"></div>
                                     {{ form_errors(contactForm.lastName) }}
                                 </div>
                             </div>
@@ -101,27 +125,32 @@
                                 <div class="col-md-6 mb-3">
                                     {{ form_label(contactForm.email, null, {'label_attr': {'class': 'form-label'}}) }}
                                     {{ form_widget(contactForm.email, {'attr': {'class': 'form-control'}}) }}
+                                    <div class="invalid-feedback" id="emailError"></div>
                                     {{ form_errors(contactForm.email) }}
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     {{ form_label(contactForm.phone, null, {'label_attr': {'class': 'form-label'}}) }}
                                     {{ form_widget(contactForm.phone, {'attr': {'class': 'form-control'}}) }}
+                                    <div class="invalid-feedback" id="phoneError"></div>
                                     {{ form_errors(contactForm.phone) }}
                                 </div>
                             </div>
                             <div class="mb-3">
                                 {{ form_label(contactForm.subject, null, {'label_attr': {'class': 'form-label'}}) }}
                                 {{ form_widget(contactForm.subject, {'attr': {'class': 'form-select'}}) }}
+                                <div class="invalid-feedback" id="subjectError"></div>
                                 {{ form_errors(contactForm.subject) }}
                             </div>
                             <div class="mb-3">
                                 {{ form_label(contactForm.message, null, {'label_attr': {'class': 'form-label'}}) }}
                                 {{ form_widget(contactForm.message, {'attr': {'class': 'form-control', 'rows': 5, 'placeholder': 'Votre message...'}}) }}
+                                <div class="invalid-feedback" id="messageError"></div>
                                 {{ form_errors(contactForm.message) }}
                             </div>
                             <div class="mb-3 form-check">
                                 {{ form_widget(contactForm.consent, {'attr': {'class': 'form-check-input'}}) }}
                                 {{ form_label(contactForm.consent, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                                <div class="invalid-feedback" id="consentError"></div>
                                 {{ form_errors(contactForm.consent) }}
                             </div>
                             <div class="text-center">

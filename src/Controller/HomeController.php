@@ -2,14 +2,11 @@
 
 namespace App\Controller;
 
-use App\Entity\ContactMessage;
 use App\Entity\Review;
-use App\Form\ContactMessageType;
 use App\Form\ReviewType;
 use App\Repository\ReviewRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -28,63 +25,29 @@ class HomeController extends AbstractController
     }
 
     #[Route('/submit-review', name: 'app_submit_review', methods: ['POST'])]
-    public function submitReview(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    public function submitReview(Request $request, EntityManagerInterface $entityManager): Response
     {
         $review = new Review();
-        $form = $this->createForm(ReviewType::class, $review, [
-            'csrf_protection' => false
-        ]);
+        $form = $this->createForm(ReviewType::class, $review);
         
-        // Process JSON data
-        $data = json_decode($request->getContent(), true);
+        $form->handleRequest($request);
         
-        if ($data === null) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Données invalides'
-            ], 400);
-        }
-        
-        $form->submit($data);
-        
-        if ($form->isValid()) {
+        if ($form->isSubmitted() && $form->isValid()) {
             // By default review is not approved (requires moderation)
             $review->setIsApproved(false);
             
             $entityManager->persist($review);
             $entityManager->flush();
             
-            return new JsonResponse([
-                'success' => true,
-                'message' => 'Merci pour votre avis ! Il sera publié après modération.'
-            ]);
+            $this->addFlash('success', 'Merci pour votre avis ! Il sera publié après modération.');
+            
+            return $this->redirectToRoute('app_home');
         }
         
-        // Get validation errors by field
-        $fieldErrors = [];
-        foreach ($form->getErrors(true) as $error) {
-            $fieldErrors[] = $error->getMessage();
-        }
+        // If form is not valid, redirect back with error
+        $this->addFlash('danger', 'Erreur de validation. Veuillez vérifier vos données.');
         
-        // Get field-specific errors
-        $errors = [];
-        foreach ($form->all() as $child) {
-            if ($child->getErrors()->count() > 0) {
-                $fieldName = $child->getName();
-                $fieldErrors = [];
-                foreach ($child->getErrors() as $error) {
-                    $fieldErrors[] = $error->getMessage();
-                }
-                $errors[$fieldName] = $fieldErrors;
-            }
-        }
-        
-        return new JsonResponse([
-            'success' => false,
-            'message' => 'Erreur de validation',
-            'errors' => $fieldErrors,
-            'fieldErrors' => $errors
-        ], 400);
+        return $this->redirectToRoute('app_home');
     }
 
     #[Route('/menu', name: 'app_menu')]
@@ -99,28 +62,6 @@ class HomeController extends AbstractController
         return $this->render('pages/gallery.html.twig');
     }
 
-    #[Route('/contact', name: 'app_contact')]
-    public function contact(Request $request, EntityManagerInterface $entityManager): Response
-    {
-        $contactMessage = new ContactMessage();
-        $form = $this->createForm(ContactMessageType::class, $contactMessage);
-        
-        $form->handleRequest($request);
-        
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($contactMessage);
-            $entityManager->flush();
-            
-            $this->addFlash('success', 'Votre message a été envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.');
-            
-            return $this->redirectToRoute('app_contact');
-        }
-        
-        return $this->render('pages/contact.html.twig', [
-            'contactForm' => $form->createView()
-        ]);
-    }
-
     #[Route('/reservation', name: 'app_reservation')]
     public function reservation(): Response
     {
@@ -128,9 +69,33 @@ class HomeController extends AbstractController
     }
 
     #[Route('/reviews', name: 'app_reviews')]
-    public function reviews(): Response
+    public function reviews(Request $request, ReviewRepository $reviewRepository, EntityManagerInterface $entityManager): Response
     {
-        return $this->render('pages/reviews.html.twig');
+        // Get all reviews for display on reviews page
+        $reviews = $reviewRepository->findAllOrderedByDate();
+        
+        // Create review form
+        $review = new Review();
+        $reviewForm = $this->createForm(ReviewType::class, $review);
+        
+        $reviewForm->handleRequest($request);
+        
+        if ($reviewForm->isSubmitted() && $reviewForm->isValid()) {
+            // By default review is not approved (requires moderation)
+            $review->setIsApproved(false);
+            
+            $entityManager->persist($review);
+            $entityManager->flush();
+            
+            $this->addFlash('success', 'Merci pour votre avis ! Il sera publié après modération.');
+            
+            return $this->redirectToRoute('app_reviews');
+        }
+        
+        return $this->render('pages/reviews.html.twig', [
+            'reviews' => $reviews,
+            'reviewForm' => $reviewForm->createView()
+        ]);
     }
 
     #[Route('/404', name: 'app_404')]

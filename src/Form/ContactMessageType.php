@@ -15,29 +15,29 @@ class ContactMessageType extends AbstractType
     
     {
         $builder
-            ->add('firstName', null, ['label' => 'Prénom'])
-            ->add('lastName',  null, ['label' => 'Nom'])
-            ->add('email',     null, ['label' => 'Email'])
-            ->add('phone',     null, ['label' => 'Téléphone', 'required' => false])
+            ->add('firstName', null, ['label' => 'form.firstName'])
+            ->add('lastName',  null, ['label' => 'form.lastName'])
+            ->add('email',     null, ['label' => 'form.email'])
+            ->add('phone',     null, ['label' => 'form.phone', 'required' => false])
             ->add('subject', ChoiceType::class, [
-                'label' => 'Sujet',
-                'placeholder' => 'Choisissez un sujet',
+                'label' => 'form.subject',
+                'placeholder' => 'form.choose_subject',
                 'choices' => [
-                    'Réservation'     => 'reservation',
-                    'Commande'        => 'commande',
-                    'Événement privé' => 'evenement_prive',
-                    'Suggestion'      => 'suggestion',
-                    'Réclamation'     => 'reclamation',
-                    'Autre'           => 'autre',
+                    'form.reservation'     => 'reservation',
+                    'form.commande'        => 'commande',
+                    'form.evenement_prive' => 'evenement_prive',
+                    'form.suggestion'      => 'suggestion',
+                    'form.reclamation'     => 'reclamation',
+                    'form.autre'           => 'autre',
                 ],
                 'required' => true,
             ])
             ->add('message', TextareaType::class, [
-                'label' => 'Message',
+                'label' => 'form.message',
                 'attr' => ['rows' => 6],
             ])
             ->add('consent', CheckboxType::class, [
-                'label' => "J'accepte d'être contacté par Le Trois Quarts concernant ma demande",
+                'label' => 'form.consent',
                 'required' => true,
             ])
         ;
