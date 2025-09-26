@@ -8,6 +8,19 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Dish ID:', dishId);
     console.log('Dish Data:', window.dishData);
     console.log('Menu Items:', window.menuItems);
+    console.log('Cart functions available:', {
+        toggleCart: typeof window.toggleCart,
+        updateCartNavigation: typeof window.updateCartNavigation,
+        updateCartSidebar: typeof window.updateCartSidebar
+    });
+    
+    // Check if cart elements exist
+    const cartNavLink = document.getElementById('cartNavLink');
+    const cartSidebar = document.getElementById('cartSidebar');
+    console.log('Cart elements found:', {
+        cartNavLink: !!cartNavLink,
+        cartSidebar: !!cartSidebar
+    });
     
     if (!dishId) {
         console.log('No dish ID found, exiting');
