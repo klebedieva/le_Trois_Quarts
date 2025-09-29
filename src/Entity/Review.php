@@ -6,6 +6,7 @@ use App\Repository\ReviewRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use App\Entity\MenuItem;
 
 #[ORM\Entity(repositoryClass: ReviewRepository::class)]
 #[ORM\Table(name: 'reviews')]
@@ -40,6 +41,11 @@ class Review
 
     #[ORM\Column(type: Types::BOOLEAN)]
     private ?bool $isApproved = false;
+
+    // Link a review to a specific dish. When null, the review is about the restaurant in general.
+    #[ORM\ManyToOne(targetEntity: MenuItem::class)]
+    #[ORM\JoinColumn(name: 'menu_item_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?MenuItem $menuItem = null;
 
     public function __construct()
     {
@@ -120,6 +126,23 @@ class Review
     {
         $this->isApproved = $isApproved;
 
+        return $this;
+    }
+
+    /**
+     * Get the dish this review belongs to. Null means global restaurant review.
+     */
+    public function getMenuItem(): ?MenuItem
+    {
+        return $this->menuItem;
+    }
+
+    /**
+     * Associate this review with a dish (MenuItem).
+     */
+    public function setMenuItem(?MenuItem $menuItem): static
+    {
+        $this->menuItem = $menuItem;
         return $this;
     }
 }

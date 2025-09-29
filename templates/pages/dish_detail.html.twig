@@ -81,7 +81,16 @@
                         <div class="tab-content mt-3">
                             <div class="tab-pane fade show active" id="preparation">{% if item.preparation %}<p>{{ item.preparation }}</p>{% endif %}{% if prepTimeDisplay %}<p><strong>Temps de préparation :</strong> {{ prepTimeDisplay }} minutes</p>{% endif %}{% if item.chefTip %}<p><strong>Conseil du chef :</strong> {{ item.chefTip }}</p>{% endif %}</div>
                             <div class="tab-pane fade" id="nutrition"><div class="nutrition-info"><div class="row"><div class="col-6"><p><strong>Calories :</strong> {{ item.nutrition.caloriesKcal ?? '-' }} kcal</p><p><strong>Protéines :</strong> {{ item.nutrition.proteinsG ?? '-' }} g</p><p><strong>Glucides :</strong> {{ item.nutrition.carbsG ?? '-' }} g</p></div><div class="col-6"><p><strong>Lipides :</strong> {{ item.nutrition.fatsG ?? '-' }} g</p><p><strong>Fibres :</strong> {{ item.nutrition.fiberG ?? '-' }} g</p><p><strong>Sodium :</strong> {{ item.nutrition.sodiumMg ?? '-' }} mg</p></div></div></div></div>
-                            <div class="tab-pane fade" id="reviews"><div class="reviews-list"></div><div class="add-review-section mt-4"><div class="text-center"><button class="btn btn-primary"><i class="bi bi-chat-dots me-2"></i>Ajouter un avis</button></div></div></div>
+                            <div class="tab-pane fade" id="reviews">
+                                <div class="reviews-list" id="dishReviewsList"></div>
+                                <div class="add-review-section mt-4">
+                                    <div class="text-center">
+                                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#dishReviewModal">
+                                            <i class="bi bi-chat-dots me-2"></i>Ajouter un avis
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -112,6 +121,53 @@
         </div>
     </div>
 </section>
+
+{# Review Modal for dish page #}
+<div class="modal fade" id="dishReviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-chat-dots me-2"></i>Ajouter votre avis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="dishReviewForm">
+                    <div class="mb-3">
+                        <label class="form-label">Votre nom *</label>
+                        <input type="text" class="form-control" id="reviewerName" required>
+                        <div id="reviewerNameError" class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Note *</label>
+                        <div class="rating-stars">
+                            <i class="bi bi-star star-rating" data-rating="1"></i>
+                            <i class="bi bi-star star-rating" data-rating="2"></i>
+                            <i class="bi bi-star star-rating" data-rating="3"></i>
+                            <i class="bi bi-star star-rating" data-rating="4"></i>
+                            <i class="bi bi-star star-rating" data-rating="5"></i>
+                        </div>
+                        <input type="hidden" id="ratingValue" value="0">
+                        <div id="ratingError" class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Votre avis *</label>
+                        <textarea class="form-control" id="reviewText" rows="4" required></textarea>
+                        <div id="reviewTextError" class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email (optionnel)</label>
+                        <input type="email" class="form-control" id="reviewEmail">
+                        <div id="reviewEmailError" class="invalid-feedback"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="submitReview"><i class="bi bi-send me-2"></i>Envoyer l'avis</button>
+            </div>
+        </div>
+    </div>
+    </div>
 
 {% endblock %}
 

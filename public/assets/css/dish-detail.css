@@ -57,6 +57,29 @@
 .add-to-cart-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .add-to-cart-btn:disabled:hover { transform: none; box-shadow: none; }
 
+/* "Voir détails" button – match Restaurant project */
+.quick-view-btn {
+    background: white;
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: var(--transition);
+    text-decoration: none;
+    display: inline-block;
+}
+
+.quick-view-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: scale(1.05);
+    text-decoration: none;
+}
+
 /* Tabs */
 .dish-info-tabs .nav-tabs { border-bottom: 2px solid var(--border-color); }
 .dish-info-tabs .nav-link { color: var(--text-dark); border: none; padding: 1rem 1.5rem; font-weight: 500; transition: var(--transition); }
