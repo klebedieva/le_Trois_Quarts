@@ -23,6 +23,7 @@ class ReviewRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('r')
             ->andWhere('r.isApproved = :approved')
+            ->andWhere('r.menuItem IS NULL')
             ->setParameter('approved', true)
             ->orderBy('r.createdAt', 'DESC')
             ->setMaxResults(3)
@@ -48,6 +49,7 @@ class ReviewRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('r')
             ->andWhere('r.isApproved = :approved')
+            ->andWhere('r.menuItem IS NULL')
             ->setParameter('approved', true)
             ->orderBy('r.createdAt', 'DESC')
             ->getQuery()

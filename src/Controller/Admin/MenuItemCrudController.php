@@ -24,6 +24,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Filter\TextFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\NumericFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use App\Repository\AllergenRepository;
 
 #[IsGranted('ROLE_ADMIN')]
 class MenuItemCrudController extends AbstractCrudController
@@ -96,7 +97,13 @@ class MenuItemCrudController extends AbstractCrudController
                 ->setHelp('Temps maximum de préparation en minutes. Si rempli avec min, affichera "15 - 20 minutes"'),
             TextareaField::new('chefTip', 'Conseil du chef')->hideOnIndex(),
             AssociationField::new('allergens', 'Allergènes')
-                ->setFormTypeOptions(['by_reference' => false])
+                ->setFormTypeOptions([
+                    'by_reference' => false,
+                    'choice_label' => 'name',
+                    'multiple' => true,
+                ])
+                ->setQueryBuilder(fn (\Doctrine\ORM\QueryBuilder $qb) => $qb->orderBy('entity.name', 'ASC'))
+                ->setHelp('Sélectionnez un ou plusieurs allergènes dans la liste prédéfinie (issue du projet Restaurant).')
                 ->hideOnIndex(),
             AssociationField::new('badges', 'Badges')
                 ->setFormTypeOptions(['by_reference' => false])

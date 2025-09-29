@@ -45,9 +45,6 @@ class MenuItem
     private ?string $preparation = null;
 
     #[ORM\Column(type: 'integer', nullable: true)]
-    private ?int $prepTimeMinutes = null;
-
-    #[ORM\Column(type: 'integer', nullable: true)]
     private ?int $prepTimeMin = null;
 
     #[ORM\Column(type: 'integer', nullable: true)]
@@ -300,17 +297,7 @@ class MenuItem
         return $this;
     }
 
-    public function getPrepTimeMinutes(): ?int
-    {
-        return $this->prepTimeMinutes;
-    }
-
-    public function setPrepTimeMinutes(?int $prepTimeMinutes): static
-    {
-        $this->prepTimeMinutes = $prepTimeMinutes;
-
-        return $this;
-    }
+    
 
     public function getPrepTimeMin(): ?int
     {

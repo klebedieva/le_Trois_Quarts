@@ -20,7 +20,7 @@ class BadgeFixtures extends Fixture implements FixtureGroupInterface
     public function load(ObjectManager $manager): void
     {
         $badgeNames = [
-            'Spécialité', 'Végétarien', 'Fait maison', 'Méditerranéen', 'Maison',
+            'Spécialité', 'Végétarien', 'Fait maison', 'Méditerranéen',
             'Traditionnel', 'Fusion', 'Saison', 'Sans Gluten'
         ];
 
