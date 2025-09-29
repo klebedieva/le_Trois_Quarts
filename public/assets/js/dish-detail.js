@@ -46,6 +46,8 @@ document.addEventListener('DOMContentLoaded', function() {
             initQuantityControls(dish);
             // Add event listener for cart updates
             addCartUpdateListener(dish);
+            // Load dish reviews
+            loadDishReviews(dish.id);
         } else {
             console.log('Dish not found in data, trying to initialize with dishData');
             // If we have dishData but it wasn't found by findDishById, use it directly
@@ -53,6 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Using dishData directly:', window.dishData);
                 initQuantityControls(window.dishData);
                 addCartUpdateListener(window.dishData);
+                loadDishReviews(window.dishData.id);
             }
         }
     }, 100); // Wait 100ms for cart.js to initialize
@@ -319,4 +322,57 @@ function addCartUpdateListener(dish) {
     setInterval(() => {
         updateQuantityDisplay(dish.id);
     }, 1000);
+}
+
+// ---------------- DISH REVIEWS ----------------
+/**
+ * Fetch and render approved reviews for the given dish.
+ */
+function loadDishReviews(dishId) {
+    const list = document.getElementById('dishReviewsList');
+    if (!list) return;
+    list.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-hourglass-split me-2"></i>Chargement…</div>';
+
+    fetch(`/dish/${dishId}/reviews`, { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) throw new Error();
+            if (!data.reviews || data.reviews.length === 0) {
+                list.innerHTML = '<div class="text-muted">Aucun avis pour ce plat pour le moment.</div>';
+                return;
+            }
+            list.innerHTML = data.reviews.map(r => `
+                <div class="review-item">
+                  <div class="review-header">
+                    <strong>${escapeHtml(r.name)}</strong>
+                    <div class="review-stars">${renderStars(r.rating)}</div>
+                  </div>
+                  <p>${escapeHtml(r.comment)}</p>
+                  <small class="text-muted">${escapeHtml(r.createdAt)}</small>
+                </div>
+            `).join('');
+        })
+        .catch(() => {
+            list.innerHTML = '<div class="text-danger">Erreur de chargement des avis.</div>';
+        });
+}
+
+// Listen for global submission event from reviews.js to refresh dish list
+document.addEventListener('review:submitted', function () {
+    const match = window.location.pathname.match(/\/dish\/(\d+)/);
+    const dishId = match ? match[1] : null;
+    if (dishId) {
+        loadDishReviews(dishId);
+    }
+});
+
+function renderStars(n) {
+    n = Math.max(0, Math.min(5, parseInt(n, 10) || 0));
+    const full = '<i class="bi bi-star-fill text-warning"></i>';
+    const empty = '<i class="bi bi-star text-warning"></i>';
+    return full.repeat(n) + empty.repeat(5 - n);
+}
+
+function escapeHtml(s) {
+    return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }

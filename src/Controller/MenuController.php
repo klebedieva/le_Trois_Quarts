@@ -6,6 +6,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Repository\MenuItemRepository;
+use App\Repository\ReviewRepository;
 use App\Repository\DrinkRepository;
 use App\Entity\MenuItem;
 
@@ -93,7 +94,7 @@ final class MenuController extends AbstractController
     }
 
     #[Route('/dish/{id}', name: 'app_dish_detail', requirements: ['id' => '\\d+'])]
-    public function show(MenuItem $item, MenuItemRepository $menuItemRepository): Response
+    public function show(MenuItem $item, MenuItemRepository $menuItemRepository, ReviewRepository $reviewRepository): Response
     {
         // Préparer structure pour le template
         $badges = [];
@@ -160,6 +161,17 @@ final class MenuController extends AbstractController
             $prepTimeDisplay = (string) $item->getPrepTimeMinutes();
         }
 
+        // Compute rating summary from approved dish reviews
+        $approved = $reviewRepository->createQueryBuilder('r')
+            ->select('COUNT(r.id) as cnt, COALESCE(AVG(r.rating), 0) as avgRating')
+            ->andWhere('r.menuItem = :id')
+            ->andWhere('r.isApproved = 1')
+            ->setParameter('id', $item->getId())
+            ->getQuery()
+            ->getSingleResult();
+        $ratingCount = (int)($approved['cnt'] ?? 0);
+        $ratingAvg = (float)($approved['avgRating'] ?? 0.0);
+
         return $this->render('pages/dish_detail.html.twig', [
             'item' => $item,
             'image' => $image,
@@ -168,6 +180,8 @@ final class MenuController extends AbstractController
             'ingredients' => $ingredients,
             'prepTimeDisplay' => $prepTimeDisplay,
             'related' => $related,
+            'ratingCount' => $ratingCount,
+            'ratingAvg' => $ratingAvg,
         ]);
     }
 }

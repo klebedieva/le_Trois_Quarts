@@ -244,7 +244,9 @@
         
         
         // Submit via AJAX
-        fetch('/submit-review', {
+        // Use page-specific override when present (dish page)
+        const endpoint = window.REVIEWS_ENDPOINT || '/submit-review';
+        fetch(endpoint, {
             method: 'POST',
             body: formData,
             headers: {
@@ -257,19 +259,21 @@
                 // Show success message
                 showSuccessMessage('Votre avis a été envoyé avec succès ! Il sera publié après modération.');
                 
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('addReviewModal'));
-                if (modal) {
+                // Close the modal gracefully (supports both restaurant and dish modals)
+                const openModalEl = submitBtn.closest('.modal')
+                    || document.querySelector('.modal.show')
+                    || document.getElementById('dishReviewModal')
+                    || document.getElementById('addReviewModal');
+                if (openModalEl) {
+                    const modal = bootstrap.Modal.getInstance(openModalEl) || new bootstrap.Modal(openModalEl);
                     modal.hide();
                 }
                 
                 // Reset form
                 resetForm();
                 
-                // Reload page to show new review if approved
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
+                // Notify dish page (if any) to refresh its list without reloading
+                document.dispatchEvent(new CustomEvent('review:submitted'));
             } else {
                 // Show error message
                 showErrorMessage(data.message || 'Une erreur est survenue lors de l\'envoi de votre avis.');

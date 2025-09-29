@@ -57,6 +57,29 @@
 .add-to-cart-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .add-to-cart-btn:disabled:hover { transform: none; box-shadow: none; }
 
+/* "Voir détails" button – match Restaurant project */
+.quick-view-btn {
+    background: white;
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: var(--transition);
+    text-decoration: none;
+    display: inline-block;
+}
+
+.quick-view-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: scale(1.05);
+    text-decoration: none;
+}
+
 /* Tabs */
 .dish-info-tabs .nav-tabs { border-bottom: 2px solid var(--border-color); }
 .dish-info-tabs .nav-link { color: var(--text-dark); border: none; padding: 1rem 1.5rem; font-weight: 500; transition: var(--transition); }
@@ -101,6 +124,13 @@
 .dish-card-content .price { font-size: 1.2rem; font-weight: 600; color: var(--primary-color); margin: 0; margin-top: 0.5rem; }
 .dish-card-content .d-flex { margin-top: auto; align-items: center; padding-top: 1rem; }
 .dish-card-content .quick-view-btn { font-size: 0.9rem; padding: 0.4rem 0.8rem; margin: 0; }
+
+/* Slightly smaller CTA button on dish page for better balance */
+.dish-detail-section .add-review-section .btn {
+    padding: 0.55rem 1.15rem;
+    font-size: 0.95rem;
+    border-radius: 40px;
+}
 
 /* Responsive Design */
 @media (max-width: 768px) {

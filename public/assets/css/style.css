@@ -2472,6 +2472,21 @@ footer a[href^="mailto:"] {
     box-shadow: 0 0 0 0.1rem rgba(39, 174, 96, 0.15);
 }
 
+/* Dish review modal – match the exact border thickness/colors as restaurant modal */
+#dishReviewModal .form-control.is-invalid,
+#dishReviewModal .form-select.is-invalid {
+    border-color: #e74c3c;
+    border-width: 1px;
+    box-shadow: 0 0 0 0.1rem rgba(231, 76, 60, 0.15);
+}
+
+#dishReviewModal .form-control.is-valid,
+#dishReviewModal .form-select.is-valid {
+    border-color: #27ae60;
+    border-width: 1px;
+    box-shadow: 0 0 0 0.1rem rgba(39, 174, 96, 0.15);
+}
+
 #addReviewModal .form-control.is-invalid:focus,
 #addReviewModal .form-select.is-invalid:focus {
     border-color: #e74c3c;
