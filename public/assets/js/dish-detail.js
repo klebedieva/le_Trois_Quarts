@@ -357,37 +357,12 @@ function loadDishReviews(dishId) {
         });
 }
 
-// Intercept submit from the dish review modal and post to dish endpoint
-document.addEventListener('DOMContentLoaded', function () {
-    const submitBtn = document.getElementById('submitReview');
+// Listen for global submission event from reviews.js to refresh dish list
+document.addEventListener('review:submitted', function () {
     const match = window.location.pathname.match(/\/dish\/(\d+)/);
     const dishId = match ? match[1] : null;
-    if (submitBtn && dishId) {
-        submitBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            const fd = new FormData();
-            fd.append('name', (document.getElementById('reviewerName')?.value || '').trim());
-            fd.append('email', (document.getElementById('reviewEmail')?.value || '').trim());
-            fd.append('rating', (document.getElementById('ratingValue')?.value || '0'));
-            fd.append('comment', (document.getElementById('reviewText')?.value || '').trim());
-
-            fetch(`/dish/${dishId}/reviews`, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' }})
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        if (window.showSuccessMessage) window.showSuccessMessage('Votre avis a été envoyé. En attente de modération.');
-                        const modalEl = document.getElementById('dishReviewModal');
-                        if (modalEl) {
-                            const m = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-                            m.hide();
-                        }
-                        loadDishReviews(dishId);
-                    } else {
-                        if (window.showErrorMessage) window.showErrorMessage(data.message || 'Erreur de l’envoi.');
-                    }
-                })
-                .catch(() => window.showErrorMessage && window.showErrorMessage('Erreur de l’envoi.'))
-        });
+    if (dishId) {
+        loadDishReviews(dishId);
     }
 });
 

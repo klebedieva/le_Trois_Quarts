@@ -39,12 +39,22 @@
                     <div class="dish-price-section">
                         <span id="dishPrice" class="dish-price">{{ item.price|number_format(0, '.', ' ') }}€</span>
                         <div class="dish-rating">
-                            <i class="bi bi-star-fill text-warning"></i>
-                            <i class="bi bi-star-fill text-warning"></i>
-                            <i class="bi bi-star-fill text-warning"></i>
-                            <i class="bi bi-star-fill text-warning"></i>
-                            <i class="bi bi-star-half text-warning"></i>
-                            <span class="rating-text">(4.5/5 - 23 avis)</span>
+                            {# Render average rating stars based on real data #}
+                            {% set full = ratingAvg|default(0)|round(0, 'floor') %}
+                            {% set half = (ratingAvg - full) >= 0.25 and (ratingAvg - full) < 0.75 %}
+                            {% set extra = (ratingAvg - full) >= 0.75 %}
+                            {% for i in 1..5 %}
+                                {% if i <= full %}
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                {% elseif i == full + 1 and half %}
+                                    <i class="bi bi-star-half text-warning"></i>
+                                {% elseif i == full + 1 and extra %}
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                {% else %}
+                                    <i class="bi bi-star text-warning"></i>
+                                {% endif %}
+                            {% endfor %}
+                            <span class="rating-text">({{ ratingAvg|number_format(1, '.', ' ') }}/5 - {{ ratingCount }} avis)</span>
                         </div>
                     </div>
 
@@ -131,7 +141,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="dishReviewForm">
+                <form id="reviewForm">
                     <div class="mb-3">
                         <label class="form-label">Votre nom *</label>
                         <input type="text" class="form-control" id="reviewerName" required>
@@ -176,6 +186,11 @@
     <script src="{{ asset('assets/js/cart.js') }}?v=3"></script>
     <script src="{{ asset('assets/js/global.js') }}"></script>
     <script src="{{ asset('assets/js/main.js') }}"></script>
+    <script>
+        // Endpoint override so reviews.js posts to dish-specific URL
+        window.REVIEWS_ENDPOINT = '/dish/{{ item.id }}/reviews';
+    </script>
+    <script src="{{ asset('assets/js/reviews.js') }}"></script>
     <script src="{{ asset('assets/js/dish-detail.js') }}"></script>
     <script>
         // Initialize dish data for JavaScript

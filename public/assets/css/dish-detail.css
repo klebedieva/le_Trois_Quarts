@@ -125,6 +125,13 @@
 .dish-card-content .d-flex { margin-top: auto; align-items: center; padding-top: 1rem; }
 .dish-card-content .quick-view-btn { font-size: 0.9rem; padding: 0.4rem 0.8rem; margin: 0; }
 
+/* Slightly smaller CTA button on dish page for better balance */
+.dish-detail-section .add-review-section .btn {
+    padding: 0.55rem 1.15rem;
+    font-size: 0.95rem;
+    border-radius: 40px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .dish-detail-section { padding: 100px 0 60px; }
