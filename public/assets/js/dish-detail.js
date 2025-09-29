@@ -1,51 +1,61 @@
 // Dish Detail Page JavaScript - Cart functionality only
 document.addEventListener('DOMContentLoaded', function() {
-    // Get dish ID from Symfony route /dish/{id}
-    const match = window.location.pathname.match(/\/dish\/(\d+)/);
-    const dishId = match ? match[1] : null;
+    // Wait a bit for cart.js to initialize
+    setTimeout(function() {
+        // Get dish ID from Symfony route /dish/{id}
+        const match = window.location.pathname.match(/\/dish\/(\d+)/);
+        const dishId = match ? match[1] : null;
+        
+        console.log('Dish Detail Page Loaded');
+        console.log('Dish ID:', dishId);
+        console.log('Dish Data:', window.dishData);
+        console.log('Menu Items:', window.menuItems);
+        console.log('Cart functions available:', {
+            toggleCart: typeof window.toggleCart,
+            updateCartNavigation: typeof window.updateCartNavigation,
+            updateCartSidebar: typeof window.updateCartSidebar
+        });
+        
+        // Check if cart elements exist
+        const cartNavLink = document.getElementById('cartNavLink');
+        const cartSidebar = document.getElementById('cartSidebar');
+        console.log('Cart elements found:', {
+            cartNavLink: !!cartNavLink,
+            cartSidebar: !!cartSidebar
+        });
+        
+        // Cart should be initialized by cart.js automatically
+        console.log('Cart initialization status:', {
+            toggleCart: typeof window.toggleCart,
+            initCartNavigation: typeof window.initCartNavigation,
+            initCartSidebar: typeof window.initCartSidebar
+        });
     
-    console.log('Dish Detail Page Loaded');
-    console.log('Dish ID:', dishId);
-    console.log('Dish Data:', window.dishData);
-    console.log('Menu Items:', window.menuItems);
-    console.log('Cart functions available:', {
-        toggleCart: typeof window.toggleCart,
-        updateCartNavigation: typeof window.updateCartNavigation,
-        updateCartSidebar: typeof window.updateCartSidebar
-    });
-    
-    // Check if cart elements exist
-    const cartNavLink = document.getElementById('cartNavLink');
-    const cartSidebar = document.getElementById('cartSidebar');
-    console.log('Cart elements found:', {
-        cartNavLink: !!cartNavLink,
-        cartSidebar: !!cartSidebar
-    });
-    
-    if (!dishId) {
-        console.log('No dish ID found, exiting');
-        return; // Don't redirect, just exit
-    }
-    
-    // Find dish in menu data (optional - for cart functionality)
-    const dish = findDishById(dishId);
-    console.log('Found dish:', dish);
-    
-    if (dish) {
-        console.log('Initializing quantity controls for dish:', dish.name);
-        // Initialize quantity controls if dish found in JS data
-        initQuantityControls(dish);
-        // Add event listener for cart updates
-        addCartUpdateListener(dish);
-    } else {
-        console.log('Dish not found in data, trying to initialize with dishData');
-        // If we have dishData but it wasn't found by findDishById, use it directly
-        if (window.dishData && window.dishData.id == dishId) {
-            console.log('Using dishData directly:', window.dishData);
-            initQuantityControls(window.dishData);
-            addCartUpdateListener(window.dishData);
+        if (!dishId) {
+            console.log('No dish ID found, exiting');
+            return; // Don't redirect, just exit
         }
-    }
+        
+        // Find dish in menu data (optional - for cart functionality)
+        const dish = findDishById(dishId);
+        console.log('Found dish:', dish);
+        
+        if (dish) {
+            console.log('Initializing quantity controls for dish:', dish.name);
+            // Initialize quantity controls if dish found in JS data
+            initQuantityControls(dish);
+            // Add event listener for cart updates
+            addCartUpdateListener(dish);
+        } else {
+            console.log('Dish not found in data, trying to initialize with dishData');
+            // If we have dishData but it wasn't found by findDishById, use it directly
+            if (window.dishData && window.dishData.id == dishId) {
+                console.log('Using dishData directly:', window.dishData);
+                initQuantityControls(window.dishData);
+                addCartUpdateListener(window.dishData);
+            }
+        }
+    }, 100); // Wait 100ms for cart.js to initialize
 });
 
 function findDishById(dishId) {
@@ -93,7 +103,7 @@ function initQuantityControls(dish) {
             if (!this.disabled) {
                 const currentQty = getItemQuantity(dish.id);
                 if (currentQty > 0) {
-                    removeFromCart(dish.id);
+                    removeFromCartDetail(dish.id);
                     updateQuantityDisplay(dish.id);
                     
                     // Show notification
@@ -112,7 +122,7 @@ function initQuantityControls(dish) {
             e.preventDefault();
             console.log('Increase button clicked');
             const currentQty = getItemQuantity(dish.id);
-            addToCart(dish.id);
+            addToCartDetail(dish.id);
             updateQuantityDisplay(dish.id);
             
             // Show notification
@@ -142,11 +152,18 @@ function showAllControls() {
 }
 
 function updateQuantityDisplay(itemId) {
+    console.log('updateQuantityDisplay called with itemId:', itemId);
     const quantityDisplay = document.getElementById('quantityDisplay');
     const decreaseBtn = document.getElementById('decreaseQty');
     
+    console.log('Found elements:', {
+        quantityDisplay: !!quantityDisplay,
+        decreaseBtn: !!decreaseBtn
+    });
+    
     if (quantityDisplay) {
         const quantity = getItemQuantity(itemId);
+        console.log('Current quantity for item', itemId, ':', quantity);
         quantityDisplay.textContent = quantity;
         
         // Enable/disable decrease button based on quantity
@@ -161,19 +178,26 @@ function updateQuantityDisplay(itemId) {
                 decreaseBtn.style.cursor = 'not-allowed';
             }
         }
+    } else {
+        console.log('quantityDisplay element not found');
     }
 }
 
+// Make updateQuantityDisplay globally available
+window.updateQuantityDisplay = updateQuantityDisplay;
+
 function getItemQuantity(itemId) {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const item = cart.find(item => item.id === itemId);
+    const key = String(itemId);
+    const item = cart.find(item => String(item.id) === key);
     return item ? item.quantity : 0;
 }
 
-function addToCart(itemId) {
+function addToCartDetail(itemId) {
     console.log('Adding to cart, itemId:', itemId);
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const existingItem = cart.find(item => item.id == itemId);
+    const key = String(itemId);
+    const existingItem = cart.find(item => String(item.id) == key);
     
     if (existingItem) {
         console.log('Item exists in cart, increasing quantity');
@@ -184,7 +208,7 @@ function addToCart(itemId) {
         console.log('Item not in cart, looking for menu item:', menuItem);
         if (menuItem) {
             const newItem = {
-                id: menuItem.id,
+                id: String(menuItem.id),
                 name: menuItem.name,
                 price: menuItem.price,
                 quantity: 1
@@ -220,9 +244,10 @@ function addToCart(itemId) {
     window.dispatchEvent(new CustomEvent('cartUpdated'));
 }
 
-function removeFromCart(itemId) {
+function removeFromCartDetail(itemId) {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const index = cart.findIndex(item => item.id === itemId);
+    const key = String(itemId);
+    const index = cart.findIndex(item => String(item.id) === key);
     
     if (index !== -1) {
         const item = cart[index];
@@ -230,9 +255,9 @@ function removeFromCart(itemId) {
         
         if (item.quantity <= 0) {
             cart.splice(index, 1);
-            showNotification(`${item.name} supprimé du panier`, 'info');
+            if (window.showNotification) { showNotification(`${item.name} supprimé du panier`, 'info'); }
         } else {
-            showNotification('Quantité diminuée', 'success');
+            if (window.showNotification) { showNotification('Quantité diminuée', 'success'); }
         }
         
         localStorage.setItem('cart', JSON.stringify(cart));

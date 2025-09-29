@@ -3,6 +3,7 @@
 {% block title %}{{ item.name }} - Détails{% endblock %}
 
 {% block stylesheets %}
+    {{ parent() }}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -11,18 +12,15 @@
 {% endblock %}
 
 {% block body %}
-<!-- Dish Detail Section -->
 <section class="dish-detail-section">
     <div class="container">
         <div class="row">
             <div class="col-lg-6 mb-4">
                 <div class="dish-image-container">
                     <img src="{{ image }}" alt="{{ item.name }}" class="img-fluid rounded shadow">
-                    {% if badges is not empty %}
                     <div class="dish-badges">
                         {% for b in badges %}<span class="badge bg-warning text-dark">{{ b }}</span>{% endfor %}
                     </div>
-                    {% endif %}
                 </div>
             </div>
             <div class="col-lg-6">
@@ -35,11 +33,11 @@
                         </ol>
                     </nav>
                     
-                    <h1 class="dish-title">{{ item.name }}</h1>
-                    <p class="dish-description">{{ item.description }}</p>
+                    <h1 id="dishTitle" class="dish-title">{{ item.name }}</h1>
+                    <p id="dishDescription" class="dish-description">{{ item.description }}</p>
                     
                     <div class="dish-price-section">
-                        <span class="dish-price">{{ item.price|number_format(2, '.', ' ') }}€</span>
+                        <span id="dishPrice" class="dish-price">{{ item.price|number_format(0, '.', ' ') }}€</span>
                         <div class="dish-rating">
                             <i class="bi bi-star-fill text-warning"></i>
                             <i class="bi bi-star-fill text-warning"></i>
@@ -52,115 +50,46 @@
 
             <div class="dish-ingredients">
                 <h3>Ingrédients</h3>
-                {% if ingredients %}
                 <ul id="dishIngredients">
                     {% for ing in ingredients %}<li>{{ ing }}</li>{% endfor %}
                 </ul>
-                {% else %}
-                <p class="text-muted">Non renseigné</p>
-                {% endif %}
             </div>
 
             <div class="dish-allergens">
                 <h4>Allergènes</h4>
                 <div class="allergen-badges">
-                    {% for al in allergens %}<span class="badge bg-info">{{ al }}</span>{% else %}<span class="text-muted">Non renseigné</span>{% endfor %}
+                            {% for al in allergens %}<span class="badge bg-info">{{ al }}</span>{% endfor %}
                 </div>
             </div>
 
             <div class="dish-actions">
                 <div class="menu-card-actions">
                     <div class="quantity-controls">
-                        <button class="add-to-cart-btn" id="decreaseQty">
-                            <i class="bi bi-dash"></i>
-                        </button>
+                                <button class="add-to-cart-btn" id="decreaseQty"><i class="bi bi-dash"></i></button>
                         <span class="quantity-display" id="quantityDisplay">0</span>
-                        <button class="add-to-cart-btn" id="increaseQty">
-                            <i class="bi bi-plus"></i>
-                        </button>
+                                <button class="add-to-cart-btn" id="increaseQty"><i class="bi bi-plus"></i></button>
                     </div>
                 </div>
             </div>
 
                     <div class="dish-info-tabs mt-4">
                         <ul class="nav nav-tabs" id="dishTabs">
-                            <li class="nav-item">
-                                <a class="nav-link active" data-bs-toggle="tab" href="#preparation">Préparation</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#nutrition">Nutrition</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#reviews">Avis</a>
-                            </li>
+                            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#preparation">Préparation</a></li>
+                            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#nutrition">Nutrition</a></li>
+                            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#reviews">Avis</a></li>
                         </ul>
-                        
                         <div class="tab-content mt-3">
-                            <div class="tab-pane fade show active" id="preparation">
-                                {% if item.preparation %}<p>{{ item.preparation }}</p>{% endif %}
-                                {% if prepTimeDisplay %}<p><strong>Temps de préparation :</strong> {{ prepTimeDisplay }} minutes</p>{% endif %}
-                                {% if item.chefTip %}<p><strong>Conseil du chef :</strong> {{ item.chefTip }}</p>{% endif %}
-                            </div>
-                            <div class="tab-pane fade" id="nutrition">
-                                <div class="nutrition-info">
-                                    <div class="row">
-                                        <div class="col-6">
-                                            <p><strong>Calories :</strong> {{ item.nutrition.caloriesKcal ?? '-' }} kcal</p>
-                                            <p><strong>Protéines :</strong> {{ item.nutrition.proteinsG ?? '-' }} g</p>
-                                            <p><strong>Glucides :</strong> {{ item.nutrition.carbsG ?? '-' }} g</p>
-                                        </div>
-                                        <div class="col-6">
-                                            <p><strong>Lipides :</strong> {{ item.nutrition.fatsG ?? '-' }} g</p>
-                                            <p><strong>Fibres :</strong> {{ item.nutrition.fiberG ?? '-' }} g</p>
-                                            <p><strong>Sodium :</strong> {{ item.nutrition.sodiumMg ?? '-' }} mg</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="tab-pane fade" id="reviews">
-                                <div class="reviews-list">
-                                    <div class="review-item">
-                                        <div class="review-header">
-                                            <strong>Marie L.</strong>
-                                            <div class="review-stars">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                            </div>
-                                        </div>
-                                        <p>"Excellente qualité ! Authentique et savoureux, exactement comme attendu."</p>
-                                        <small class="text-muted">Il y a 2 jours</small>
-                                    </div>
-                                    <div class="review-item">
-                                        <div class="review-header">
-                                            <strong>Jean-Pierre M.</strong>
-                                            <div class="review-stars">
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star-fill text-warning"></i>
-                                                <i class="bi bi-star text-warning"></i>
-                                            </div>
-                                        </div>
-                                        <p>"Très bon plat, ingrédients frais et service impeccable."</p>
-                                        <small class="text-muted">Il y a 1 semaine</small>
-                                    </div>
-                                </div>
-                                <div class="add-review-section mt-4">
-                                    <div class="text-center">
-                                        <button class="btn btn-primary">
-                                            <i class="bi bi-chat-dots me-2"></i>Ajouter un avis
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            <div class="tab-pane fade show active" id="preparation">{% if item.preparation %}<p>{{ item.preparation }}</p>{% endif %}{% if prepTimeDisplay %}<p><strong>Temps de préparation :</strong> {{ prepTimeDisplay }} minutes</p>{% endif %}{% if item.chefTip %}<p><strong>Conseil du chef :</strong> {{ item.chefTip }}</p>{% endif %}</div>
+                            <div class="tab-pane fade" id="nutrition"><div class="nutrition-info"><div class="row"><div class="col-6"><p><strong>Calories :</strong> {{ item.nutrition.caloriesKcal ?? '-' }} kcal</p><p><strong>Protéines :</strong> {{ item.nutrition.proteinsG ?? '-' }} g</p><p><strong>Glucides :</strong> {{ item.nutrition.carbsG ?? '-' }} g</p></div><div class="col-6"><p><strong>Lipides :</strong> {{ item.nutrition.fatsG ?? '-' }} g</p><p><strong>Fibres :</strong> {{ item.nutrition.fiberG ?? '-' }} g</p><p><strong>Sodium :</strong> {{ item.nutrition.sodiumMg ?? '-' }} mg</p></div></div></div></div>
+                            <div class="tab-pane fade" id="reviews"><div class="reviews-list"></div><div class="add-review-section mt-4"><div class="text-center"><button class="btn btn-primary"><i class="bi bi-chat-dots me-2"></i>Ajouter un avis</button></div></div></div>
                         </div>
                     </div>
                 </div>
             </div>
-<!-- Related Dishes Section -->
+        </div>
+    </div>
+</section>
+
 <section class="related-dishes py-5 bg-light">
     <div class="container">
         <h3 class="text-center mb-4">Plats similaires</h3>
@@ -173,7 +102,7 @@
                             <h5>{{ r.name }}</h5>
                             <p>{{ r.description }}</p>
                             <div class="d-flex justify-content-between align-items-center">
-                                <span class="price">{{ r.price|number_format(2, '.', ' ') }}€</span>
+                                <span class="price">{{ r.price|number_format(0, '.', ' ') }}€</span>
                                 <a href="{{ path('app_dish_detail', {id: r.id}) }}" class="quick-view-btn">Voir détails</a>
                             </div>
                         </div>
@@ -187,8 +116,9 @@
 {% endblock %}
 
 {% block javascripts %}
-    {{ parent() }}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ asset('assets/js/cart.js') }}?v=3"></script>
+    <script src="{{ asset('assets/js/global.js') }}"></script>
     <script src="{{ asset('assets/js/main.js') }}"></script>
     <script src="{{ asset('assets/js/dish-detail.js') }}"></script>
     <script>

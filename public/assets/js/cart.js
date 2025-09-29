@@ -200,9 +200,9 @@ function updateCartSidebar() {
                 </div>
                 <div class="cart-item-controls">
                     <div class="cart-item-quantity">
-                        <button class="cart-qty-btn" onclick="removeFromCartSidebar('${item.id}')">-</button>
+                        <button class="cart-qty-btn" data-action="decrease" data-id="${item.id}">-</button>
                         <span class="cart-item-total">${item.quantity}</span>
-                        <button class="cart-qty-btn" onclick="addToCartSidebar('${item.id}')">+</button>
+                        <button class="cart-qty-btn" data-action="increase" data-id="${item.id}">+</button>
                     </div>
                     <span class="cart-item-total">${itemTotal}€</span>
                 </div>
@@ -212,58 +212,110 @@ function updateCartSidebar() {
 
     cartItems.innerHTML = itemsHTML;
     cartTotal.textContent = total.toFixed(2) + '€';
+
+    // Attach event listeners via delegation for newly rendered buttons
+    cartItems.querySelectorAll('.cart-qty-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            // keep cart open while interacting
+            if (window.cartIsActive !== undefined) {
+                window.cartIsActive = true;
+                if (window.resetCartActiveState) { window.resetCartActiveState(); }
+            }
+            const id = this.getAttribute('data-id');
+            const action = this.getAttribute('data-action');
+            if (action === 'decrease') {
+                window.removeFromCartSidebar(id);
+            } else if (action === 'increase') {
+                window.addToCartSidebar(id);
+            }
+        });
+    });
 }
 
 // Global helpers for the sidebar cart
 window.removeFromCartSidebar = function(itemId) {
+    console.log('removeFromCartSidebar called with itemId:', itemId, 'type:', typeof itemId);
+    // Normalize to string for robust comparison
+    const key = String(itemId);
     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const index = cart.findIndex(item => item.id === itemId);
+    console.log('Current cart before removal:', cart);
+    const index = cart.findIndex(item => String(item.id) === key);
+    console.log('Item index found:', index);
 
     if (index !== -1) {
         const item = cart[index];
+        console.log('Item found:', item);
         if (item.quantity > 1) {
             item.quantity -= 1;
+            console.log('Decreased quantity to:', item.quantity);
         } else {
             cart.splice(index, 1);
+            console.log('Removed item completely');
         }
 
         localStorage.setItem('cart', JSON.stringify(cart));
+        console.log('Updated cart in localStorage:', cart);
         updateCartSidebar();
         updateCartNavigation();
         
+        // Update quantity display on dish detail page
+        if (window.updateQuantityDisplay) {
+            console.log('Calling updateQuantityDisplay for itemId:', key);
+            window.updateQuantityDisplay(key);
+        }
+        
         // Dispatch custom event for cart updates
         window.dispatchEvent(new CustomEvent('cartUpdated'));
+    } else {
+        console.log('Item not found in cart');
     }
 };
 
 window.addToCartSidebar = function(itemId) {
+    console.log('addToCartSidebar called with itemId:', itemId, 'type:', typeof itemId);
+    // Normalize to string for robust comparison
+    const key = String(itemId);
     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const index = cart.findIndex(item => item.id === itemId);
+    console.log('Current cart before addition:', cart);
+    const index = cart.findIndex(item => String(item.id) === key);
+    console.log('Item index found:', index);
 
     if (index !== -1) {
         cart[index].quantity += 1;
+        console.log('Increased quantity to:', cart[index].quantity);
         localStorage.setItem('cart', JSON.stringify(cart));
+        console.log('Updated cart in localStorage:', cart);
         updateCartSidebar();
         updateCartNavigation();
         
+        // Update quantity display on dish detail page
+        if (window.updateQuantityDisplay) {
+            console.log('Calling updateQuantityDisplay for itemId:', key);
+            window.updateQuantityDisplay(key);
+        }
+        
         // Dispatch custom event for cart updates
         window.dispatchEvent(new CustomEvent('cartUpdated'));
+    } else {
+        console.log('Item not found in cart');
     }
 };
 
 // Add a menu item to the cart (menu page)
 window.addMenuItemToCart = function(itemId, menuItems) {
-    const item = menuItems.find(item => item.id === itemId);
+    const key = String(itemId);
+    const item = menuItems.find(item => String(item.id) === key);
     if (!item) return;
 
     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const existingItem = cart.find(cartItem => cartItem.id === itemId);
+    const existingItem = cart.find(cartItem => String(cartItem.id) === key);
 
     if (existingItem) {
         existingItem.quantity += 1;
     } else {
         cart.push({
-            id: item.id,
+            id: key,
             name: item.name,
             price: item.price,
             quantity: 1
@@ -332,3 +384,5 @@ window.addEventListener('turbo:load', function() {
 // Export functions globally for compatibility
 window.updateCartNavigation = updateCartNavigation;
 window.updateCartSidebar = updateCartSidebar;
+window.initCartNavigation = initCartNavigation;
+window.initCartSidebar = initCartSidebar;

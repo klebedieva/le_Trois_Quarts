@@ -187,7 +187,7 @@ function observeStickyState() {
 
     // Only visual shadow toggle; sticky handled by CSS. Fallback remains passive.
     const onScroll = () => {
-        if (window.scrollY > 10) {
+        if (window.scrollY > originalTop - getStickyTop()) {
             section.classList.add('is-sticky');
         } else {
             section.classList.remove('is-sticky');
@@ -525,14 +525,15 @@ function addMenuItemEventListeners() {
 
 // Menu-specific cart functions
 function addToCart(itemId) {
-    const item = window.menuItems.find(i => i.id === itemId);
+    const key = String(itemId);
+    const item = window.menuItems.find(i => String(i.id) === key);
     if (item) {
         let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        const existingItem = cart.find(cartItem => cartItem.id === itemId);
+        const existingItem = cart.find(cartItem => String(cartItem.id) === key);
         if (existingItem) {
             existingItem.quantity++;
         } else {
-            cart.push({ ...item, quantity: 1 });
+            cart.push({ ...item, id: key, quantity: 1 });
         }
         localStorage.setItem('cart', JSON.stringify(cart));
         updateCartDisplay();
@@ -561,7 +562,8 @@ function addToCart(itemId) {
 
 function removeFromCart(itemId) {
     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const index = cart.findIndex(cartItem => cartItem.id === itemId);
+    const key = String(itemId);
+    const index = cart.findIndex(cartItem => String(cartItem.id) === key);
     if (index !== -1) {
         const item = cart[index];
         cart[index].quantity--;
@@ -637,4 +639,9 @@ window.LesTroisQuarts.removeCartItem = removeFromCart;
 
 // Ensure these functions are globally available on the menu page
 window.addMenuItemToCart = addToCart;
-window.removeMenuItemFromCart = removeFromCart; 
+window.removeMenuItemFromCart = removeFromCart;
+
+// Initialize menu when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    initMenu();
+}); 
