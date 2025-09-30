@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\Reservation;
+use App\Service\TableAvailabilityService;
 use App\Service\SymfonyEmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
@@ -204,6 +205,7 @@ class ReservationCrudController extends AbstractCrudController
         $confirmAction = Action::new('confirm', 'Confirmer')
             ->setIcon('fa fa-check')
             ->setCssClass('btn btn-soft-success btn-sm')
+            // Open confirm page first, then submit to same action (POST)
             ->linkToCrudAction('confirm')
             ->displayIf(function ($entity) {
                 return $entity instanceof Reservation && 
@@ -311,8 +313,11 @@ class ReservationCrudController extends AbstractCrudController
         return $this->redirect($request->headers->get('referer') ?: $this->generateUrl('admin'));
     }
 
-    #[Route('/admin/reservation/confirm', name: 'admin_reservation_confirm')]
-    public function confirm(Request $request): Response
+    /**
+     * EasyAdmin inlined action to confirm the reservation.
+     * This keeps EA context (and avoids template errors about `ea` variable).
+     */
+    public function confirmReservation(Request $request, TableAvailabilityService $availability): Response
     {
         $entityId = $request->query->get('entityId');
         if (!$entityId) {
@@ -320,6 +325,72 @@ class ReservationCrudController extends AbstractCrudController
             return $this->redirectToRoute('admin');
         }
 
+        /** @var Reservation|null $reservation */
+        $reservation = $this->entityManager->getRepository(Reservation::class)->find($entityId);
+        if (!$reservation) {
+            $this->addFlash('error', 'Réservation non trouvée.');
+            return $this->redirectToRoute('admin');
+        }
+
+        // Optional: final availability check on confirmation
+        $isFree = $availability->isAvailable(
+            $reservation->getDate(),
+            (string) $reservation->getTime(),
+            (int) $reservation->getGuests()
+        );
+        if (!$isFree) {
+            $this->addFlash('danger', 'Pas de places suffisantes pour ce créneau.');
+            return $this->redirectToRoute('admin');
+        }
+
+        $confirmationMessage = $request->request->get('confirmationMessage', 'Votre réservation est confirmée.');
+
+        try {
+            // Update reservation status
+            $reservation->setStatus('confirmed');
+            $reservation->setIsConfirmed(true);
+            $reservation->setConfirmedAt(new \DateTimeImmutable());
+            $reservation->setConfirmationMessage($confirmationMessage);
+
+            $this->entityManager->flush();
+
+            // Send confirmation email to client
+            $clientName = $reservation->getFirstName().' '.$reservation->getLastName();
+            $emailSubject = 'Confirmation de votre réservation - Le Trois Quarts';
+
+            $emailSent = $this->emailService->sendReservationConfirmation(
+                $reservation->getEmail(),
+                $clientName,
+                $emailSubject,
+                $confirmationMessage,
+                $reservation
+            );
+
+            if ($emailSent) {
+                $this->addFlash('success', 'Réservation confirmée et email envoyé.');
+            } else {
+                $this->addFlash('warning', 'Réservation confirmée mais email non envoyé.');
+            }
+
+        } catch (\Throwable $e) {
+            $this->addFlash('error', 'Erreur lors de la confirmation: '.$e->getMessage());
+        }
+
+        return $this->redirectToRoute('admin');
+    }
+
+    /**
+     * Confirmation page (GET) + process (POST).
+     */
+    public function confirm(Request $request, TableAvailabilityService $availability): Response
+    {
+        $entityId = $request->query->get('entityId');
+        if (!$entityId) {
+            $this->addFlash('error', 'ID de la réservation non trouvé.');
+            return $this->redirectToRoute('admin');
+        }
+
+        /** @var Reservation|null $reservation */
         $reservation = $this->entityManager->getRepository(Reservation::class)->find($entityId);
         if (!$reservation) {
             $this->addFlash('error', 'Réservation non trouvée.');
@@ -327,30 +398,29 @@ class ReservationCrudController extends AbstractCrudController
         }
 
         if ($request->isMethod('POST')) {
-            $confirmationMessage = $request->request->get('confirmationMessage');
-
-            if (empty($confirmationMessage)) {
-                $this->addFlash('error', 'Le message de confirmation est obligatoire.');
-                return $this->redirectToRoute('admin', [
-                    'crudAction' => 'confirm',
-                    'crudControllerFqcn' => 'App\\Controller\\Admin\\ReservationCrudController',
-                    'entityId' => $entityId
-                ]);
+            // Final availability check
+            $isFree = $availability->isAvailable(
+                $reservation->getDate(),
+                (string) $reservation->getTime(),
+                (int) $reservation->getGuests()
+            );
+            if (!$isFree) {
+                $this->addFlash('danger', 'Pas de places suffisantes pour ce créneau.');
+                return $this->redirectToRoute('admin');
             }
 
+            $confirmationMessage = $request->request->get('confirmationMessage', 'Votre réservation est confirmée.');
+
             try {
-                // Update reservation status
                 $reservation->setStatus('confirmed');
                 $reservation->setIsConfirmed(true);
                 $reservation->setConfirmedAt(new \DateTimeImmutable());
                 $reservation->setConfirmationMessage($confirmationMessage);
-                
                 $this->entityManager->flush();
-                
-                // Send confirmation email to client
-                $clientName = $reservation->getFirstName() . ' ' . $reservation->getLastName();
-                $emailSubject = "Confirmation de votre réservation - Le Trois Quarts";
-                
+
+                // Try to send email, but do not block on failures (sandbox limits, etc.)
+                $clientName = $reservation->getFirstName().' '.$reservation->getLastName();
+                $emailSubject = 'Confirmation de votre réservation - Le Trois Quarts';
                 $emailSent = $this->emailService->sendReservationConfirmation(
                     $reservation->getEmail(),
                     $clientName,
@@ -358,20 +428,20 @@ class ReservationCrudController extends AbstractCrudController
                     $confirmationMessage,
                     $reservation
                 );
-                
                 if ($emailSent) {
-                    $this->addFlash('success', 'Réservation confirmée et email envoyé avec succès !');
+                    $this->addFlash('success', 'Réservation confirmée et email envoyé.');
                 } else {
-                    $this->addFlash('error', 'Réservation confirmée mais erreur lors de l\'envoi de l\'email.');
+                    $this->addFlash('warning', 'Réservation confirmée (envoi d\'email non garanti: limite sandbox).');
                 }
-                
-                return $this->redirectToRoute('admin');
-                
-            } catch (\Exception $e) {
-                $this->addFlash('error', 'Erreur lors de la sauvegarde: ' . $e->getMessage());
+
+            } catch (\Throwable $e) {
+                $this->addFlash('error', 'Erreur lors de la confirmation: '.$e->getMessage());
             }
+
+            return $this->redirectToRoute('admin');
         }
 
+        // GET: render confirmation page
         return $this->render('admin/reservation/confirm.html.twig', [
             'reservation' => $reservation,
         ]);

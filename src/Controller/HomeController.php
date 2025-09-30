@@ -14,11 +14,13 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
+use App\Service\TableAvailabilityService;
 
 class HomeController extends AbstractController
 {
     public function __construct(
-        private SymfonyEmailService $emailService
+        private SymfonyEmailService $emailService,
+        private TableAvailabilityService $availability
     ) {}
 
     #[Route('/', name: 'app_home')]
@@ -119,19 +121,18 @@ class HomeController extends AbstractController
         $reservationForm->handleRequest($request);
         
         if ($reservationForm->isSubmitted() && $reservationForm->isValid()) {
-            $entityManager->persist($reservation);
-            $entityManager->flush();
+            // Variant B: always accept the request on the public side.
+            // Availability will be validated by an admin later when confirming the reservation.
 
-            // Send notification to admin
+            $entityManager->persist($reservation);
             try {
+                $entityManager->flush();
                 $this->emailService->sendReservationNotificationToAdmin($reservation);
-            } catch (\Exception $e) {
-                // Log error but don't prevent saving
+            } catch (\Throwable $e) {
                 error_log('Error sending reservation notification to admin: ' . $e->getMessage());
             }
-            
-            $this->addFlash('success', 'Votre réservation a été enregistrée. Nous vous contacterons pour confirmation.');
-            
+
+            $this->addFlash('success', 'Ваша заявка на резервирование принята!');
             return $this->redirectToRoute('app_reservation');
         }
         
@@ -224,6 +225,9 @@ class HomeController extends AbstractController
                 ], 400);
             }
             
+            // Variant B: do not block on availability in the public endpoint.
+            // Admin will check availability and confirm later.
+
             // Create and save reservation
             $reservation = new Reservation();
             $reservation->setFirstName($firstName);

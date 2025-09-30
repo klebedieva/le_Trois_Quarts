@@ -41,7 +41,7 @@
                     <h5 class="card-title mb-0">Confirmer la réservation</h5>
                 </div>
                 <div class="card-body">
-                    <form method="post" action="{{ path('admin_reservation_confirm', {'entityId': reservation.id}) }}">
+                    <form method="post" action="{{ ea_url().setAction('confirm').set('entityId', reservation.id) }}">
                         <div class="mb-3">
                             <label for="confirmationMessage" class="form-label">Message de confirmation</label>
                             <textarea class="form-control" id="confirmationMessage" name="confirmationMessage" rows="8" required 

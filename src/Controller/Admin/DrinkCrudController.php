@@ -35,7 +35,10 @@ class DrinkCrudController extends AbstractCrudController
         return [
             IdField::new('id')->hideOnForm()->hideOnIndex(),
             TextField::new('name', 'Nom')->setRequired(true),
-            MoneyField::new('price', 'Prix')->setCurrency('EUR')->setStoredAsCents(false),
+            // Admin: garder le format par défaut (comme avant)
+            MoneyField::new('price', 'Prix')
+                ->setCurrency('EUR')
+                ->setStoredAsCents(false),
             ChoiceField::new('type', 'Type')->setChoices([
                 'Vins' => 'vins',
                 'Bières' => 'bieres',

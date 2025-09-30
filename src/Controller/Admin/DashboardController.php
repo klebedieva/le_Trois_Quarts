@@ -7,6 +7,7 @@ use App\Entity\MenuItem;
 use App\Entity\Drink;
 use App\Entity\Reservation;
 use App\Entity\Review;
+use App\Entity\Table;
 use App\Repository\ContactMessageRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\ReviewRepository;
@@ -109,6 +110,7 @@ class DashboardController extends AbstractDashboardController
             EaMenuItem::linkToCrud('Plats', 'fa fa-bowl-food', MenuItem::class),
             EaMenuItem::linkToCrud('Boissons', 'fa fa-wine-glass', Drink::class),
         ]);
+        yield EaMenuItem::linkToCrud('Tables', 'fas fa-chair', Table::class);
         yield EaMenuItem::linkToCrud('Réservations', 'fas fa-calendar-check', Reservation::class);
         yield EaMenuItem::linkToCrud('Messages de contact', 'fas fa-envelope', ContactMessage::class);
         yield EaMenuItem::linkToCrud('Avis', 'fas fa-comments', Review::class);
@@ -122,5 +124,6 @@ class DashboardController extends AbstractDashboardController
         yield Review::class => ReviewCrudController::class;
         yield MenuItem::class => MenuItemCrudController::class;
         yield Drink::class => DrinkCrudController::class;
+        yield Table::class => TableCrudController::class;
     }
 }

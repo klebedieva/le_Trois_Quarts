@@ -166,10 +166,10 @@ function setupNavOffset() {
     const root = document.documentElement;
     const compute = () => {
         const navH = navbar ? navbar.getBoundingClientRect().height : 64;
-        const gap = 0; // no gap between navbar and filters
-        root.style.setProperty('--nav-offset', (navH + gap) + 'px');
+        const gap = 0; // zero gap: collé à la nav
+        root.style.setProperty('--nav-offset', (gap) + 'px');
         // keep legacy var too, in case CSS still reads it
-        root.style.setProperty('--menu-sticky-top', (navH + gap) + 'px');
+        root.style.setProperty('--menu-sticky-top', (gap) + 'px');
     };
     compute();
     window.addEventListener('resize', compute);
@@ -189,8 +189,25 @@ function observeStickyState() {
     const onScroll = () => {
         if (window.scrollY > originalTop - getStickyTop()) {
             section.classList.add('is-sticky');
+            // Section: only bottom margin when sticky (no Bootstrap py on section)
+            section.classList.remove('py-1', 'py-2', 'py-3', 'mb-2');
+            const inner = section.querySelector('.menu-filters');
+            if (inner) {
+                // Inner filters: keep comfortable padding py-3 and bottom margin mb-2
+                inner.classList.remove('py-0', 'py-1', 'py-2');
+                inner.classList.add('py-3', 'mb-2');
+            }
         } else {
             section.classList.remove('is-sticky');
+            // Section: no mb on section; spacing goes to inner container
+            section.classList.remove('py-1', 'py-2', 'py-3', 'mb-2');
+            const inner = section.querySelector('.menu-filters');
+            if (inner) {
+                // Inner default spacing: ensure mb-2 present even when not sticky
+                inner.classList.add('mb-2');
+                // remove forced py when not sticky
+                inner.classList.remove('py-3');
+            }
         }
     };
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -205,6 +222,7 @@ function initMenuStickyFallback() {
     // Spacer to avoid layout jump when switching to fixed
     const spacer = document.createElement('div');
     spacer.style.display = 'none';
+    spacer.className = 'menu-filters-placeholder';
     section.parentNode.insertBefore(spacer, section.nextSibling);
 
     function getAbsoluteTop(el) {
@@ -441,6 +459,12 @@ function renderMenuItem(item) {
 function renderDrinksSection() {
     if (!window.drinksData) return '';
     
+    const formatDrinkPrice = (p) => {
+        const n = Number(p);
+        if (isNaN(n)) return p;
+        return n.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+    };
+
     let html = `
         <div class="menu-section fade-in">
             <h2 class="menu-section-title">Boissons</h2>
@@ -456,7 +480,7 @@ function renderDrinksSection() {
                     ${window.drinksData.vins.map(drink => `
                         <div class="drink-item">
                             <span class="drink-name">${drink.name}</span>
-                            <span class="drink-price">${drink.price}</span>
+                            <span class="drink-price">${formatDrinkPrice(drink.price)}</span>
                         </div>
                     `).join('')}
                 </div>
@@ -465,7 +489,7 @@ function renderDrinksSection() {
                     ${window.drinksData.chaudes.map(drink => `
                         <div class="drink-item">
                             <span class="drink-name">${drink.name}</span>
-                            <span class="drink-price">${drink.price}</span>
+                            <span class="drink-price">${formatDrinkPrice(drink.price)}</span>
                         </div>
                     `).join('')}
                 </div>
@@ -482,7 +506,7 @@ function renderDrinksSection() {
                     ${window.drinksData.bieres.map(drink => `
                         <div class="drink-item">
                             <span class="drink-name">${drink.name}</span>
-                            <span class="drink-price">${drink.price}</span>
+                            <span class="drink-price">${formatDrinkPrice(drink.price)}</span>
                         </div>
                     `).join('')}
                 </div>
@@ -491,7 +515,7 @@ function renderDrinksSection() {
                     ${window.drinksData.fraiches.map(drink => `
                         <div class="drink-item">
                             <span class="drink-name">${drink.name}</span>
-                            <span class="drink-price">${drink.price}</span>
+                            <span class="drink-price">${formatDrinkPrice(drink.price)}</span>
                         </div>
                     `).join('')}
                 </div>
