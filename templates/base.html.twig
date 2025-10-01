@@ -17,8 +17,8 @@
     {# JavaScripts block (can be overridden on child pages) #}
     {% block javascripts %}
         {% block importmap %}{{ importmap('app') }}{% endblock %}
-        {# Cart functionality #}
-        <script src="{{ asset('assets/js/cart.js') }}?v=3"></script>
+        {# Cart functionality - API version #}
+        <script src="{{ asset('assets/js/cart-api.js') }}?v=4"></script>
         <script src="{{ asset('assets/js/global.js') }}"></script>
     {% endblock %}
 </head>

@@ -7,6 +7,8 @@
 /public/bundles/
 /var/
 /vendor/
+/*.md
+!/README.md
 ###< symfony/framework-bundle ###
 
 ###> phpunit/phpunit ###

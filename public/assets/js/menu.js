@@ -30,24 +30,24 @@ function initMenu() {
 
     renderMenu();
     setupMenuEventListeners();
-    updateCartDisplay();
+    updateCartDisplay().catch(err => console.error('Cart display error:', err));
     
     // Also update the cart sidebar on init
     if (window.updateCartSidebar) {
         window.updateCartSidebar();
     }
 
-    // Re-render when the cart is changed elsewhere (sidebar/buttons)
-    window.addEventListener('cartUpdated', function() {
-        renderMenu();
-        updateCartDisplay();
+    // When the cart is changed elsewhere (sidebar/buttons), only refresh quantities and counts
+    window.addEventListener('cartUpdated', async function() {
+        await refreshMenuQuantitiesFromCart();
+        await updateCartDisplay();
     });
 
-    // Re-render when localStorage changes in another tab (safety)
-    window.addEventListener('storage', function(e) {
+    // Re-render when cart changes in another tab
+    window.addEventListener('storage', async function(e) {
         if (e.key === 'cart') {
-            renderMenu();
-            updateCartDisplay();
+            await renderMenu();
+            await updateCartDisplay();
         }
     });
 }
@@ -56,43 +56,43 @@ function initMenu() {
 function setupMenuEventListeners() {
     // Category filters
     document.querySelectorAll('.filter-category').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             document.querySelectorAll('.filter-category').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             currentCategory = this.dataset.category;
-            renderMenu();
+            await renderMenu();
         });
     });
 
     // Search
     const menuSearch = document.getElementById('menuSearch');
     if (menuSearch) {
-        menuSearch.addEventListener('input', function() {
+        menuSearch.addEventListener('input', async function() {
             searchTerm = this.value.toLowerCase();
-            renderMenu();
+            await renderMenu();
         });
     }
 
     // Price filter
     const priceFilterSelect = document.getElementById('priceFilter');
     if (priceFilterSelect) {
-        priceFilterSelect.addEventListener('change', function() {
+        priceFilterSelect.addEventListener('change', async function() {
             priceFilter = this.value;
-            renderMenu();
+            await renderMenu();
         });
     }
 
     // Dietary filters
     document.querySelectorAll('.dietary-filter').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
+        checkbox.addEventListener('change', async function() {
             dietaryFilters[this.id] = this.checked;
-            renderMenu();
+            await renderMenu();
         });
     });
 }
 
 // Render menu
-function renderMenu() {
+async function renderMenu() {
     if (!menuGrid) return;
     
     const filteredItems = filterItems();
@@ -114,13 +114,22 @@ function renderMenu() {
     menuGrid.style.display = 'block';
     noResults.style.display = 'none';
 
+    // Load cart once for all items
+    let cartItems = [];
+    try {
+        const cart = await window.cartAPI.getCart();
+        cartItems = cart.items;
+    } catch (error) {
+        console.error('Error loading cart:', error);
+    }
+
     // Group items by category
     const groupedItems = groupItemsByCategory(filteredItems);
     let html = '';
     // Render each category
     Object.entries(groupedItems).forEach(([category, items]) => {
         if (items.length > 0) {
-            html += renderCategorySection(category, items);
+            html += renderCategorySection(category, items, cartItems);
         }
     });
     // Append drinks section when showing all
@@ -132,7 +141,7 @@ function renderMenu() {
     addMenuItemEventListeners();
     
     // Also update cart display after rendering
-    updateCartDisplay();
+    await updateCartDisplay();
 }
 
 // Compute and set CSS var for sticky top so the filters sit below the navbar with small gap
@@ -350,7 +359,7 @@ function groupItemsByCategory(items) {
 }
 
 // Render a category section
-function renderCategorySection(category, items) {
+function renderCategorySection(category, items, cartItems = []) {
     const categoryNames = {
         entrees: 'Entrées',
         plats: 'Plats Principaux',
@@ -364,7 +373,7 @@ function renderCategorySection(category, items) {
     `;
 
     items.forEach(item => {
-        html += renderMenuItem(item);
+        html += renderMenuItem(item, cartItems);
     });
 
     html += `
@@ -376,8 +385,11 @@ function renderCategorySection(category, items) {
 }
 
 // Render a single menu item
-function renderMenuItem(item) {
-    const quantity = getItemQuantity(item.id);
+function renderMenuItem(item, cartItems = []) {
+    // Convert both IDs to numbers for comparison
+    const itemId = parseInt(item.id);
+    const cartItem = cartItems.find(i => parseInt(i.id) === itemId);
+    const quantity = cartItem ? cartItem.quantity : 0;
     const badges = item.badges.map(badge => {
         let badgeClass = '';
         switch (badge) {
@@ -419,7 +431,7 @@ function renderMenuItem(item) {
 
     return `
         <div class="col-lg-4 col-md-6">
-            <div class="menu-card">
+            <div class="menu-card" data-item-id="${item.id}">
                 <div class="menu-card-image">
                     <img src="${item.image}" alt="${item.name}">
                     <div class="menu-card-overlay">
@@ -548,101 +560,124 @@ function addMenuItemEventListeners() {
 }
 
 // Menu-specific cart functions
-function addToCart(itemId) {
+async function addToCart(itemId) {
     const key = String(itemId);
-    const item = window.menuItems.find(i => String(i.id) === key);
+    const item = window.menuItems.find(i => String(i.id) === key || parseInt(i.id) === parseInt(itemId));
     if (item) {
-        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        const existingItem = cart.find(cartItem => String(cartItem.id) === key);
-        if (existingItem) {
-            existingItem.quantity++;
-        } else {
-            cart.push({ ...item, id: key, quantity: 1 });
-        }
-        localStorage.setItem('cart', JSON.stringify(cart));
-        updateCartDisplay();
-        renderMenu();
-        
-        // Also update cart navigation from main.js
-        if (window.updateCartNavigation) {
-            window.updateCartNavigation();
-        }
-        
-        // Keep the cart open when adding from the menu
-        window.cartIsActive = true;
-        if (window.resetCartActiveState) {
-            window.resetCartActiveState();
-        }
-        
-        // Show a notification
-        if (window.showNotification) {
-            window.showNotification(`${item.name} ajouté au panier`, 'success');
-        }
-        
-        // Dispatch a custom event for cart updates
-        window.dispatchEvent(new CustomEvent('cartUpdated'));
-    }
-}
-
-function removeFromCart(itemId) {
-    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const key = String(itemId);
-    const index = cart.findIndex(cartItem => String(cartItem.id) === key);
-    if (index !== -1) {
-        const item = cart[index];
-        cart[index].quantity--;
-        if (cart[index].quantity <= 0) {
-            cart.splice(index, 1);
-        }
-        localStorage.setItem('cart', JSON.stringify(cart));
-        updateCartDisplay();
-        renderMenu();
-        
-        // Also update cart navigation from main.js
-        if (window.updateCartNavigation) {
-            window.updateCartNavigation();
-        }
-        
-        // Keep the cart open when modifying quantities
-        window.cartIsActive = true;
-        if (window.resetCartActiveState) {
-            window.resetCartActiveState();
-        }
-        
-        // Show a notification
-        if (window.showNotification) {
-            if (cart[index] && cart[index].quantity > 0) {
-                window.showNotification('Quantité diminuée', 'success');
-            } else {
-                window.showNotification(`${item.name} supprimé du panier`, 'info');
+        try {
+            const cart = await window.cartAPI.addItem(itemId, 1);
+            const updated = cart.items.find(i => String(i.id) === key || parseInt(i.id) === parseInt(itemId));
+            if (updated) {
+                updateMenuCard(updated.id, updated.quantity);
+            }
+            await updateCartDisplay();
+            
+            // Also update cart navigation from main.js
+            if (window.updateCartNavigation) {
+                await window.updateCartNavigation();
+            }
+            
+            if (window.updateCartSidebar) {
+                await window.updateCartSidebar();
+            }
+            
+            // Keep the cart open when adding from the menu
+            window.cartIsActive = true;
+            if (window.resetCartActiveState) {
+                window.resetCartActiveState();
+            }
+            
+            // Show a notification
+            if (window.showNotification) {
+                window.showNotification(`${item.name} ajouté au panier`, 'success');
+            }
+            
+            // Dispatch a custom event for cart updates
+            window.dispatchEvent(new CustomEvent('cartUpdated'));
+        } catch (error) {
+            console.error('Error adding to cart:', error);
+            if (window.showNotification) {
+                window.showNotification('Erreur lors de l\'ajout au panier', 'error');
             }
         }
-        
-        // Dispatch a custom event for cart updates
-        window.dispatchEvent(new CustomEvent('cartUpdated'));
     }
 }
 
-function getItemQuantity(itemId) {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const targetId = String(itemId);
-    const item = cart.find(cartItem => String(cartItem.id) === targetId);
-    return item ? item.quantity : 0;
+async function removeFromCart(itemId) {
+    try {
+        const cart = await window.cartAPI.getCart();
+        const item = cart.items.find(i => String(i.id) === String(itemId) || parseInt(i.id) === parseInt(itemId));
+        
+        if (item) {
+            const itemName = item.name;
+            
+            if (item.quantity > 1) {
+                const updatedCart = await window.cartAPI.updateQuantity(itemId, item.quantity - 1);
+                const updated = updatedCart.items.find(i => String(i.id) === String(itemId) || parseInt(i.id) === parseInt(itemId));
+                updateMenuCard(itemId, updated ? updated.quantity : item.quantity - 1);
+                if (window.showNotification) {
+                    window.showNotification('Quantité diminuée', 'success');
+                }
+            } else {
+                await window.cartAPI.removeItem(itemId);
+                updateMenuCard(itemId, 0);
+                if (window.showNotification) {
+                    window.showNotification(`${itemName} supprimé du panier`, 'info');
+                }
+            }
+            
+            await updateCartDisplay();
+            
+            // Also update cart navigation
+            if (window.updateCartNavigation) {
+                await window.updateCartNavigation();
+            }
+            
+            if (window.updateCartSidebar) {
+                await window.updateCartSidebar();
+            }
+            
+            // Keep the cart open when modifying quantities
+            window.cartIsActive = true;
+            if (window.resetCartActiveState) {
+                window.resetCartActiveState();
+            }
+            
+            // Dispatch a custom event for cart updates
+            window.dispatchEvent(new CustomEvent('cartUpdated'));
+        }
+    } catch (error) {
+        console.error('Error removing from cart:', error);
+    }
 }
 
-function updateCartDisplay() {
+async function getItemQuantity(itemId) {
+    try {
+        const cart = await window.cartAPI.getCart();
+        const item = cart.items.find(i => i.id === itemId);
+        return item ? item.quantity : 0;
+    } catch (error) {
+        console.error('Error getting item quantity:', error);
+        return 0;
+    }
+}
+
+async function updateCartDisplay() {
     const cartNavCount = document.getElementById('cartNavCount');
     if (cartNavCount) {
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
-        cartNavCount.textContent = totalItems;
-        // Always show the counter
-        cartNavCount.classList.remove('hidden');
+        try {
+            const count = await window.cartAPI.getCount();
+            cartNavCount.textContent = count;
+            // Always show the counter
+            cartNavCount.classList.remove('hidden');
+        } catch (error) {
+            console.error('Error updating cart display:', error);
+        }
     }
     
     // Also update cart sidebar if it exists
     if (window.updateCartSidebar) {
-        window.updateCartSidebar();
+        await window.updateCartSidebar();
     }
 }
 
@@ -669,3 +704,77 @@ window.removeMenuItemFromCart = removeFromCart;
 document.addEventListener('DOMContentLoaded', function() {
     initMenu();
 }); 
+
+// Ensure fresh cart state when returning from other pages (bfcache/back)
+window.addEventListener('pageshow', async function() {
+    // Always refresh quantities when (re)showing the page, including bfcache restores
+    try {
+        await refreshMenuQuantitiesFromCart();
+        await updateCartDisplay();
+        if (window.updateCartSidebar) {
+            await window.updateCartSidebar();
+        }
+    } catch (err) {
+        console.error('pageshow refresh failed:', err);
+    }
+});
+
+// Also refresh when tab regains visibility or window gains focus
+document.addEventListener('visibilitychange', async function() {
+    if (document.visibilityState === 'visible' && typeof renderMenu === 'function') {
+        try {
+            await refreshMenuQuantitiesFromCart();
+            await updateCartDisplay();
+        } catch (err) {
+            console.error('visibilitychange refresh failed:', err);
+        }
+    }
+});
+
+window.addEventListener('focus', async function() {
+    try {
+        await refreshMenuQuantitiesFromCart();
+        await updateCartDisplay();
+    } catch (err) {
+        console.error('focus refresh failed:', err);
+    }
+});
+
+// Update only one menu card's controls based on quantity
+function updateMenuCard(itemId, quantity) {
+    const card = document.querySelector(`.menu-card[data-item-id="${itemId}"]`);
+    if (!card) return;
+    const actions = card.querySelector('.menu-card-actions');
+    if (!actions) return;
+    const idStr = String(itemId);
+    actions.innerHTML = `
+        ${quantity > 0 ? `
+            <div class="quantity-controls">
+                <button class="add-to-cart-btn" onclick="removeFromCart('${idStr}')">
+                    <i class=\"bi bi-dash\"></i>
+                </button>
+                <span class="quantity-display">${quantity}</span>
+            </div>
+        ` : ''}
+        <button class="add-to-cart-btn" onclick="addToCart('${idStr}')">
+            <i class="bi bi-plus"></i>
+        </button>
+    `;
+}
+
+// Refresh quantities for all visible cards without rebuilding the grid
+async function refreshMenuQuantitiesFromCart() {
+    const cards = document.querySelectorAll('.menu-card[data-item-id]');
+    if (cards.length === 0) return;
+    try {
+        const cart = await window.cartAPI.getCart();
+        const idToQty = new Map(cart.items.map(i => [String(i.id), i.quantity]));
+        cards.forEach(card => {
+            const id = card.getAttribute('data-item-id');
+            const q = idToQty.get(String(id)) || 0;
+            updateMenuCard(id, q);
+        });
+    } catch (e) {
+        console.error('Failed to refresh quantities:', e);
+    }
+}

@@ -1,0 +1,32 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: 'Le Trois Quarts - Cart API'
+            description: |
+                🛒 REST API for shopping cart management
+                
+                ## Features
+                - Storage in PHP session (not localStorage)
+                - Prices always from database (secure)
+                - Synchronization between tabs
+                - 24-hour persistence
+                
+                ## Usage
+                All requests require a session cookie.
+                The server will create a new session on the first request.
+                
+            version: '1.0.0'
+            contact:
+                name: 'Le Trois Quarts'
+                url: 'http://127.0.0.1:8000'
+                email: 'contact@letroisquarts.com'
+        servers:
+            - url: 'http://127.0.0.1:8000'
+              description: 'Development server'
+        tags:
+            - name: 'Cart'
+              description: 'Shopping cart operations'
+    areas:
+        path_patterns:
+            - ^/api(?!/doc$) # Accept all /api except /api/doc
+

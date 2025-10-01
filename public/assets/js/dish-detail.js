@@ -100,14 +100,14 @@ function initQuantityControls(dish) {
         // Always show all buttons and quantity display
         showAllControls();
         
-        decreaseBtn.addEventListener('click', function(e) {
+        decreaseBtn.addEventListener('click', async function(e) {
             e.preventDefault();
             console.log('Decrease button clicked');
             if (!this.disabled) {
-                const currentQty = getItemQuantity(dish.id);
+                const currentQty = await getItemQuantity(dish.id);
                 if (currentQty > 0) {
-                    removeFromCartDetail(dish.id);
-                    updateQuantityDisplay(dish.id);
+                    await removeFromCartDetail(dish.id);
+                    await updateQuantityDisplay(dish.id);
                     
                     // Show notification
                     if (window.showNotification) {
@@ -121,12 +121,12 @@ function initQuantityControls(dish) {
             }
         });
         
-        increaseBtn.addEventListener('click', function(e) {
+        increaseBtn.addEventListener('click', async function(e) {
             e.preventDefault();
             console.log('Increase button clicked');
-            const currentQty = getItemQuantity(dish.id);
-            addToCartDetail(dish.id);
-            updateQuantityDisplay(dish.id);
+            const currentQty = await getItemQuantity(dish.id);
+            await addToCartDetail(dish.id);
+            await updateQuantityDisplay(dish.id);
             
             // Show notification
             if (window.showNotification) {
@@ -154,7 +154,7 @@ function showAllControls() {
     }
 }
 
-function updateQuantityDisplay(itemId) {
+async function updateQuantityDisplay(itemId) {
     console.log('updateQuantityDisplay called with itemId:', itemId);
     const quantityDisplay = document.getElementById('quantityDisplay');
     const decreaseBtn = document.getElementById('decreaseQty');
@@ -165,7 +165,7 @@ function updateQuantityDisplay(itemId) {
     });
     
     if (quantityDisplay) {
-        const quantity = getItemQuantity(itemId);
+        const quantity = await getItemQuantity(itemId);
         console.log('Current quantity for item', itemId, ':', quantity);
         quantityDisplay.textContent = quantity;
         
@@ -189,88 +189,29 @@ function updateQuantityDisplay(itemId) {
 // Make updateQuantityDisplay globally available
 window.updateQuantityDisplay = updateQuantityDisplay;
 
-function getItemQuantity(itemId) {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const key = String(itemId);
-    const item = cart.find(item => String(item.id) === key);
-    return item ? item.quantity : 0;
+async function getItemQuantity(itemId) {
+    try {
+        const cart = await window.cartAPI.getCart();
+        const item = cart.items.find(i => i.id === itemId);
+        return item ? item.quantity : 0;
+    } catch (error) {
+        console.error('Error getting item quantity:', error);
+        return 0;
+    }
 }
 
-function addToCartDetail(itemId) {
+async function addToCartDetail(itemId) {
     console.log('Adding to cart, itemId:', itemId);
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const key = String(itemId);
-    const existingItem = cart.find(item => String(item.id) == key);
     
-    if (existingItem) {
-        console.log('Item exists in cart, increasing quantity');
-        existingItem.quantity += 1;
-    } else {
-        // Find item in menu data
-        const menuItem = findItemById(itemId);
-        console.log('Item not in cart, looking for menu item:', menuItem);
-        if (menuItem) {
-            const newItem = {
-                id: String(menuItem.id),
-                name: menuItem.name,
-                price: menuItem.price,
-                quantity: 1
-            };
-            console.log('Adding new item to cart:', newItem);
-            cart.push(newItem);
-        } else {
-            console.log('Menu item not found, cannot add to cart');
-            return;
-        }
-    }
-    
-    console.log('Updated cart:', cart);
-    localStorage.setItem('cart', JSON.stringify(cart));
-    
-    // Update cart navigation and sidebar
-    if (window.updateCartNavigation) {
-        window.updateCartNavigation();
-    }
-    if (window.updateCartSidebar) {
-        window.updateCartSidebar();
-    }
-    
-    // Keep cart open when modifying quantities
-    if (window.cartIsActive !== undefined) {
-        window.cartIsActive = true;
-        if (window.resetCartActiveState) {
-            window.resetCartActiveState();
-        }
-    }
-    
-    // Dispatch custom event for cart updates
-    window.dispatchEvent(new CustomEvent('cartUpdated'));
-}
-
-function removeFromCartDetail(itemId) {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const key = String(itemId);
-    const index = cart.findIndex(item => String(item.id) === key);
-    
-    if (index !== -1) {
-        const item = cart[index];
-        item.quantity--;
-        
-        if (item.quantity <= 0) {
-            cart.splice(index, 1);
-            if (window.showNotification) { showNotification(`${item.name} supprimé du panier`, 'info'); }
-        } else {
-            if (window.showNotification) { showNotification('Quantité diminuée', 'success'); }
-        }
-        
-        localStorage.setItem('cart', JSON.stringify(cart));
+    try {
+        await window.cartAPI.addItem(itemId, 1);
         
         // Update cart navigation and sidebar
         if (window.updateCartNavigation) {
-            window.updateCartNavigation();
+            await window.updateCartNavigation();
         }
         if (window.updateCartSidebar) {
-            window.updateCartSidebar();
+            await window.updateCartSidebar();
         }
         
         // Keep cart open when modifying quantities
@@ -283,6 +224,52 @@ function removeFromCartDetail(itemId) {
         
         // Dispatch custom event for cart updates
         window.dispatchEvent(new CustomEvent('cartUpdated'));
+        
+        console.log('Item added to cart successfully');
+    } catch (error) {
+        console.error('Error adding to cart:', error);
+    }
+}
+
+async function removeFromCartDetail(itemId) {
+    try {
+        const cart = await window.cartAPI.getCart();
+        const item = cart.items.find(i => i.id === itemId);
+        
+        if (item) {
+            if (item.quantity > 1) {
+                await window.cartAPI.updateQuantity(itemId, item.quantity - 1);
+                if (window.showNotification) { 
+                    showNotification('Quantité diminuée', 'success'); 
+                }
+            } else {
+                await window.cartAPI.removeItem(itemId);
+                if (window.showNotification) { 
+                    showNotification(`${item.name} supprimé du panier`, 'info'); 
+                }
+            }
+            
+            // Update cart navigation and sidebar
+            if (window.updateCartNavigation) {
+                await window.updateCartNavigation();
+            }
+            if (window.updateCartSidebar) {
+                await window.updateCartSidebar();
+            }
+            
+            // Keep cart open when modifying quantities
+            if (window.cartIsActive !== undefined) {
+                window.cartIsActive = true;
+                if (window.resetCartActiveState) {
+                    window.resetCartActiveState();
+                }
+            }
+            
+            // Dispatch custom event for cart updates
+            window.dispatchEvent(new CustomEvent('cartUpdated'));
+        }
+    } catch (error) {
+        console.error('Error removing from cart:', error);
     }
 }
 
