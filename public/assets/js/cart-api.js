@@ -4,30 +4,49 @@
 class CartAPI {
     constructor() {
         this.baseUrl = '/api/cart';
+    // Short-lived cache to avoid duplicate concurrent calls
+    this._cartCache = null; // { items, total, itemCount }
+    this._cartCacheAt = 0;  // timestamp ms
+    this._inflightCart = null; // Promise
+    this._CACHE_TTL_MS = 500; // small TTL sufficient for single render cycle
     }
 
     /**
      * Récupérer le panier depuis le serveur
      */
     async getCart() {
-        try {
-            const response = await fetch(this.baseUrl, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Erreur lors de la récupération du panier');
-            }
-            
-            const data = await response.json();
-            return data.success ? data.cart : { items: [], total: 0, itemCount: 0 };
-        } catch (error) {
-            console.error('Erreur getCart:', error);
-            return { items: [], total: 0, itemCount: 0 };
+    const now = Date.now();
+    // Serve from cache if fresh
+    if (this._cartCache && now - this._cartCacheAt < this._CACHE_TTL_MS) {
+      return this._cartCache;
+    }
+    // Reuse in-flight request to collapse bursts
+    if (this._inflightCart) {
+      return this._inflightCart;
+    }
+    this._inflightCart = (async () => {
+      try {
+        const response = await fetch(this.baseUrl, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération du panier');
         }
+        const data = await response.json();
+        const cart = data.success ? data.cart : { items: [], total: 0, itemCount: 0 };
+        // update cache
+        this._cartCache = cart;
+        this._cartCacheAt = Date.now();
+        return cart;
+      } catch (error) {
+        console.error('Erreur getCart:', error);
+        return { items: [], total: 0, itemCount: 0 };
+      } finally {
+        this._inflightCart = null;
+      }
+    })();
+    return this._inflightCart;
     }
 
     /**
@@ -42,7 +61,8 @@ class CartAPI {
                 },
                 body: JSON.stringify({ itemId, quantity })
             });
-            
+      // invalidate cache
+      this._cartCacheAt = 0;
             const data = await response.json();
             
             if (!data.success) {
@@ -67,7 +87,8 @@ class CartAPI {
                     'Content-Type': 'application/json'
                 }
             });
-            
+      // invalidate cache
+      this._cartCacheAt = 0;
             const data = await response.json();
             
             if (!data.success) {
@@ -93,7 +114,8 @@ class CartAPI {
                 },
                 body: JSON.stringify({ quantity })
             });
-            
+      // invalidate cache
+      this._cartCacheAt = 0;
             const data = await response.json();
             
             if (!data.success) {
@@ -118,7 +140,8 @@ class CartAPI {
                     'Content-Type': 'application/json'
                 }
             });
-            
+      // invalidate cache
+      this._cartCacheAt = 0;
             const data = await response.json();
             
             if (!data.success) {
@@ -136,20 +159,14 @@ class CartAPI {
      * Obtenir le nombre d'articles
      */
     async getCount() {
-        try {
-            const response = await fetch(`${this.baseUrl}/count`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            const data = await response.json();
-            return data.success ? data.count : 0;
-        } catch (error) {
-            console.error('Erreur getCount:', error);
-            return 0;
-        }
+    try {
+      // derive count from (cached) cart to avoid extra endpoint hit
+      const cart = await this.getCart();
+      return cart.itemCount || 0;
+    } catch (error) {
+      console.error('Erreur getCount:', error);
+      return 0;
+    }
     }
 }
 

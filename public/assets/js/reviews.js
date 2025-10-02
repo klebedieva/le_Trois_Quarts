@@ -14,7 +14,14 @@
         setupStarRating();
         setupRealTimeValidation();
         setupFormSubmission();
-        initLoadMoreExistingReviews();
+        // If a list endpoint is provided, fetch and render reviews from API
+        if (window.REVIEWS_LIST_ENDPOINT) {
+            fetchAndRenderReviews(window.REVIEWS_LIST_ENDPOINT).then(() => {
+                initLoadMoreExistingReviews();
+            });
+        } else {
+            initLoadMoreExistingReviews();
+        }
     });
 
     function setupStarRating() {
@@ -230,29 +237,42 @@
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Envoi en cours...';
         
-        // Prepare form data
-        const formData = new FormData();
+        // Gather fields
         const name = document.getElementById('reviewerName').value.trim();
         const email = document.getElementById('reviewEmail').value.trim();
         const rating = document.getElementById('ratingValue').value;
         const comment = document.getElementById('reviewText').value.trim();
-        
-        formData.append('name', name);
-        formData.append('email', email);
-        formData.append('rating', rating);
-        formData.append('comment', comment);
-        
-        
+
+        // Choose endpoint and payload format
+        const endpoint = window.REVIEWS_ENDPOINT || '/api/review';
+        const isApiEndpoint = endpoint.startsWith('/api/');
+
+        let options = { method: 'POST' };
+        if (isApiEndpoint) {
+            // Send JSON for API endpoint
+            options.headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
+            options.body = JSON.stringify({
+                name,
+                email,
+                rating: Number(rating),
+                comment
+            });
+        } else {
+            // Fallback to form submission for legacy endpoint
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('email', email);
+            formData.append('rating', rating);
+            formData.append('comment', comment);
+            options.body = formData;
+            options.headers = { 'X-Requested-With': 'XMLHttpRequest' };
+        }
+
         // Submit via AJAX
-        // Use page-specific override when present (dish page)
-        const endpoint = window.REVIEWS_ENDPOINT || '/submit-review';
-        fetch(endpoint, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
+        fetch(endpoint, options)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -331,6 +351,86 @@
                 updateVisibility();
             });
         }
+    }
+
+    async function fetchAndRenderReviews(endpoint) {
+        const container = document.getElementById('reviewsContainer');
+        if (!container) return;
+
+        // Show loading state
+        container.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border" role="status"></div><div class="mt-3 text-muted">Chargement des avis...</div></div>';
+
+        try {
+            const response = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+            const data = await response.json();
+
+            if (!data.success) {
+                container.innerHTML = '<div class="col-12 text-center py-5 text-danger">Impossible de charger les avis</div>';
+                return;
+            }
+
+            const reviews = Array.isArray(data.reviews) ? data.reviews : [];
+            if (reviews.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12 text-center">
+                        <div class="py-5">
+                            <i class="bi bi-chat-dots icon-large"></i>
+                            <h4 class="mt-3">Aucun avis trouvé</h4>
+                            <p class="text-muted">Aucun avis disponible pour le moment.</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            // Build HTML similar to server-rendered cards
+            const html = reviews.map(review => {
+                const safeName = (review.name || '').toString();
+                const safeDate = (review.createdAt || '').toString();
+                const safeComment = (review.comment || '').toString();
+                const rating = Number(review.rating || 0);
+
+                const stars = Array.from({ length: 5 }).map((_, i) => {
+                    if (i < rating) {
+                        return '<i class="bi bi-star-fill text-warning"></i>';
+                    }
+                    return '<i class="bi bi-star text-warning"></i>';
+                }).join('');
+
+                return `
+                <div class="col-lg-6 col-md-6 mb-4">
+                    <div class="review-item" data-rating="${rating}">
+                        <div class="review-header">
+                            <div class="reviewer-info">
+                                <div class="reviewer-avatar">${(safeName.charAt(0) || 'U').toUpperCase()}</div>
+                                <div class="reviewer-details">
+                                    <h5>${escapeHtml(safeName)}</h5>
+                                    <small>${escapeHtml(safeDate)}</small>
+                                </div>
+                            </div>
+                            <div class="review-rating">
+                                <span class="rating-number">${rating}/5</span>
+                            </div>
+                        </div>
+                        <div class="review-stars">${stars}</div>
+                        <p class="review-text">"${escapeHtml(safeComment)}"</p>
+                    </div>
+                </div>`;
+            }).join('');
+
+            container.innerHTML = html;
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = '<div class="col-12 text-center py-5 text-danger">Erreur lors du chargement des avis</div>';
+        }
+    }
+
+    function escapeHtml(str) {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     function showSuccessMessage(message) {

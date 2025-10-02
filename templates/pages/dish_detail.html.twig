@@ -187,8 +187,8 @@
     <script src="{{ asset('assets/js/global.js') }}"></script>
     <script src="{{ asset('assets/js/main.js') }}"></script>
     <script>
-        // Endpoint override so reviews.js posts to dish-specific URL
-        window.REVIEWS_ENDPOINT = '/dish/{{ item.id }}/reviews';
+        // Endpoint override so reviews.js posts to dish-specific API URL
+        window.REVIEWS_ENDPOINT = '/api/dishes/{{ item.id }}/review';
     </script>
     <script src="{{ asset('assets/js/reviews.js') }}"></script>
     <script src="{{ asset('assets/js/dish-detail.js') }}"></script>

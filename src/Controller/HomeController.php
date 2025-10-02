@@ -34,71 +34,7 @@ class HomeController extends AbstractController
         ]);
     }
 
-    #[Route('/submit-review', name: 'app_submit_review', methods: ['POST'])]
-    public function submitReview(Request $request, EntityManagerInterface $entityManager): JsonResponse
-    {
-        // Check if it's an AJAX request
-        if (!$request->isXmlHttpRequest()) {
-            return new JsonResponse(['success' => false, 'message' => 'Requête invalide'], 400);
-        }
-        
-        try {
-            // Get form data directly from request
-            $name = $request->request->get('name', '');
-            $email = $request->request->get('email', '');
-            $rating = $request->request->get('rating', 0);
-            $comment = $request->request->get('comment', '');
-            
-            // Basic validation
-            $errors = [];
-            
-            if (empty($name) || strlen($name) < 2) {
-                $errors[] = 'Le nom doit contenir au moins 2 caractères';
-            }
-            
-            if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = 'L\'email n\'est pas valide';
-            }
-            
-            if (empty($rating) || $rating < 1 || $rating > 5) {
-                $errors[] = 'Veuillez sélectionner une note entre 1 et 5';
-            }
-            
-            if (empty($comment) || strlen($comment) < 10) {
-                $errors[] = 'Le commentaire doit contenir au moins 10 caractères';
-            }
-            
-            if (!empty($errors)) {
-                return new JsonResponse([
-                    'success' => false,
-                    'message' => 'Erreur de validation. Veuillez vérifier vos données.',
-                    'errors' => $errors
-                ], 400);
-            }
-            
-            // Create and save review
-            $review = new Review();
-            $review->setName($name);
-            $review->setEmail($email ?: null);
-            $review->setRating((int)$rating);
-            $review->setComment($comment);
-            $review->setIsApproved(false); // Requires moderation
-            
-            $entityManager->persist($review);
-            $entityManager->flush();
-            
-            return new JsonResponse([
-                'success' => true,
-                'message' => 'Merci pour votre avis ! Il sera publié après modération.'
-            ]);
-            
-        } catch (\Exception $e) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Une erreur est survenue lors de l\'enregistrement de votre avis.'
-            ], 500);
-        }
-    }
+    
 
     #[Route('/menu', name: 'app_menu')]
     public function menu(): Response

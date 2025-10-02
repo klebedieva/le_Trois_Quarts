@@ -1,9 +1,9 @@
 nelmio_api_doc:
     documentation:
         info:
-            title: 'Le Trois Quarts - Cart API'
+            title: 'Le Trois Quarts - API'
             description: |
-                🛒 REST API for shopping cart management
+                🛒 REST API for shopping cart and reviews management
                 
                 ## Features
                 - Storage in PHP session (not localStorage)
@@ -26,6 +26,8 @@ nelmio_api_doc:
         tags:
             - name: 'Cart'
               description: 'Shopping cart operations'
+            - name: 'Reviews'
+              description: 'Customer reviews operations'
     areas:
         path_patterns:
             - ^/api(?!/doc$) # Accept all /api except /api/doc

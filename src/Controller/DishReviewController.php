@@ -52,11 +52,19 @@ class DishReviewController extends AbstractController
     #[Route('', name: 'dish_reviews_add', methods: ['POST'])]
     public function add(MenuItem $item, Request $request, EntityManagerInterface $em): JsonResponse
     {
-        // Basic request validation; server-side form/validator can be added later if needed
-        $name = trim((string) $request->request->get('name', ''));
-        $email = trim((string) $request->request->get('email', ''));
-        $rating = (int) $request->request->get('rating', 0);
-        $comment = trim((string) $request->request->get('comment', ''));
+        // Accept both JSON and form-encoded payloads
+        $data = json_decode($request->getContent(), true);
+        if (is_array($data)) {
+            $name = trim((string) ($data['name'] ?? ''));
+            $email = trim((string) ($data['email'] ?? ''));
+            $rating = (int) ($data['rating'] ?? 0);
+            $comment = trim((string) ($data['comment'] ?? ''));
+        } else {
+            $name = trim((string) $request->request->get('name', ''));
+            $email = trim((string) $request->request->get('email', ''));
+            $rating = (int) $request->request->get('rating', 0);
+            $comment = trim((string) $request->request->get('comment', ''));
+        }
 
         if ($name === '' || $rating < 1 || $rating > 5 || mb_strlen($comment) < 10) {
             return $this->json(['success' => false, 'message' => 'Invalid data'], 400);

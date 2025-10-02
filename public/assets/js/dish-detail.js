@@ -305,10 +305,8 @@ function addCartUpdateListener(dish) {
         updateQuantityDisplay(dish.id);
     });
     
-    // Set up interval to check for cart changes (fallback)
-    setInterval(() => {
-        updateQuantityDisplay(dish.id);
-    }, 1000);
+    // Polling removed to avoid excessive API calls on dish page.
+    // Updates now rely on 'storage' and 'cartUpdated' events only.
 }
 
 // ---------------- DISH REVIEWS ----------------
