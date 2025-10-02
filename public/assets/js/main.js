@@ -590,8 +590,18 @@ function showConfirmDialog(title, message, onConfirm) {
     bootstrapModal.show();
     
     // Handle confirm button click
+    function cleanupBackdrops() {
+        // Force-remove any leftover bootstrap backdrops and classes
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = 'auto';
+        document.body.style.paddingRight = '';
+    }
+
     confirmBtn.addEventListener('click', function() {
         bootstrapModal.hide();
+        // Defer cleanup to after hide animation
+        setTimeout(cleanupBackdrops, 150);
         if (onConfirm) {
             onConfirm();
         }
@@ -600,7 +610,7 @@ function showConfirmDialog(title, message, onConfirm) {
     // Cleanup when the modal is hidden
     modal.addEventListener('hidden.bs.modal', function() {
         modal.remove();
-        document.body.style.overflow = 'auto';
+        cleanupBackdrops();
     });
 }
 

@@ -61,6 +61,10 @@ input.btn-primary:focus {
     right: 0;
 }
 
+/* Ensure confirmation modal overlays the cart sidebar properly */
+.modal { z-index: 11000 !important; }
+.modal-backdrop { z-index: 10990 !important; }
+
 .cart-header {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
