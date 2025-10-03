@@ -23,12 +23,21 @@ class DishReviewApiController extends AbstractController
         new OA\Property(property: 'success', type: 'boolean', example: true),
         new OA\Property(property: 'reviews', type: 'array', items: new OA\Items(type: 'object'))
     ]))]
-    public function list(MenuItem $id, ReviewRepository $repo): JsonResponse
+    #[OA\Response(response: 404, description: 'Dish not found', content: new OA\JsonContent(type: 'object', properties: [
+        new OA\Property(property: 'success', type: 'boolean', example: false),
+        new OA\Property(property: 'message', type: 'string', example: 'Dish not found')
+    ]))]
+    public function list(int $id, ReviewRepository $repo, EntityManagerInterface $em): JsonResponse
     {
+        $menuItem = $em->find(MenuItem::class, $id);
+        if (!$menuItem) {
+            return $this->json(['success' => false, 'message' => 'Dish not found'], 404);
+        }
+
         $reviews = $repo->createQueryBuilder('r')
             ->andWhere('r.menuItem = :id')
             ->andWhere('r.isApproved = 1')
-            ->setParameter('id', $id->getId())
+            ->setParameter('id', $menuItem->getId())
             ->orderBy('r.createdAt', 'DESC')
             ->setMaxResults(100)
             ->getQuery()
@@ -50,21 +59,39 @@ class DishReviewApiController extends AbstractController
     #[Route('/{id}/review', name: 'api_dish_reviews_add', methods: ['POST'])]
     #[OA\Post(path: '/api/dishes/{id}/review', summary: 'Submit a review for a dish (pending moderation)', tags: ['Reviews'])]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))]
-    #[OA\RequestBody(required: true, content: new OA\JsonContent(type: 'object', properties: [
-        new OA\Property(property: 'name', type: 'string'),
-        new OA\Property(property: 'email', type: 'string', nullable: true),
-        new OA\Property(property: 'rating', type: 'integer', minimum: 1, maximum: 5),
-        new OA\Property(property: 'comment', type: 'string')
-    ]))]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(
+        type: 'object',
+        properties: [
+            new OA\Property(property: 'name', type: 'string'),
+            new OA\Property(property: 'email', type: 'string', nullable: true),
+            new OA\Property(property: 'rating', type: 'integer', minimum: 1, maximum: 5),
+            new OA\Property(property: 'comment', type: 'string')
+        ],
+        example: [
+            'name' => 'Alice',
+            'email' => 'alice@example.com',
+            'rating' => 5,
+            'comment' => 'The dish was delicious and perfectly cooked.'
+        ]
+    ))]
     #[OA\Response(response: 200, description: 'Accepted', content: new OA\JsonContent(type: 'object', properties: [
         new OA\Property(property: 'success', type: 'boolean', example: true),
         new OA\Property(property: 'message', type: 'string')
     ]))]
-    public function add(MenuItem $id, Request $request, EntityManagerInterface $em): JsonResponse
+    #[OA\Response(response: 404, description: 'Dish not found', content: new OA\JsonContent(type: 'object', properties: [
+        new OA\Property(property: 'success', type: 'boolean', example: false),
+        new OA\Property(property: 'message', type: 'string', example: 'Dish not found')
+    ]))]
+    public function add(int $id, Request $request, EntityManagerInterface $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
         if (!is_array($data)) {
             return $this->json(['success' => false, 'message' => 'Invalid JSON'], 400);
+        }
+
+        $menuItem = $em->find(MenuItem::class, $id);
+        if (!$menuItem) {
+            return $this->json(['success' => false, 'message' => 'Dish not found'], 404);
         }
 
         $name = trim((string) ($data['name'] ?? ''));
@@ -88,7 +115,7 @@ class DishReviewApiController extends AbstractController
             ->setRating($rating)
             ->setComment($comment)
             ->setIsApproved(false)
-            ->setMenuItem($id);
+            ->setMenuItem($menuItem);
 
         $em->persist($review);
         $em->flush();

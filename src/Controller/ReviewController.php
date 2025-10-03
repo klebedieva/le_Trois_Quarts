@@ -94,6 +94,18 @@ class ReviewController extends AbstractController
             ]
         )
     )]
+    #[OA\Response(
+        response: 400,
+        description: 'Invalid JSON or validation error',
+        content: new OA\JsonContent(
+            type: 'object',
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean', example: false),
+                new OA\Property(property: 'message', type: 'string', example: 'Validation error'),
+                new OA\Property(property: 'errors', type: 'array', items: new OA\Items(type: 'string'), nullable: true)
+            ]
+        )
+    )]
     public function create(Request $request, EntityManagerInterface $em): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
