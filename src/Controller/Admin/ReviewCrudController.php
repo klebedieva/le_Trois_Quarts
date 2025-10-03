@@ -12,6 +12,8 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\TextEditorField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
@@ -98,6 +100,10 @@ class ReviewCrudController extends AbstractCrudController
                     return $text;
                 })
                 ->renderAsHtml(), // enable HTML rendering for <br> tags
+
+            TextField::new('dishName', 'Plat')
+                ->onlyOnIndex()
+                ->setHelp('Plat associé à l\'avis (si l\'avis est laissé sur une page de plat)'),
             
             BooleanField::new('isApproved', 'Approuvé')
                 ->setHelp('Cochez pour approuver l\'avis et le rendre visible sur le site'),

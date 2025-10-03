@@ -145,4 +145,13 @@ class Review
         $this->menuItem = $menuItem;
         return $this;
     }
+
+    /**
+     * Virtual field for admin list: returns associated dish name or an em dash
+     * when the review is about the restaurant in general.
+     */
+    public function getDishName(): string
+    {
+        return $this->menuItem?->getName() ?? '—';
+    }
 }
