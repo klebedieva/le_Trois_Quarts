@@ -1,0 +1,227 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Commander - Le Trois Quarts | Brasserie Marseille{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('assets/css/order.css') }}?v=1">
+{% endblock %}
+
+{% block body %}
+<section class="order-section">
+    <div class="container">
+        <div class="order-header text-center mb-5">
+            <h1>Finaliser ma commande</h1>
+            <p class="lead">Vérifiez votre panier et choisissez vos options de livraison</p>
+        </div>
+        <div class="row">
+            <div class="col-lg-8 mb-4">
+                <div class="order-steps">
+                    <div class="step active" data-step="1">
+                        <div class="step-number">1</div>
+                        <div class="step-title">Mon panier</div>
+                    </div>
+                    <div class="step" data-step="2">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Livraison/Retrait</div>
+                    </div>
+                    <div class="step" data-step="3">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Paiement</div>
+                    </div>
+                    <div class="step" data-step="4">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Confirmation</div>
+                    </div>
+                </div>
+
+                <div class="order-step-content active" id="step1">
+                    <div class="cart-section">
+                        <h3>Récapitulatif de votre commande</h3>
+                        <div class="cart-items" id="orderCartItems"></div>
+                        <div class="cart-actions">
+                            <a href="{{ path('app_menu') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-arrow-left me-2"></i>Continuer mes achats
+                            </a>
+                            <button class="btn btn-primary" onclick="nextStep(2)">
+                                Continuer <i class="bi bi-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="order-step-content" id="step2">
+                    <div class="delivery-section">
+                        <h3>Mode de récupération</h3>
+                        <div class="delivery-options">
+                            <div class="delivery-option">
+                                <input type="radio" id="delivery" name="deliveryMode" value="delivery" checked>
+                                <label for="delivery" class="delivery-card">
+                                    <div class="delivery-icon"><i class="bi bi-truck"></i></div>
+                                    <div class="delivery-info">
+                                        <h5>Livraison à domicile</h5>
+                                        <p>Livraison dans un rayon de 5km</p>
+                                        <strong>3€</strong>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="delivery-option">
+                                <input type="radio" id="pickup" name="deliveryMode" value="pickup">
+                                <label for="pickup" class="delivery-card">
+                                    <div class="delivery-icon"><i class="bi bi-shop"></i></div>
+                                    <div class="delivery-info">
+                                        <h5>Retrait sur place</h5>
+                                        <p>À récupérer au restaurant</p>
+                                        <strong>Gratuit</strong>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="delivery-details" id="deliveryDetails">
+                            <h4>Adresse de livraison</h4>
+                            <div class="address-selection">
+                                <div class="row">
+                                    <div class="col-md-8 mb-3">
+                                        <input type="text" class="form-control" id="deliveryAddress" placeholder="Adresse complète" required>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <input type="text" class="form-control" id="deliveryZip" placeholder="Code postal" required>
+                                    </div>
+                                </div>
+                                <textarea class="form-control mb-3" id="deliveryInstructions" rows="3" placeholder="Instructions de livraison (optionnel)"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="delivery-time">
+                            <h4>Heure de livraison/retrait</h4>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="deliveryDate" class="form-label">Date</label>
+                                    <input type="date" class="form-control" id="deliveryDate" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="deliveryTime" class="form-label">Heure</label>
+                                    <select class="form-select" id="deliveryTime" required>
+                                        <option value="">Choisir un créneau</option>
+                                        <option value="12:00">12h00 - 12h30</option>
+                                        <option value="12:30">12h30 - 13h00</option>
+                                        <option value="13:00">13h00 - 13h30</option>
+                                        <option value="19:00">19h00 - 19h30</option>
+                                        <option value="19:30">19h30 - 20h00</option>
+                                        <option value="20:00">20h00 - 20h30</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step-actions">
+                            <button class="btn btn-outline-secondary" onclick="prevStep(1)"><i class="bi bi-arrow-left me-2"></i>Retour</button>
+                            <button class="btn btn-primary" onclick="nextStep(3)">Continuer <i class="bi bi-arrow-right ms-2"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="order-step-content" id="step3">
+                    <div class="payment-section">
+                        <h3>Mode de paiement</h3>
+                        <div class="payment-options">
+                            <div class="payment-option">
+                                <input type="radio" id="card" name="paymentMode" value="card" checked>
+                                <label for="card" class="payment-card">
+                                    <div class="payment-icon"><i class="bi bi-credit-card"></i></div>
+                                    <div class="payment-info">
+                                        <h5>Carte bancaire</h5>
+                                        <p>Paiement à la livraison/retrait</p>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="payment-option">
+                                <input type="radio" id="cash" name="paymentMode" value="cash">
+                                <label for="cash" class="payment-card">
+                                    <div class="payment-icon"><i class="bi bi-cash"></i></div>
+                                    <div class="payment-info">
+                                        <h5>Espèces</h5>
+                                        <p>Paiement à la livraison/retrait</p>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="payment-option">
+                                <input type="radio" id="tickets" name="paymentMode" value="tickets">
+                                <label for="tickets" class="payment-card">
+                                    <div class="payment-icon"><i class="bi bi-ticket"></i></div>
+                                    <div class="payment-info">
+                                        <h5>Tickets restaurant</h5>
+                                        <p>Paiement par tickets</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="step-actions">
+                            <button class="btn btn-outline-secondary" onclick="prevStep(2)"><i class="bi bi-arrow-left me-2"></i>Retour</button>
+                            <button class="btn btn-primary" onclick="nextStep(4)">Continuer <i class="bi bi-arrow-right ms-2"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="order-step-content" id="step4">
+                    <div class="confirmation-section">
+                        <h3>Confirmation de commande</h3>
+                        <div class="order-summary-final">
+                            <h4>Récapitulatif</h4>
+                            <div class="summary-section">
+                                <h5>Articles commandés</h5>
+                                <div id="finalOrderItems"></div>
+                            </div>
+                            <div class="summary-section">
+                                <h5>Livraison</h5>
+                                <p id="finalDeliveryInfo"></p>
+                            </div>
+                            <div class="summary-section">
+                                <h5>Paiement</h5>
+                                <p id="finalPaymentInfo"></p>
+                            </div>
+                        </div>
+                        <div class="terms-acceptance">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="acceptTerms" required>
+                                <label class="form-check-label" for="acceptTerms">J'accepte les <a href="#" class="text-primary">conditions générales de vente</a></label>
+                            </div>
+                        </div>
+                        <div class="step-actions">
+                            <button class="btn btn-outline-secondary" onclick="prevStep(3)"><i class="bi bi-arrow-left me-2"></i>Retour</button>
+                            <button class="btn btn-success btn-lg" onclick="confirmOrder()"><i class="bi bi-check-circle me-2"></i>Confirmer la commande</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="order-summary-sidebar">
+                    <h4>Récapitulatif</h4>
+                    <div class="summary-items" id="summaryItems"></div>
+                    <div class="summary-totals">
+                        <div class="summary-line"><span>Sous-total</span><span id="subtotal">0€</span></div>
+                        <div class="summary-line"><span>Livraison</span><span id="deliveryFee">3€</span></div>
+                        <div class="summary-line"><span>TVA (10%)</span><span id="taxAmount">0€</span></div>
+                        <div class="summary-line total"><span>Total</span><span id="totalAmount">0€</span></div>
+                    </div>
+                    <div class="promo-code">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="promoCode" placeholder="Code promo">
+                            <button class="btn btn-outline-secondary" type="button">Appliquer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="{{ asset('assets/js/order.js') }}?v=1"></script>
+{% endblock %}
+
+

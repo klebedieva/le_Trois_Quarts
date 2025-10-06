@@ -1,3 +1,264 @@
+// Order page JavaScript (single, de-duplicated)
+var currentStep = 1;
+var orderData = { items: [], delivery: {}, payment: {}, total: 0 };
+var hydratedItems = null; // filled from API if available
+
+if (!window.__ORDER_JS_INIT__) {
+    window.__ORDER_JS_INIT__ = true;
+    document.addEventListener('DOMContentLoaded', function() {
+        initOrderPage();
+        const savedAddresses = document.getElementById('savedAddresses');
+        if (savedAddresses) {
+            savedAddresses.addEventListener('change', function() {
+                const value = this.value;
+                if (value === 'home') {
+                    document.getElementById('deliveryAddress').value = '123 Rue de la République, 13001 Marseille';
+                    document.getElementById('deliveryZip').value = '13001';
+                } else {
+                    document.getElementById('deliveryAddress').value = '';
+                    document.getElementById('deliveryZip').value = '';
+                }
+            });
+        }
+    });
+}
+
+async function hydrateCartFromApi() {
+    try {
+        const res = await fetch('/api/cart', { headers: { 'Accept': 'application/json' }});
+        if (!res.ok) return;
+        const data = await res.json();
+        const items = data && data.cart && Array.isArray(data.cart.items) ? data.cart.items : [];
+        const normalized = items.map(i => ({ id: String(i.id), name: i.name, price: Number(i.price), quantity: Number(i.quantity) }));
+        if (normalized.length > 0) {
+            hydratedItems = normalized;
+            localStorage.setItem('cart', JSON.stringify(normalized));
+        }
+    } catch (e) { console.warn('Cart API unavailable:', e); }
+}
+
+async function initOrderPage() {
+    await loadCartItems();
+    if (window.updateCartSidebar) window.updateCartSidebar();
+    initDeliveryOptions();
+    initPaymentOptions();
+    updateOrderSummary();
+    initTimeValidation();
+    // Auto-refresh order list when cart is changed from the sidebar or elsewhere
+    window.addEventListener('cartUpdated', async function() {
+        await loadCartItems();
+        updateOrderSummary();
+    });
+}
+
+async function loadCartItems() {
+    let apiCart = { items: [] };
+    try { apiCart = await window.cartAPI.getCart(); } catch (e) { console.warn('Cart API unavailable on order page:', e); }
+    let cart = Array.isArray(apiCart.items) ? apiCart.items : [];
+    // If API cart is empty but localStorage has items (older session), migrate them to API
+    if ((!cart || cart.length === 0)) {
+        try {
+            const lsCart = JSON.parse(localStorage.getItem('cart') || '[]');
+            if (Array.isArray(lsCart) && lsCart.length > 0) {
+                for (const it of lsCart) {
+                    const idNum = parseInt(it.id);
+                    const qtyNum = parseInt(it.quantity) || 1;
+                    if (!isNaN(idNum) && qtyNum > 0) {
+                        try { await window.cartAPI.addItem(idNum, qtyNum); } catch(e) { console.warn('migrate addItem', e); }
+                    }
+                }
+                apiCart = await window.cartAPI.getCart();
+                cart = Array.isArray(apiCart.items) ? apiCart.items : [];
+            }
+        } catch(e) { /* ignore */ }
+    }
+    const cartItemsContainer = document.getElementById('orderCartItems');
+    if (!cartItemsContainer) return;
+    if (cart.length === 0) {
+        cartItemsContainer.innerHTML = `<div class="text-center py-5"><div class="mb-4"><i class="bi bi-basket display-1 text-muted"></i></div><h4 class="mt-3 text-muted">Votre panier est vide</h4><p class="text-muted mb-4">Ajoutez des plats depuis notre menu</p><a href="${window.appMenuPath || '#'}" class="btn btn-primary"><i class="bi bi-arrow-left me-2"></i>Voir le menu</a></div>`;
+        return;
+    }
+    orderData.items = cart;
+    let itemsHTML = '';
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        itemsHTML += `<div class="cart-item"><div class="cart-item-info"><h5>${item.name}</h5><p>Quantité: ${item.quantity} × ${item.price.toFixed(2)}€</p></div><div class="cart-item-controls"><div class="quantity-controls"><button type="button" class="btn btn-sm btn-outline-secondary quantity-btn" data-id="${item.id}" data-action="decrease" title="Diminuer"><i class="bi bi-dash"></i></button><span class="quantity-display">${item.quantity}</span><button type="button" class="btn btn-sm btn-outline-secondary quantity-btn" data-id="${item.id}" data-action="increase" title="Augmenter"><i class="bi bi-plus"></i></button></div><div class="cart-item-price">${itemTotal.toFixed(2)}€</div><button type="button" class="btn btn-sm btn-outline-danger remove-from-cart" data-id="${item.id}" title="Supprimer"><i class="bi bi-x"></i></button></div></div>`;
+    });
+    cartItemsContainer.innerHTML = itemsHTML;
+    // Event delegation for +/- to avoid missing handlers after re-render
+    cartItemsContainer.onclick = function(e) {
+        const btn = e.target.closest('.quantity-btn');
+        if (!btn) return;
+        e.preventDefault();
+        const itemId = btn.getAttribute('data-id');
+        const action = btn.getAttribute('data-action');
+        changeQty(itemId, action);
+    };
+    document.querySelectorAll('.remove-from-cart').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const itemId = parseInt(this.getAttribute('data-id'));
+            try { await window.cartAPI.removeItem(itemId); } catch(e) { console.warn(e); }
+            await loadCartItems(); updateOrderSummary(); if (window.updateCartSidebar) window.updateCartSidebar(); if (window.updateCartNavigation) window.updateCartNavigation();
+        });
+    });
+    // Update summary and sidebar to reflect current items
+    updateOrderSummary();
+    if (window.updateCartSidebar) window.updateCartSidebar();
+}
+
+// use global updateCartSidebar / removeFromCartSidebar / addToCartSidebar from cart-api.js
+
+function initDeliveryOptions() {
+    const deliveryOptions = document.querySelectorAll('input[name="deliveryMode"]');
+    const deliveryDetails = document.getElementById('deliveryDetails');
+    deliveryOptions.forEach(option => {
+        option.addEventListener('change', function() {
+            if (this.value === 'delivery') { deliveryDetails.style.display = 'block'; updateDeliveryFee(3); }
+            else { deliveryDetails.style.display = 'none'; updateDeliveryFee(0); }
+            updateOrderSummary();
+        });
+    });
+    const checkedOption = document.querySelector('input[name="deliveryMode"]:checked');
+    if (checkedOption) checkedOption.dispatchEvent(new Event('change'));
+}
+
+function initPaymentOptions() {
+    const paymentOptions = document.querySelectorAll('input[name="paymentMode"]');
+    const cardDetails = document.getElementById('cardDetails');
+    paymentOptions.forEach(option => {
+        option.addEventListener('change', function() { if (cardDetails) cardDetails.style.display = this.value === 'card' ? 'block' : 'none'; });
+    });
+    const checkedOption = document.querySelector('input[name="paymentMode"]:checked'); if (checkedOption) checkedOption.dispatchEvent(new Event('change'));
+}
+
+function updateDeliveryFee(fee) {
+    orderData.deliveryFee = fee; const el = document.getElementById('deliveryFee'); if (el) el.textContent = fee + '€';
+}
+
+function updateOrderSummary() {
+    const cart = orderData.items; const summaryItemsContainer = document.getElementById('summaryItems'); const subtotalElement = document.getElementById('subtotal'); const taxAmountElement = document.getElementById('taxAmount'); const totalAmountElement = document.getElementById('totalAmount');
+    if (!summaryItemsContainer) return;
+    let subtotal = 0; let itemsHTML = '';
+    cart.forEach(item => { const itemTotal = item.price * item.quantity; subtotal += itemTotal; itemsHTML += `<div class="summary-item"><div class="summary-item-info"><span class="summary-item-name">${item.name}</span><small class="text-muted">x${item.quantity}</small></div><span class="summary-item-price">${itemTotal.toFixed(2)}€</span></div>`; });
+    summaryItemsContainer.innerHTML = itemsHTML;
+    const deliveryFee = orderData.deliveryFee || 0; const taxRate = 0.10; const taxAmount = subtotal * taxRate; const total = subtotal + deliveryFee + taxAmount;
+    if (subtotalElement) subtotalElement.textContent = subtotal.toFixed(2) + '€'; if (taxAmountElement) taxAmountElement.textContent = taxAmount.toFixed(2) + '€'; if (totalAmountElement) totalAmountElement.textContent = total.toFixed(2) + '€';
+    orderData.subtotal = subtotal; orderData.taxAmount = taxAmount; orderData.total = total;
+}
+
+function nextStep(step) { if (validateCurrentStep()) { showStep(step); } }
+function prevStep(step) { showStep(step); }
+
+function showStep(step) {
+    document.querySelectorAll('.order-step-content').forEach(content => content.classList.remove('active'));
+    const targetContent = document.getElementById(`step${step}`); if (targetContent) targetContent.classList.add('active');
+    const steps = document.querySelectorAll('.step'); steps.forEach((stepEl, index) => { if (index + 1 <= step) stepEl.classList.add('active'); else stepEl.classList.remove('active'); });
+    currentStep = step; if (step === 4) updateFinalSummary();
+}
+
+function validateCurrentStep() {
+    switch (currentStep) {
+        case 1: return validateCartStep();
+        case 2: return validateDeliveryStep();
+        case 3: return validatePaymentStep();
+        default: return true;
+    }
+}
+
+function validateCartStep() { if (orderData.items.length === 0) { showNotification('Votre panier est vide', 'error'); return false; } return true; }
+
+function validateDeliveryStep() {
+    const deliveryMode = document.querySelector('input[name="deliveryMode"]:checked')?.value;
+    const deliveryDate = document.getElementById('deliveryDate')?.value;
+    const deliveryTime = document.getElementById('deliveryTime')?.value;
+    if (!deliveryMode) { showNotification('Veuillez choisir un mode de récupération', 'error'); return false; }
+    if (!deliveryDate) { showNotification('Veuillez choisir une date', 'error'); return false; }
+    if (!deliveryTime) { showNotification('Veuillez choisir un créneau horaire', 'error'); return false; }
+    if (!validateSelectedTime()) return false;
+    if (deliveryMode === 'delivery') {
+        const address = document.getElementById('deliveryAddress')?.value; const zip = document.getElementById('deliveryZip')?.value;
+        if (!address || !zip) { showNotification('Veuillez renseigner votre adresse de livraison', 'error'); return false; }
+    }
+    orderData.delivery = { mode: deliveryMode, date: deliveryDate, time: deliveryTime, address: document.getElementById('deliveryAddress')?.value, zip: document.getElementById('deliveryZip')?.value, instructions: document.getElementById('deliveryInstructions')?.value };
+    return true;
+}
+
+function validatePaymentStep() {
+    const paymentMode = document.querySelector('input[name="paymentMode"]:checked')?.value;
+    if (!paymentMode) { showNotification('Veuillez choisir un mode de paiement', 'error'); return false; }
+    orderData.payment = { mode: paymentMode }; return true;
+}
+
+function updateFinalSummary() {
+    const finalOrderItems = document.getElementById('finalOrderItems'); if (finalOrderItems) { let itemsHTML = ''; orderData.items.forEach(item => { const itemTotal = item.price * item.quantity; itemsHTML += `<div class="d-flex justify-content-between mb-2"><span>${item.name} x${item.quantity}</span><span>${itemTotal.toFixed(2)}€</span></div>`; }); finalOrderItems.innerHTML = itemsHTML; }
+    const finalDeliveryInfo = document.getElementById('finalDeliveryInfo'); if (finalDeliveryInfo) { const delivery = orderData.delivery; const modeText = delivery.mode === 'delivery' ? 'Livraison à domicile' : 'Retrait sur place'; let infoHTML = `<p><strong>${modeText}</strong></p>`; infoHTML += `<p>Date: ${delivery.date} à ${delivery.time}</p>`; if (delivery.mode === 'delivery' && delivery.address) { infoHTML += `<p>Adresse: ${delivery.address}, ${delivery.zip}</p>`; } finalDeliveryInfo.innerHTML = infoHTML; }
+    const finalPaymentInfo = document.getElementById('finalPaymentInfo'); if (finalPaymentInfo) { const payment = orderData.payment; let paymentText = payment.mode === 'card' ? 'Carte bancaire' : payment.mode === 'cash' ? 'Paiement en espèces' : 'Tickets restaurant'; finalPaymentInfo.innerHTML = `<p>${paymentText}</p>`; }
+}
+
+function confirmOrder() {
+    const acceptTerms = document.getElementById('acceptTerms')?.checked; if (!acceptTerms) { showNotification('Veuillez accepter les conditions générales', 'error'); return; }
+    const orderId = 'CMD' + Date.now();
+    const finalOrder = { id: orderId, items: orderData.items, delivery: orderData.delivery, payment: orderData.payment, subtotal: orderData.subtotal, deliveryFee: orderData.deliveryFee || 0, taxAmount: orderData.taxAmount, total: orderData.total, status: 'confirmed', date: new Date().toISOString() };
+    const orders = JSON.parse(localStorage.getItem('userOrders') || '[]'); orders.push(finalOrder); localStorage.setItem('userOrders', JSON.stringify(orders));
+    localStorage.removeItem('cart');
+    sendConfirmationEmail(finalOrder); showOrderConfirmation(orderId);
+}
+
+function sendConfirmationEmail(order) {
+    const emailData = { to: 'client@example.com', subject: `Confirmation de commande ${order.id} - Le Trois Quarts`, body: `Votre commande ${order.id} a été confirmée. Total: ${order.total.toFixed(2)}€` };
+    const emails = JSON.parse(localStorage.getItem('sentEmails') || '[]'); emails.push({ ...emailData, sentAt: new Date().toISOString(), orderId: order.id }); localStorage.setItem('sentEmails', JSON.stringify(emails));
+    showNotification('Email de confirmation envoyé !', 'success');
+}
+
+function showOrderConfirmation(orderId) {
+    document.querySelectorAll('.order-step-content').forEach(content => content.classList.remove('active'));
+    const container = document.querySelector('.order-section .container');
+    if (container) {
+        container.innerHTML = `<div class="text-center py-5"><div class="mb-4"><i class="bi bi-check-circle-fill text-success icon-success-large"></i></div><h2 class="text-success mb-3">Commande confirmée !</h2><p class="lead mb-4">Votre commande <strong>${orderId}</strong> a été enregistrée avec succès.</p><div class="alert alert-info"><h5><i class="bi bi-info-circle me-2"></i>Prochaines étapes :</h5><ul class="list-unstyled mb-0"><li>• Vous recevrez un email de confirmation</li><li>• Votre commande sera préparée selon le créneau choisi</li></ul></div><div class="mt-4"><a href="${window.appMenuPath || '#'}" class="btn btn-primary"><i class="bi bi-arrow-left me-2"></i>Retour au menu</a></div></div>`;
+    }
+    showNotification('Commande confirmée avec succès !', 'success');
+}
+
+function showNotification(message, type = 'info') {
+    const existingNotifications = document.querySelectorAll('.notification'); existingNotifications.forEach(n => n.remove());
+    const notification = document.createElement('div'); notification.className = `notification alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show`; notification.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`; document.body.appendChild(notification); setTimeout(() => { if (notification.parentNode) notification.remove(); }, 5000);
+}
+
+window.nextStep = nextStep; window.prevStep = prevStep; window.confirmOrder = confirmOrder;
+
+// Change quantity handler used by inline onclick on +/-
+window.changeQty = async function(itemId, action) {
+    const id = Number(itemId);
+    try {
+        if (action === 'increase') {
+            await window.addToCartSidebar(id);
+        } else if (action === 'decrease') {
+            await window.removeFromCartSidebar(id);
+        }
+    } catch(e) { console.warn('changeQty failed', e); }
+    await loadCartItems();
+    if (window.updateCartSidebar) window.updateCartSidebar();
+    if (window.updateCartNavigation) window.updateCartNavigation();
+};
+
+function initTimeValidation() {
+    const dateInput = document.getElementById('deliveryDate'); const timeSelect = document.getElementById('deliveryTime');
+    if (dateInput && timeSelect) { const today = new Date().toISOString().split('T')[0]; dateInput.min = today; dateInput.value = today; dateInput.addEventListener('change', updateTimeOptions); timeSelect.addEventListener('change', validateSelectedTime); updateTimeOptions(); }
+}
+
+function updateTimeOptions() {
+    const dateInput = document.getElementById('deliveryDate'); const timeSelect = document.getElementById('deliveryTime'); if (!dateInput || !timeSelect) return; const selectedDate = dateInput.value; const today = new Date().toISOString().split('T')[0]; const currentTime = new Date(); timeSelect.innerHTML = '<option value="">Choisir un créneau</option>';
+    const timeSlots = [ { value: '12:00', text: '12h00 - 12h30' }, { value: '12:30', text: '12h30 - 13h00' }, { value: '13:00', text: '13h00 - 13h30' }, { value: '19:00', text: '19h00 - 19h30' }, { value: '19:30', text: '19h30 - 20h00' }, { value: '20:00', text: '20h00 - 20h30' } ];
+    if (selectedDate === today) { timeSlots.forEach(slot => { const slotTime = new Date(`${selectedDate}T${slot.value}`); if (slotTime > currentTime) { const option = document.createElement('option'); option.value = slot.value; option.textContent = slot.text; timeSelect.appendChild(option); } }); }
+    else { timeSlots.forEach(slot => { const option = document.createElement('option'); option.value = slot.value; option.textContent = slot.text; timeSelect.appendChild(option); }); }
+    if (selectedDate === today && timeSelect.options.length === 1) { const option = document.createElement('option'); option.value = ''; option.textContent = 'Aucun créneau disponible aujourd\'hui'; option.disabled = true; timeSelect.appendChild(option); }
+}
+
+function validateSelectedTime() {
+    const dateInput = document.getElementById('deliveryDate'); const timeSelect = document.getElementById('deliveryTime'); if (!dateInput || !timeSelect) return true; const selectedDate = dateInput.value; const selectedTime = timeSelect.value; const today = new Date().toISOString().split('T')[0]; const currentTime = new Date(); if (selectedDate === today && selectedTime) { const selectedDateTime = new Date(`${selectedDate}T${selectedTime}`); if (selectedDateTime <= currentTime) { showNotification('Ce créneau n\'est plus disponible. Veuillez choisir un autre créneau.', 'error'); timeSelect.value = ''; return false; } } return true;
+}
+
+if(false){ // duplicate block disabled
 // Order page JavaScript
 
 let currentStep = 1;
@@ -808,3 +1069,5 @@ function validateSelectedTime() {
     
     return true;
 }
+}
+// Duplicate block disabled
