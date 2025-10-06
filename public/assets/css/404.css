@@ -1,11 +1,16 @@
 /* 404 page styles */
-
+body {
+    background: linear-gradient(135deg, rgba(212, 165, 116, 0.1), rgba(139, 69, 19, 0.1)) !important;
+}
 .error-section {
-    min-height: 100vh;
+    background: transparent;
+}
+.error-section {
+    min-height: 100vh; /* revert to full viewport height */
     display: flex;
-    align-items: center;
-    background: linear-gradient(135deg, rgba(212, 165, 116, 0.1), rgba(139, 69, 19, 0.1));
-    padding: 120px 0 80px;
+    align-items: center; /* vertical centering of single-line content */
+    justify-content: center; /* center content block vertically within flex */
+    padding: 0; /* spacing handled by row pt-5 */
 }
 
 .error-content {

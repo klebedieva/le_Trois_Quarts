@@ -1,0 +1,61 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Page non trouvée ({{ status_code|default(404) }}){% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('assets/css/404.css') }}?v=4">
+{% endblock %}
+
+{% block body %}
+    <section class="error-section">
+        <div class="container">
+            <div class="error-content">
+                <div class="error-illustration">
+                    <div class="error-number">{{ status_code|default(404) }}</div>
+                    <div class="error-icon">☕</div>
+                </div>
+
+                <h1 class="error-title">Oups ! Page non trouvée</h1>
+                <p class="error-message">Il semblerait que cette page ait disparu comme un bon plat qui se termine trop vite !<br>Mais ne vous inquiétez pas, nous avons plein d'autres délices à vous proposer.</p>
+
+                <div class="error-actions d-flex justify-content-center gap-3 flex-wrap">
+                    <a href="{{ path('app_home') }}" class="btn btn-gold"><span class="me-2">🏠</span>RETOUR À L'ACCUEIL</a>
+                    <a href="{{ path('app_menu') }}" class="btn btn-outline-gold"><span class="me-2">📜</span>VOIR LE MENU</a>
+                </div>
+
+                <div class="error-suggestions">
+                    <h4 class="mb-4">Peut-être cherchez-vous :</h4>
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="suggestion-card">
+                                <i>🗓️</i>
+                                <h5>Réserver une table</h5>
+                                <p>Planifiez votre visite et profitez d'une expérience gourmande.</p>
+                                <a href="{{ path('app_reservation') }}" class="btn btn-gold">Réserver</a>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="suggestion-card">
+                                <i>🛍️</i>
+                                <h5>Voir le menu</h5>
+                                <p>Parcourez notre carte et trouvez votre prochain coup de cœur.</p>
+                                <a href="{{ path('app_menu') }}" class="btn btn-gold">Voir le menu</a>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="suggestion-card">
+                                <i>📞</i>
+                                <h5>Nous contacter</h5>
+                                <p>Besoin d'aide ? Nous sommes là pour répondre à vos questions.</p>
+                                <a href="{{ path('app_contact') }}" class="btn btn-gold">Contact</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+{% endblock %}
+
+

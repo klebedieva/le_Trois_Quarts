@@ -1,0 +1,46 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Page non trouvée - Le Trois Quarts | Brasserie Marseille{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {# Use the same assets as the rest of the site; icons already in base #}
+    <link rel="stylesheet" href="{{ asset('assets/css/404.css') }}?v=7">
+{% endblock %}
+
+{% block body %}
+    <div class="page-404">
+    <section class="error-section">
+                        <div class="container">
+            <div class="row justify-content-center pt-5">
+                <div class="col-lg-8 text-center">
+                    <div class="error-content">
+                        <div class="error-illustration">
+                            <div class="error-number">404</div>
+                            <div class="error-icon">
+                                <i class="bi bi-cup-hot"></i>
+                            </div>
+                        </div>
+
+                        <h1 class="error-title">Oups ! Page non trouvée</h1>
+                        <p class="error-message">
+                            Il semblerait que cette page ait disparu comme un bon plat qui se termine trop vite !
+                            <br>Mais ne vous inquiétez pas, nous avons plein d'autres délices à vous proposer.
+                        </p>
+
+                        <div class="error-actions">
+                            <a href="{{ path('app_home') }}" class="btn btn-gold btn-lg me-3">
+                                <i class="bi bi-house me-2"></i>Retour à l'accueil
+                            </a>
+                            <a href="{{ path('app_menu') }}" class="btn btn-outline-gold btn-lg">
+                                <i class="bi bi-book me-2"></i>Voir le menu
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    </div>
+{% endblock %}
+

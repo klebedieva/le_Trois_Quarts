@@ -236,6 +236,6 @@ class HomeController extends AbstractController
     #[Route('/404', name: 'app_404')]
     public function notFound(): Response
     {
-        return $this->render('pages/404.html.twig');
+        throw $this->createNotFoundException('Page not found');
     }
 }
