@@ -3,13 +3,14 @@ nelmio_api_doc:
         info:
             title: 'Le Trois Quarts - API'
             description: |
-                🛒 REST API for shopping cart and reviews management
+                🛒 REST API for shopping cart, orders and reviews management
                 
                 ## Features
                 - Storage in PHP session (not localStorage)
                 - Prices always from database (secure)
                 - Synchronization between tabs
                 - 24-hour persistence
+                - Complete order lifecycle management
                 
                 ## Usage
                 All requests require a session cookie.
@@ -26,6 +27,8 @@ nelmio_api_doc:
         tags:
             - name: 'Cart'
               description: 'Shopping cart operations'
+            - name: 'Order'
+              description: 'Order management operations'
             - name: 'Reviews'
               description: 'Customer reviews operations'
     areas:

@@ -21,6 +21,9 @@ class ApiResponseDTO
         #[OA\Property(property: 'cart', type: 'object', description: 'Cart data (when applicable)')]
         public ?CartResponseDTO $cart = null,
 
+        #[OA\Property(property: 'order', type: 'object', description: 'Order data (when applicable)')]
+        public ?OrderResponseDTO $order = null,
+
         #[OA\Property(property: 'count', type: 'integer', example: 3, description: 'Item count (when applicable)')]
         public ?int $count = null
     ) {}
@@ -37,6 +40,10 @@ class ApiResponseDTO
 
         if ($this->cart !== null) {
             $data['cart'] = $this->cart->toArray();
+        }
+
+        if ($this->order !== null) {
+            $data['order'] = $this->order->toArray();
         }
 
         if ($this->count !== null) {

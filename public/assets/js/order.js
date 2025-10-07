@@ -3,6 +3,37 @@
 let currentStep = 1;
 let orderData = { items: [], delivery: {}, payment: {}, total: 0 };
 
+// Simple Order API client using the new backend endpoints
+window.orderAPI = {
+    async createOrder(payload) {
+        const res = await fetch('/api/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload || {})
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            const msg = data?.message || `Erreur ${res.status}`;
+            throw new Error(msg);
+        }
+        return data; // { success, message?, order }
+    },
+    async getOrder(id) {
+        const res = await fetch(`/api/order/${id}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            const msg = data?.message || `Erreur ${res.status}`;
+            throw new Error(msg);
+        }
+        return data; // { success, order }
+    }
+};
+
     document.addEventListener('DOMContentLoaded', function() {
         initOrderPage();
 });
@@ -231,15 +262,30 @@ function updateFinalSummary() {
     }
 }
 
-function confirmOrder() {
+async function confirmOrder() {
     const accept = document.getElementById('acceptTerms')?.checked;
     if (!accept) { showNotification('Veuillez accepter les conditions générales', 'error'); return; }
-    const orderId = 'CMD' + Date.now();
-    const finalOrder = { id: orderId, items: orderData.items, delivery: orderData.delivery, payment: orderData.payment, subtotal: orderData.subtotal, deliveryFee: orderData.deliveryFee || 0, taxAmount: orderData.taxAmount, total: orderData.total, status: 'confirmed', date: new Date().toISOString() };
-    const orders = JSON.parse(localStorage.getItem('userOrders') || '[]'); orders.push(finalOrder); localStorage.setItem('userOrders', JSON.stringify(orders));
-    localStorage.removeItem('cart');
-    sendConfirmationEmail(finalOrder);
-    showOrderConfirmation(orderId);
+
+    // Build payload expected by backend API
+    const payload = {
+        deliveryMode: orderData?.delivery?.mode || document.querySelector('input[name="deliveryMode"]:checked')?.value || 'delivery',
+        deliveryAddress: document.getElementById('deliveryAddress')?.value || null,
+        deliveryZip: document.getElementById('deliveryZip')?.value || null,
+        deliveryInstructions: document.getElementById('deliveryInstructions')?.value || null,
+        deliveryFee: typeof orderData.deliveryFee === 'number' ? orderData.deliveryFee : (document.querySelector('input[name="deliveryMode"]:checked')?.value === 'pickup' ? 0 : 5),
+        paymentMode: orderData?.payment?.mode || document.querySelector('input[name="paymentMode"]:checked')?.value || 'card'
+    };
+
+    try {
+        const result = await window.orderAPI.createOrder(payload);
+        const created = result.order; // OrderResponse
+        // Backend уже очищает корзину, обновим UI
+        try { if (window.updateCartSidebar) window.updateCartSidebar(); } catch (_) {}
+        try { if (window.updateCartNavigation) window.updateCartNavigation(); } catch (_) {}
+        showOrderConfirmation(created.no, created.id, created.total);
+    } catch (e) {
+        showNotification(e.message || 'Erreur lors de la création de la commande', 'error');
+    }
 }
 
 function sendConfirmationEmail(order) {
@@ -248,11 +294,11 @@ function sendConfirmationEmail(order) {
     showNotification('Email de confirmation envoyé !', 'success');
 }
 
-function showOrderConfirmation(orderId) {
+function showOrderConfirmation(orderNo, orderId, total) {
     document.querySelectorAll('.order-step-content').forEach(c => c.classList.remove('active'));
     const container = document.querySelector('.order-section .container');
     if (container) {
-        container.innerHTML = `<div class="text-center py-5"><div class="mb-4"><i class="bi bi-check-circle-fill text-success icon-success-large"></i></div><h2 class="text-success mb-3">Commande confirmée !</h2><p class="lead mb-4">Votre commande <strong>${orderId}</strong> a été enregistrée avec succès.</p><div class="alert alert-info"><h5><i class="bi bi-info-circle me-2"></i>Prochaines étapes :</h5><ul class="list-unstyled mb-0"><li>• Vous recevrez un email de confirmation</li><li>• Votre commande sera préparée selon le créneau choisi</li></ul></div><div class="mt-4"><a href="${window.appMenuPath || '#'}" class="btn btn-primary"><i class="bi bi-arrow-left me-2"></i>Retour au menu</a></div></div>`;
+        container.innerHTML = `<div class="text-center py-5"><div class="mb-4"><i class="bi bi-check-circle-fill text-success icon-success-large"></i></div><h2 class="text-success mb-3">Commande confirmée !</h2><p class="lead mb-2">Numéro de commande: <strong>${orderNo || orderId}</strong></p><p class="lead mb-4">Montant total: <strong>${Number(total || 0).toFixed(2)}€</strong></p><div class="alert alert-info"><h5><i class="bi bi-info-circle me-2"></i>Prochaines étapes :</h5><ul class="list-unstyled mb-0"><li>• Vous recevrez un email de confirmation</li><li>• Votre commande sera préparée selon le créneau choisi</li></ul></div><div class="mt-4"><a href="${window.appMenuPath || '#'}" class="btn btn-primary"><i class="bi bi-arrow-left me-2"></i>Retour au menu</a></div></div>`;
     }
     showNotification('Commande confirmée avec succès !', 'success');
 }
