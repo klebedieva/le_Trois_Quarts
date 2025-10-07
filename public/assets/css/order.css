@@ -243,6 +243,37 @@
     z-index: 1;
 }
 
+/* Ensure the red X remove button is a distinct, non-overlapping target */
+.cart-items .remove-from-cart {
+    --danger: var(--danger-color, #dc3545);
+    border: 2px solid var(--danger);
+    color: var(--danger);
+    background: transparent;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    flex-shrink: 0;
+    z-index: 2;
+    transition: background .2s ease, color .2s ease, box-shadow .2s ease, transform .1s ease;
+    box-shadow: 0 0 0 0 rgba(220,53,69,0);
+}
+.cart-items .remove-from-cart i { font-size: 0.9rem; line-height: 1; }
+.cart-items .remove-from-cart:hover { background: var(--danger); color: #fff; box-shadow: 0 6px 14px rgba(220,53,69,.25); transform: translateY(-1px); }
+.cart-items .remove-from-cart:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(220,53,69,.2); }
+.cart-items .remove-from-cart:focus { outline: none; box-shadow: 0 0 0 3px rgba(220,53,69,.15); }
+
+/* Create more spacing so the X cannot sit over +/- on narrow widths */
+.cart-items .cart-item-controls { gap: 1.25rem; }
+.cart-items .quantity-controls { gap: 0.75rem; }
+
+/* Make the red remove (X) button absolutely positioned and always on top */
+/* Remove absolute positioning so the red X matches Restaurant layout */
+
 /* Styles for action buttons in cart section */
 .cart-section .cart-actions {
     display: flex;
