@@ -6,6 +6,7 @@ use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\Address;
 use App\Entity\Reservation;
+use App\Entity\Order;
 
 class SymfonyEmailService
 {
@@ -431,6 +432,114 @@ class SymfonyEmailService
                 <div class='footer'>
                     <p>contact@letroisquarts.com | 04 91 92 96 16</p>
                     <p>139 Boulevard Chave, 13005 Marseille</p>
+                </div>
+            </div>
+        </body>
+        </html>";
+    }
+
+    public function sendOrderConfirmation(string $clientEmail, string $clientName, string $subject, string $message, Order $order): bool
+    {
+        try {
+            $email = (new Email())
+                ->from(new Address($this->fromEmail, $this->fromName))
+                ->to(new Address($clientEmail, $clientName))
+                ->replyTo(new Address($this->fromEmail, $this->fromName))
+                ->subject($subject)
+                ->html($this->getOrderConfirmationTemplate($clientName, $message, $order));
+
+            $this->mailer->send($email);
+            return true;
+        } catch (\Exception $e) {
+            throw new \Exception("Error sending order confirmation: " . $e->getMessage());
+        }
+    }
+
+    private function getOrderConfirmationTemplate(string $clientName, string $message, Order $order): string
+    {
+        $orderNumber = $order->getNo();
+        $total = $order->getTotal();
+        $deliveryMode = $order->getDeliveryMode()->value === 'delivery' ? 'Livraison' : 'À emporter';
+        $paymentMode = match($order->getPaymentMode()->value) {
+            'card' => 'Carte bancaire',
+            'cash' => 'Espèces',
+            'tickets' => 'Tickets restaurant',
+            default => 'Non spécifié'
+        };
+
+        // Format order items
+        $itemsHtml = '';
+        foreach ($order->getItems() as $item) {
+            $itemsHtml .= "
+                <div class='detail-row'>
+                    <span class='detail-label'>{$item->getQuantity()}x {$item->getProductName()}</span>
+                    <span>{$item->getTotal()}€</span>
+                </div>";
+        }
+
+        return "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <title>Confirmation de commande - Le Trois Quarts</title>
+            <style>
+                body { font-family: 'Inter', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #d4a574, #8b4513); color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                .header h1 { font-family: 'Playfair Display', serif; font-weight: 700; margin: 0; font-size: 28px; }
+                .content { padding: 30px 20px; background-color: #f8f9fa; }
+                .order-details { background-color: white; padding: 20px; border: 2px solid #d4a574; border-radius: 8px; margin: 20px 0; }
+                .order-details h3 { font-family: 'Playfair Display', serif; color: #8b4513; margin-top: 0; }
+                .detail-row { display: flex; justify-content: space-between; margin: 10px 0; padding: 8px 0; border-bottom: 1px solid #eee; }
+                .detail-row:last-child { border-bottom: none; }
+                .detail-label { font-weight: 600; color: #8b4513; }
+                .total-row { background-color: #f4e4c1; padding: 15px; border-radius: 4px; margin-top: 15px; font-weight: 600; font-size: 18px; }
+                .message-box { background-color: white; padding: 20px; border-left: 4px solid #d4a574; border-radius: 4px; margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                .footer { background-color: #2c1810; color: white; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; font-size: 14px; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='header'>
+                    <h1>Le Trois Quarts</h1>
+                    <p>Brasserie - Marseille</p>
+                </div>
+                <div class='content'>
+                    <h2 style='font-family: Playfair Display, serif; color: #8b4513; margin-bottom: 20px;'>Bonjour {$clientName},</h2>
+                    
+                    <div class='message-box'>
+                        " . nl2br(htmlspecialchars($message)) . "
+                    </div>
+                    
+                    <div class='order-details'>
+                        <h3>🍽️ Détails de votre commande</h3>
+                        <div class='detail-row'>
+                            <span class='detail-label'>Numéro de commande :</span>
+                            <span>{$orderNumber}</span>
+                        </div>
+                        <div class='detail-row'>
+                            <span class='detail-label'>Mode de livraison :</span>
+                            <span>{$deliveryMode}</span>
+                        </div>
+                        <div class='detail-row'>
+                            <span class='detail-label'>Mode de paiement :</span>
+                            <span>{$paymentMode}</span>
+                        </div>
+                        <hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
+                        <h4 style='color: #8b4513; margin-bottom: 15px;'>Articles commandés :</h4>
+                        {$itemsHtml}
+                        <div class='total-row'>
+                            <span class='detail-label'>Total :</span>
+                            <span>{$total}€</span>
+                        </div>
+                    </div>
+                    
+                    <p style='font-size: 16px; margin-top: 25px; margin-bottom: 15px;'>Nous commençons la préparation de votre commande.</p>
+                    <p style='font-size: 16px; margin-bottom: 0;'>Cordialement,<br><strong>L'équipe du Trois Quarts</strong></p>
+                </div>
+                <div class='footer'>
+                    <p>139 Boulevard Chave, 13005 Marseille | 04 91 92 96 16</p>
                 </div>
             </div>
         </body>
