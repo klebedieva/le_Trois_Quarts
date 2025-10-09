@@ -7,6 +7,7 @@ use App\Entity\OrderItem;
 use App\Enum\OrderStatus;
 use App\Enum\DeliveryMode;
 use App\Enum\PaymentMode;
+use App\Service\SymfonyEmailService;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
@@ -28,11 +29,21 @@ use EasyCorp\Bundle\EasyAdminBundle\Filter\NumericFilter;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
 #[IsGranted('ROLE_ADMIN')]
 class OrderCrudController extends AbstractCrudController
 {
+    private EntityManagerInterface $entityManager;
+    private SymfonyEmailService $emailService;
+
+    public function __construct(EntityManagerInterface $entityManager, SymfonyEmailService $emailService)
+    {
+        $this->entityManager = $entityManager;
+        $this->emailService = $emailService;
+    }
+
     public static function getEntityFqcn(): string
     {
         return Order::class;
@@ -59,6 +70,14 @@ class OrderCrudController extends AbstractCrudController
             TextField::new('no', 'Numéro de commande')
                 ->setRequired(true)
                 ->setHelp('Numéro unique de la commande'),
+
+            TextField::new('clientName', 'Nom du client')
+                ->setRequired(false)
+                ->setHelp('Nom du client pour l\'envoi d\'emails'),
+
+            TextField::new('clientEmail', 'Email du client')
+                ->setRequired(false)
+                ->setHelp('Email du client pour l\'envoi d\'emails'),
             
             ChoiceField::new('status', 'Statut')
                 ->setChoices([
@@ -275,62 +294,143 @@ class OrderCrudController extends AbstractCrudController
     }
 
     /**
-     * Confirmer une commande
+     * Confirmer une commande avec envoi d'email
      */
-    public function confirmOrder(AdminContext $context): Response
+    public function confirmOrder(Request $request): Response
     {
-        $entity = $context->getEntity()->getInstance();
-        $entity->setStatus(OrderStatus::CONFIRMED);
-        
-        $this->container->get(EntityManagerInterface::class)->flush();
-        
-        $this->addFlash('success', 'Commande confirmée avec succès !');
-        
-        return $this->redirect($context->getReferrer());
+        $entityId = $request->query->get('entityId');
+        if (!$entityId) {
+            $this->addFlash('error', 'ID de la commande non trouvé.');
+            return $this->redirectToRoute('admin');
+        }
+
+        /** @var Order|null $order */
+        $order = $this->entityManager->getRepository(Order::class)->find($entityId);
+        if (!$order) {
+            $this->addFlash('error', 'Commande non trouvée.');
+            return $this->redirectToRoute('admin');
+        }
+
+        if ($request->isMethod('POST')) {
+            $confirmationMessage = $request->request->get('confirmationMessage', 'Votre commande est confirmée et sera préparée rapidement.');
+
+            try {
+                // Update order status
+                $order->setStatus(OrderStatus::CONFIRMED);
+                $this->entityManager->flush();
+
+                // Try to send confirmation email if client email is provided
+                if ($order->getClientEmail() && $order->getClientName()) {
+                    $clientEmail = $order->getClientEmail();
+                    $clientName = $order->getClientName();
+                    $emailSubject = 'Confirmation de votre commande - Le Trois Quarts';
+                    
+                    $emailSent = $this->emailService->sendOrderConfirmation(
+                        $clientEmail,
+                        $clientName,
+                        $emailSubject,
+                        $confirmationMessage,
+                        $order
+                    );
+                } else {
+                    $emailSent = false;
+                }
+                
+                if ($emailSent) {
+                    $this->addFlash('success', 'Commande confirmée et email envoyé avec succès !');
+                } else {
+                    if ($order->getClientEmail() && $order->getClientName()) {
+                        $this->addFlash('warning', 'Commande confirmée mais erreur lors de l\'envoi de l\'email.');
+                    } else {
+                        $this->addFlash('warning', 'Commande confirmée mais email non envoyé (email ou nom du client manquant).');
+                    }
+                }
+
+            } catch (\Throwable $e) {
+                $this->addFlash('error', 'Erreur lors de la confirmation: ' . $e->getMessage());
+            }
+
+            return $this->redirectToRoute('admin');
+        }
+
+        // GET: render confirmation page
+        return $this->render('admin/order/confirm.html.twig', [
+            'order' => $order,
+        ]);
     }
 
     /**
      * Marquer une commande en préparation
      */
-    public function prepareOrder(AdminContext $context): Response
+    public function prepareOrder(Request $request): Response
     {
-        $entity = $context->getEntity()->getInstance();
-        $entity->setStatus(OrderStatus::PREPARING);
-        
-        $this->container->get(EntityManagerInterface::class)->flush();
+        $entityId = $request->query->get('entityId');
+        if (!$entityId) {
+            $this->addFlash('error', 'ID de la commande non trouvé.');
+            return $this->redirectToRoute('admin');
+        }
+
+        $order = $this->entityManager->getRepository(Order::class)->find($entityId);
+        if (!$order) {
+            $this->addFlash('error', 'Commande non trouvée.');
+            return $this->redirectToRoute('admin');
+        }
+
+        $order->setStatus(OrderStatus::PREPARING);
+        $this->entityManager->flush();
         
         $this->addFlash('success', 'Commande marquée en préparation !');
         
-        return $this->redirect($context->getReferrer());
+        return $this->redirectToRoute('admin');
     }
 
     /**
      * Marquer une commande comme livrée
      */
-    public function deliverOrder(AdminContext $context): Response
+    public function deliverOrder(Request $request): Response
     {
-        $entity = $context->getEntity()->getInstance();
-        $entity->setStatus(OrderStatus::DELIVERED);
-        
-        $this->container->get(EntityManagerInterface::class)->flush();
+        $entityId = $request->query->get('entityId');
+        if (!$entityId) {
+            $this->addFlash('error', 'ID de la commande non trouvé.');
+            return $this->redirectToRoute('admin');
+        }
+
+        $order = $this->entityManager->getRepository(Order::class)->find($entityId);
+        if (!$order) {
+            $this->addFlash('error', 'Commande non trouvée.');
+            return $this->redirectToRoute('admin');
+        }
+
+        $order->setStatus(OrderStatus::DELIVERED);
+        $this->entityManager->flush();
         
         $this->addFlash('success', 'Commande marquée comme livrée !');
         
-        return $this->redirect($context->getReferrer());
+        return $this->redirectToRoute('admin');
     }
 
     /**
      * Annuler une commande
      */
-    public function cancelOrder(AdminContext $context): Response
+    public function cancelOrder(Request $request): Response
     {
-        $entity = $context->getEntity()->getInstance();
-        $entity->setStatus(OrderStatus::CANCELLED);
-        
-        $this->container->get(EntityManagerInterface::class)->flush();
+        $entityId = $request->query->get('entityId');
+        if (!$entityId) {
+            $this->addFlash('error', 'ID de la commande non trouvé.');
+            return $this->redirectToRoute('admin');
+        }
+
+        $order = $this->entityManager->getRepository(Order::class)->find($entityId);
+        if (!$order) {
+            $this->addFlash('error', 'Commande non trouvée.');
+            return $this->redirectToRoute('admin');
+        }
+
+        $order->setStatus(OrderStatus::CANCELLED);
+        $this->entityManager->flush();
         
         $this->addFlash('success', 'Commande annulée !');
         
-        return $this->redirect($context->getReferrer());
+        return $this->redirectToRoute('admin');
     }
 }

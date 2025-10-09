@@ -56,6 +56,12 @@ class Order
     #[ORM\Column(length: 255)]
     private ?string $no = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $clientEmail = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $clientName = null;
+
     /**
      * @var Collection<int, OrderItem>
      */
@@ -209,6 +215,30 @@ class Order
     public function setNo(string $no): static
     {
         $this->no = $no;
+
+        return $this;
+    }
+
+    public function getClientEmail(): ?string
+    {
+        return $this->clientEmail;
+    }
+
+    public function setClientEmail(?string $clientEmail): static
+    {
+        $this->clientEmail = $clientEmail;
+
+        return $this;
+    }
+
+    public function getClientName(): ?string
+    {
+        return $this->clientName;
+    }
+
+    public function setClientName(?string $clientName): static
+    {
+        $this->clientName = $clientName;
 
         return $this;
     }

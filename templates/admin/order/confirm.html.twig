@@ -1,0 +1,151 @@
+{% extends '@EasyAdmin/layout.html.twig' %}
+
+{% block content_title %}Confirmer la commande{% endblock %}
+
+{% block main %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Détails de la commande</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Numéro de commande :</strong> {{ order.no }}</p>
+                            {% if order.clientName %}
+                            <p><strong>Nom du client :</strong> {{ order.clientName }}</p>
+                            {% endif %}
+                            {% if order.clientEmail %}
+                            <p><strong>Email du client :</strong> {{ order.clientEmail }}</p>
+                            {% endif %}
+                            <p><strong>Statut actuel :</strong> 
+                                {% if order.status.value == 'pending' %}
+                                    <span class="badge bg-warning">En attente</span>
+                                {% elseif order.status.value == 'confirmed' %}
+                                    <span class="badge bg-success">Confirmée</span>
+                                {% elseif order.status.value == 'preparing' %}
+                                    <span class="badge bg-info">En préparation</span>
+                                {% elseif order.status.value == 'delivered' %}
+                                    <span class="badge bg-primary">Livrée</span>
+                                {% elseif order.status.value == 'cancelled' %}
+                                    <span class="badge bg-danger">Annulée</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Mode de livraison :</strong> 
+                                {% if order.deliveryMode.value == 'delivery' %}Livraison{% else %}À emporter{% endif %}
+                            </p>
+                            <p><strong>Mode de paiement :</strong> 
+                                {% if order.paymentMode.value == 'card' %}Carte bancaire
+                                {% elseif order.paymentMode.value == 'cash' %}Espèces
+                                {% elseif order.paymentMode.value == 'tickets' %}Tickets restaurant
+                                {% endif %}
+                            </p>
+                            <p><strong>Total :</strong> {{ order.total }}€</p>
+                            <p><strong>Date de création :</strong> {{ order.createdAt|date('d/m/Y H:i') }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if order.deliveryAddress %}
+                    <div class="mt-3">
+                        <p><strong>Adresse de livraison :</strong></p>
+                        <div class="alert alert-light">
+                            {{ order.deliveryAddress }}<br>
+                            {{ order.deliveryZip }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if order.deliveryInstructions %}
+                    <div class="mt-3">
+                        <p><strong>Instructions de livraison :</strong></p>
+                        <div class="alert alert-light">
+                            {{ order.deliveryInstructions|nl2br }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-3">
+                        <p><strong>Articles commandés :</strong></p>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Produit</th>
+                                        <th>Quantité</th>
+                                        <th>Prix unitaire</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order.items %}
+                                    <tr>
+                                        <td>{{ item.productName }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>{{ item.unitPrice }}€</td>
+                                        <td>{{ item.total }}€</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">Confirmer la commande</h5>
+                </div>
+                <div class="card-body">
+                    {% if not order.clientEmail or not order.clientName %}
+                    <div class="alert alert-warning mb-3">
+                        <i class="fa fa-exclamation-triangle me-2"></i>
+                        <strong>Attention :</strong> L'email ou le nom du client n'est pas renseigné. 
+                        L'email de confirmation ne pourra pas être envoyé.
+                        <br>
+                        <small>Vous pouvez ajouter ces informations en modifiant la commande.</small>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post" action="{{ ea_url().setAction('confirmOrder').set('entityId', order.id) }}">
+                        <div class="mb-3">
+                            <label for="confirmationMessage" class="form-label">Message de confirmation</label>
+                            <textarea class="form-control" id="confirmationMessage" name="confirmationMessage" rows="8" required 
+                                placeholder="Rédigez un message personnalisé pour le client...">Bonjour,
+
+Votre commande #{{ order.no }} a été confirmée et sera préparée rapidement.
+
+{% if order.deliveryMode.value == 'delivery' %}
+Nous vous livrerons à l'adresse indiquée.
+{% else %}
+Vous pourrez récupérer votre commande au restaurant.
+{% endif %}
+
+Nous vous remercions pour votre commande !
+
+L'équipe du Trois Quarts</textarea>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fa fa-check me-2"></i>Confirmer et envoyer l'email
+                            </button>
+                            <a href="{{ ea_url().setAction('index') }}" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left me-2"></i>Retour à la liste
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Styles déplacés dans assets/css/admin-styles.css #}
+{% endblock %}
