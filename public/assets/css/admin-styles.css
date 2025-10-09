@@ -180,6 +180,64 @@ td .btn {
 .gradient-purple { background: linear-gradient(135deg, #ab47bc 0%, #8e24aa 100%) !important; }
 .gradient-gold   { background: linear-gradient(135deg, #ffca28 0%, #ffc107 100%) !important; }
 
+/* Order status badge AJAX styles */
+.order-status-badge {
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    text-decoration: none !important;
+}
+
+.order-status-badge:hover {
+    opacity: 0.8 !important;
+    transform: scale(1.05) !important;
+}
+
+.order-status-badge:disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+}
+
+/* Status notification styles */
+.status-notification {
+    animation: slideInRight 0.3s ease-out !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    border: none !important;
+    border-radius: 8px !important;
+}
+
+.status-notification .btn-close {
+    background: none !important;
+    border: none !important;
+    font-size: 1.2rem !important;
+    opacity: 0.7 !important;
+    padding: 0.25rem 0.5rem !important;
+}
+
+.status-notification .btn-close:hover {
+    opacity: 1 !important;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Loading spinner for status badges */
+.status-loading .fa-spinner {
+    animation: spin 1s linear infinite !important;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 
 
 

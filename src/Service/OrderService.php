@@ -68,6 +68,17 @@ class OrderService
             : PaymentMode::CARD;
         $order->setPaymentMode($paymentMode);
 
+        // Définir les informations client
+        $order->setClientFirstName($orderData['clientFirstName'] ?? null);
+        $order->setClientLastName($orderData['clientLastName'] ?? null);
+        $order->setClientPhone($orderData['clientPhone'] ?? null);
+        $order->setClientEmail($orderData['clientEmail'] ?? null);
+        
+        // Générer le nom complet automatiquement si possible
+        if ($order->getClientFirstName() && $order->getClientLastName()) {
+            $order->setClientName($order->getClientFirstName() . ' ' . $order->getClientLastName());
+        }
+
         // Calculer les montants
         $subtotal = $cart['total'];
         $taxAmount = round($subtotal * self::TAX_RATE, 2);

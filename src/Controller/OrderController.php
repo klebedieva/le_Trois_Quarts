@@ -75,6 +75,30 @@ class OrderController extends AbstractController
                         enum: ['card', 'cash', 'tickets'],
                         example: 'card', 
                         description: 'Payment mode'
+                    ),
+                    new OA\Property(
+                        property: 'clientFirstName', 
+                        type: 'string', 
+                        example: 'Jean', 
+                        description: 'Client first name'
+                    ),
+                    new OA\Property(
+                        property: 'clientLastName', 
+                        type: 'string', 
+                        example: 'Dupont', 
+                        description: 'Client last name'
+                    ),
+                    new OA\Property(
+                        property: 'clientPhone', 
+                        type: 'string', 
+                        example: '+33123456789', 
+                        description: 'Client phone number'
+                    ),
+                    new OA\Property(
+                        property: 'clientEmail', 
+                        type: 'string', 
+                        example: 'jean.dupont@email.com', 
+                        description: 'Client email address'
                     )
                 ],
                 type: 'object'
@@ -148,6 +172,10 @@ class OrderController extends AbstractController
                 deliveryInstructions: $order->getDeliveryInstructions(),
                 deliveryFee: (float) $order->getDeliveryFee(),
                 paymentMode: $order->getPaymentMode()->value,
+                clientFirstName: $order->getClientFirstName(),
+                clientLastName: $order->getClientLastName(),
+                clientPhone: $order->getClientPhone(),
+                clientEmail: $order->getClientEmail(),
                 subtotal: (float) $order->getSubtotal(),
                 taxAmount: (float) $order->getTaxAmount(),
                 total: (float) $order->getTotal(),
@@ -265,6 +293,10 @@ class OrderController extends AbstractController
                 deliveryInstructions: $order->getDeliveryInstructions(),
                 deliveryFee: (float) $order->getDeliveryFee(),
                 paymentMode: $order->getPaymentMode()->value,
+                clientFirstName: $order->getClientFirstName(),
+                clientLastName: $order->getClientLastName(),
+                clientPhone: $order->getClientPhone(),
+                clientEmail: $order->getClientEmail(),
                 subtotal: (float) $order->getSubtotal(),
                 taxAmount: (float) $order->getTaxAmount(),
                 total: (float) $order->getTotal(),

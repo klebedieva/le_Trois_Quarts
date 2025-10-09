@@ -225,7 +225,24 @@ function validateDeliveryStep() {
         const zip = document.getElementById('deliveryZip')?.value;
         if (!address || !zip) { showNotification('Veuillez renseigner votre adresse de livraison', 'error'); return false; }
     }
+    
+    // Validation des informations client
+    const firstName = document.getElementById('clientFirstName')?.value?.trim();
+    const lastName = document.getElementById('clientLastName')?.value?.trim();
+    const phone = document.getElementById('clientPhone')?.value?.trim();
+    const email = document.getElementById('clientEmail')?.value?.trim();
+    
+    if (!firstName) { showNotification('Veuillez renseigner votre prénom', 'error'); return false; }
+    if (!lastName) { showNotification('Veuillez renseigner votre nom', 'error'); return false; }
+    if (!phone) { showNotification('Veuillez renseigner votre numéro de téléphone', 'error'); return false; }
+    if (!email) { showNotification('Veuillez renseigner votre adresse email', 'error'); return false; }
+    
+    // Validation basique de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) { showNotification('Veuillez renseigner une adresse email valide', 'error'); return false; }
+    
     orderData.delivery = { mode, date, time, address: document.getElementById('deliveryAddress')?.value, zip: document.getElementById('deliveryZip')?.value, instructions: document.getElementById('deliveryInstructions')?.value };
+    orderData.client = { firstName, lastName, phone, email };
     return true;
 }
 
@@ -246,6 +263,16 @@ function updateFinalSummary() {
         });
         itemsEl.innerHTML = html;
     }
+    
+    const clientEl = document.getElementById('finalClientInfo');
+    if (clientEl) {
+        const c = orderData.client || {};
+        let info = `<p><strong>${c.firstName || ''} ${c.lastName || ''}</strong></p>`;
+        if (c.phone) info += `<p>Téléphone: ${c.phone}</p>`;
+        if (c.email) info += `<p>Email: ${c.email}</p>`;
+        clientEl.innerHTML = info;
+    }
+    
     const deliveryEl = document.getElementById('finalDeliveryInfo');
     if (deliveryEl) {
         const d = orderData.delivery || {};
@@ -273,7 +300,11 @@ async function confirmOrder() {
         deliveryZip: document.getElementById('deliveryZip')?.value || null,
         deliveryInstructions: document.getElementById('deliveryInstructions')?.value || null,
         deliveryFee: typeof orderData.deliveryFee === 'number' ? orderData.deliveryFee : (document.querySelector('input[name="deliveryMode"]:checked')?.value === 'pickup' ? 0 : 5),
-        paymentMode: orderData?.payment?.mode || document.querySelector('input[name="paymentMode"]:checked')?.value || 'card'
+        paymentMode: orderData?.payment?.mode || document.querySelector('input[name="paymentMode"]:checked')?.value || 'card',
+        clientFirstName: document.getElementById('clientFirstName')?.value || null,
+        clientLastName: document.getElementById('clientLastName')?.value || null,
+        clientPhone: document.getElementById('clientPhone')?.value || null,
+        clientEmail: document.getElementById('clientEmail')?.value || null
     };
 
     try {

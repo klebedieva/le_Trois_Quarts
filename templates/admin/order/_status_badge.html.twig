@@ -1,0 +1,105 @@
+{# Clickable status badge for orders: cycles through all statuses via AJAX (Nouveau -> Confirmée -> En préparation -> Livrée -> Annulée -> Nouveau) #}
+{% set value = field.value.value %}
+{# Use EasyAdmin-like badge colors (filled), closer to renderAsBadges output #}
+{% set badgeClasses = {
+    'pending': 'badge badge-primary',
+    'confirmed': 'badge badge-success',
+    'preparing': 'badge badge-secondary',
+    'delivered': 'badge badge-warning',
+    'cancelled': 'badge badge-danger'
+} %}
+
+{% set labels = {
+    'pending': 'Nouveau',
+    'confirmed': 'Confirmée',
+    'preparing': 'En préparation',
+    'delivered': 'Livrée',
+    'cancelled': 'Annulée'
+} %}
+
+{% set url = path('admin_order_change_status', { entityId: entity.primaryKeyValue }) %}
+
+<a href="{{ url }}" 
+   class="order-status-badge {{ badgeClasses[value] ?? 'badge bg-secondary' }}" 
+   data-entity-id="{{ entity.primaryKeyValue }}"
+   data-current-status="{{ value }}"
+   title="Changer le statut">
+    <span class="status-text">{{ labels[value] ?? value }}</span>
+    <span class="status-loading" style="display: none;">
+        <i class="fa fa-spinner fa-spin"></i>
+    </span>
+</a>
+
+<script>
+(function() {
+    // Avoid attaching multiple times across list renders/Turbo navigations
+    if (window.__orderStatusHandlerAttached) { return; }
+    window.__orderStatusHandlerAttached = true;
+
+    function showNotification(message, type) {
+        // Define once globally to reuse
+        if (!window.__orderStatusNotify) {
+            window.__orderStatusNotify = function(msg, t) {
+                const existing = document.querySelectorAll('.status-notification');
+                existing.forEach(n => n.remove());
+                const n = document.createElement('div');
+                n.className = 'alert alert-' + (t === 'success' ? 'success' : 'danger') + ' status-notification';
+                n.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+                n.innerHTML = '<button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>' + msg;
+                document.body.appendChild(n);
+                setTimeout(() => { if (n.parentElement) n.remove(); }, 5000);
+            };
+        }
+        window.__orderStatusNotify(message, type);
+    }
+
+    function clickHandler(e) {
+        const badge = e.target.closest && e.target.closest('.order-status-badge');
+        if (!badge) { return; }
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const url = badge.getAttribute('href');
+        const statusText = badge.querySelector('.status-text');
+        const statusLoading = badge.querySelector('.status-loading');
+
+        // Loading state
+        if (statusText) statusText.style.display = 'none';
+        if (statusLoading) statusLoading.style.display = 'inline';
+        badge.style.pointerEvents = 'none';
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data && data.success) {
+                if (statusText) statusText.textContent = data.newLabel;
+                badge.className = 'order-status-badge badge ' + data.newClass;
+                showNotification(data.message, 'success');
+            } else {
+                showNotification((data && data.message) || 'Erreur lors du changement de statut', 'error');
+            }
+        })
+        .catch(() => showNotification('Erreur lors du changement de statut', 'error'))
+        .finally(() => {
+            if (statusText) statusText.style.display = 'inline';
+            if (statusLoading) statusLoading.style.display = 'none';
+            badge.style.pointerEvents = 'auto';
+        });
+    }
+
+    // Attach once immediately (document may already be loaded)
+    document.addEventListener('click', clickHandler);
+
+    // In case of Turbo/Hotwire navigations, ensure still one handler due to guard
+    window.addEventListener('turbo:load', function() {
+        // nothing; guard prevents duplicates
+    });
+})();
+</script>

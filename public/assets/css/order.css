@@ -382,6 +382,9 @@
 .delivery-details { background: var(--light-color); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
 .delivery-details h4 { color: var(--dark-color); margin-bottom: 1.5rem; font-weight: 600; }
 
+.client-info { background: var(--light-color); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+.client-info h4 { color: var(--dark-color); margin-bottom: 1.5rem; font-weight: 600; }
+
 .delivery-time { background: var(--light-color); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
 .delivery-time h4 { color: var(--dark-color); margin-bottom: 1.5rem; font-weight: 600; }
 
@@ -915,6 +918,19 @@
 }
 
 .delivery-details h4 {
+    color: var(--dark-color);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+.client-info {
+    background: var(--light-color);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.client-info h4 {
     color: var(--dark-color);
     margin-bottom: 1.5rem;
     font-weight: 600;

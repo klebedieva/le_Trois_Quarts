@@ -62,6 +62,15 @@ class Order
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $clientName = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $clientFirstName = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $clientLastName = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $clientPhone = null;
+
     /**
      * @var Collection<int, OrderItem>
      */
@@ -239,6 +248,42 @@ class Order
     public function setClientName(?string $clientName): static
     {
         $this->clientName = $clientName;
+
+        return $this;
+    }
+
+    public function getClientFirstName(): ?string
+    {
+        return $this->clientFirstName;
+    }
+
+    public function setClientFirstName(?string $clientFirstName): static
+    {
+        $this->clientFirstName = $clientFirstName;
+
+        return $this;
+    }
+
+    public function getClientLastName(): ?string
+    {
+        return $this->clientLastName;
+    }
+
+    public function setClientLastName(?string $clientLastName): static
+    {
+        $this->clientLastName = $clientLastName;
+
+        return $this;
+    }
+
+    public function getClientPhone(): ?string
+    {
+        return $this->clientPhone;
+    }
+
+    public function setClientPhone(?string $clientPhone): static
+    {
+        $this->clientPhone = $clientPhone;
 
         return $this;
     }

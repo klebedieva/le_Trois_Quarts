@@ -60,7 +60,7 @@ class OrderCrudController extends AbstractCrudController
             ->setPageTitle('detail', 'Détails de la commande')
             ->setDefaultSort(['createdAt' => 'DESC'])
             ->setPaginatorPageSize(20)
-            ->setSearchFields(['no', 'deliveryAddress', 'deliveryZip']);
+            ->setSearchFields(['no', 'clientName', 'deliveryAddress', 'deliveryZip']);
     }
 
     public function configureFields(string $pageName): iterable
@@ -71,9 +71,13 @@ class OrderCrudController extends AbstractCrudController
                 ->setRequired(true)
                 ->setHelp('Numéro unique de la commande'),
 
-            TextField::new('clientName', 'Nom du client')
+            TextField::new('clientName', 'Nom complet du client')
                 ->setRequired(false)
-                ->setHelp('Nom du client pour l\'envoi d\'emails'),
+                ->setHelp('Prénom et nom de famille du client'),
+
+            TextField::new('clientPhone', 'Téléphone du client')
+                ->setRequired(false)
+                ->setHelp('Numéro de téléphone du client'),
 
             TextField::new('clientEmail', 'Email du client')
                 ->setRequired(false)
@@ -81,7 +85,7 @@ class OrderCrudController extends AbstractCrudController
             
             ChoiceField::new('status', 'Statut')
                 ->setChoices([
-                    'En attente' => OrderStatus::PENDING,
+                    'Nouveau' => OrderStatus::PENDING,
                     'Confirmée' => OrderStatus::CONFIRMED,
                     'En préparation' => OrderStatus::PREPARING,
                     'Livrée' => OrderStatus::DELIVERED,
@@ -89,15 +93,14 @@ class OrderCrudController extends AbstractCrudController
                 ])
                 ->renderExpanded(false)
                 ->setRequired(true)
-                ->formatValue(function ($value, $entity) {
-                    return match($entity->getStatus()) {
-                        OrderStatus::PENDING => 'En attente',
-                        OrderStatus::CONFIRMED => 'Confirmée',
-                        OrderStatus::PREPARING => 'En préparation',
-                        OrderStatus::DELIVERED => 'Livrée',
-                        OrderStatus::CANCELLED => 'Annulée',
-                    };
-                }),
+                ->setTemplatePath('admin/order/_status_badge.html.twig')
+                ->renderAsBadges([
+                    'pending' => 'primary',
+                    'confirmed' => 'success',
+                    'preparing' => 'info',
+                    'delivered' => 'primary',
+                    'cancelled' => 'danger',
+                ]),
 
             ChoiceField::new('deliveryMode', 'Mode de livraison')
                 ->setChoices([
@@ -270,9 +273,10 @@ class OrderCrudController extends AbstractCrudController
     {
         return $filters
             ->add(TextFilter::new('no', 'Numéro de commande'))
+            ->add(TextFilter::new('clientName', 'Nom du client'))
             ->add(ChoiceFilter::new('status', 'Statut')
                 ->setChoices([
-                    'En attente' => OrderStatus::PENDING,
+                    'Nouveau' => OrderStatus::PENDING,
                     'Confirmée' => OrderStatus::CONFIRMED,
                     'En préparation' => OrderStatus::PREPARING,
                     'Livrée' => OrderStatus::DELIVERED,
@@ -431,6 +435,85 @@ class OrderCrudController extends AbstractCrudController
         
         $this->addFlash('success', 'Commande annulée !');
         
+        return $this->redirectToRoute('admin');
+    }
+
+    /**
+     * Change order status by clicking on status badge
+     */
+    #[Route('/admin/orders/change-status', name: 'admin_order_change_status')]
+    public function changeStatus(Request $request): Response
+    {
+        $entityId = $request->query->get('entityId');
+        if (!$entityId) {
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => false, 'message' => 'ID de la commande non trouvé.'], 400);
+            }
+            $this->addFlash('error', 'ID de la commande non trouvé.');
+            return $this->redirectToRoute('admin');
+        }
+
+        /** @var Order|null $order */
+        $order = $this->entityManager->getRepository(Order::class)->find($entityId);
+        if (!$order) {
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => false, 'message' => 'Commande non trouvée.'], 404);
+            }
+            $this->addFlash('error', 'Commande non trouvée.');
+            return $this->redirectToRoute('admin');
+        }
+
+        // Status cycle for click: pending -> confirmed -> preparing -> delivered -> cancelled -> pending
+        // Note: We could add an intermediate "en attente" status like reservations, but keeping it simple for now
+        $cycle = [OrderStatus::PENDING, OrderStatus::CONFIRMED, OrderStatus::PREPARING, OrderStatus::DELIVERED, OrderStatus::CANCELLED];
+        $current = $order->getStatus();
+        $currentIndex = array_search($current, $cycle, true);
+        
+        if ($currentIndex === false) {
+            // If status is outside cycle, start with 'pending'
+            $next = OrderStatus::PENDING;
+        } else {
+            $next = $cycle[($currentIndex + 1) % count($cycle)];
+        }
+
+        $order->setStatus($next);
+        $this->entityManager->flush();
+
+        // Status labels
+        $statusLabels = [
+            OrderStatus::PENDING->value => 'Nouveau',
+            OrderStatus::CONFIRMED->value => 'Confirmée',
+            OrderStatus::PREPARING->value => 'En préparation',
+            OrderStatus::DELIVERED->value => 'Livrée',
+            OrderStatus::CANCELLED->value => 'Annulée',
+        ];
+
+        $statusColors = [
+            OrderStatus::PENDING->value => 'badge-primary',
+            OrderStatus::CONFIRMED->value => 'badge-success',
+            OrderStatus::PREPARING->value => 'badge-secondary',
+            OrderStatus::DELIVERED->value => 'badge-warning',
+            OrderStatus::CANCELLED->value => 'badge-danger',
+        ];
+
+        // Return JSON for AJAX requests
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'success' => true,
+                'message' => sprintf('Statut de la commande #%s changé en "%s"', $order->getNo(), $statusLabels[$next->value]),
+                'newStatus' => $next->value,
+                'newLabel' => $statusLabels[$next->value],
+                'newClass' => $statusColors[$next->value]
+            ]);
+        }
+
+        // Fallback for non-AJAX requests
+        $this->addFlash('success', sprintf(
+            'Statut de la commande #%s changé en "%s"',
+            $order->getNo(),
+            $statusLabels[$next->value]
+        ));
+
         return $this->redirectToRoute('admin');
     }
 }

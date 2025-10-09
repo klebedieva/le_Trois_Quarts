@@ -39,6 +39,18 @@ class OrderResponseDTO
         #[OA\Property(property: 'paymentMode', type: 'string', example: 'card', description: 'Payment mode')]
         public string $paymentMode,
 
+        #[OA\Property(property: 'clientFirstName', type: 'string', example: 'Jean', description: 'Client first name', nullable: true)]
+        public ?string $clientFirstName,
+
+        #[OA\Property(property: 'clientLastName', type: 'string', example: 'Dupont', description: 'Client last name', nullable: true)]
+        public ?string $clientLastName,
+
+        #[OA\Property(property: 'clientPhone', type: 'string', example: '+33123456789', description: 'Client phone number', nullable: true)]
+        public ?string $clientPhone,
+
+        #[OA\Property(property: 'clientEmail', type: 'string', example: 'jean.dupont@email.com', description: 'Client email address', nullable: true)]
+        public ?string $clientEmail,
+
         #[OA\Property(property: 'subtotal', type: 'number', format: 'float', example: 29.0, description: 'Subtotal')]
         public float $subtotal,
 
@@ -67,6 +79,10 @@ class OrderResponseDTO
             'deliveryInstructions' => $this->deliveryInstructions,
             'deliveryFee' => $this->deliveryFee,
             'paymentMode' => $this->paymentMode,
+            'clientFirstName' => $this->clientFirstName,
+            'clientLastName' => $this->clientLastName,
+            'clientPhone' => $this->clientPhone,
+            'clientEmail' => $this->clientEmail,
             'subtotal' => $this->subtotal,
             'taxAmount' => $this->taxAmount,
             'total' => $this->total,
