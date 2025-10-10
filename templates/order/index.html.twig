@@ -84,9 +84,11 @@
                                 <div class="row">
                                     <div class="col-md-8 mb-3">
                                         <input type="text" class="form-control" id="deliveryAddress" placeholder="Adresse complète" required>
+                                        <div class="form-text">Exemple: 123 Rue de la République, Marseille</div>
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <input type="text" class="form-control" id="deliveryZip" placeholder="Code postal" required>
+                                        <div class="form-text">Exemple: 13001</div>
                                     </div>
                                 </div>
                                 <textarea class="form-control mb-3" id="deliveryInstructions" rows="3" placeholder="Instructions de livraison (optionnel)"></textarea>
@@ -276,7 +278,7 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="{{ asset('assets/js/order.js') }}?v=9"></script>
+    <script src="{{ asset('assets/js/order.js') }}?v=14"></script>
 {% endblock %}
 
 

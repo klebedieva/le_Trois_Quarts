@@ -45,6 +45,14 @@ L'email n'est pas valide: "L'email n'est pas valide"
 Le numéro de téléphone n'est pas valide: "Le numéro de téléphone n'est pas valide"
 Le numéro de téléphone français n'est pas valide: "Veuillez entrer un numéro de téléphone français valide"
 Format de téléphone invalide: "Format de numéro de téléphone invalide"
+Format de code postal invalide: "Format de code postal invalide"
+Code postal introuvable: "Code postal introuvable"
+Livraison non disponible pour ce code postal: "Livraison non disponible pour ce code postal"
+Livraison non disponible au-delà de: "Livraison non disponible au-delà de"
+Livraison disponible: "Livraison disponible"
+Adresse introuvable: "Adresse introuvable"
+Livraison non disponible pour cette adresse: "Livraison non disponible pour cette adresse"
+Adresse trop courte: "Adresse trop courte"
 Veuillez sélectionner un sujet valide: 'Veuillez sélectionner un sujet valide'
 Le message doit contenir entre 10 et 1000 caractères et ne peut pas contenir de balises HTML: 'Le message doit contenir entre 10 et 1000 caractères et ne peut pas contenir de balises HTML'
 

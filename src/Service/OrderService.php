@@ -23,7 +23,8 @@ class OrderService
         private OrderRepository $orderRepository,
         private CartService $cartService,
         private RequestStack $requestStack,
-        private RestaurantSettingsService $restaurantSettings
+        private RestaurantSettingsService $restaurantSettings,
+        private AddressValidationService $addressValidationService
     ) {}
 
     /**
@@ -55,8 +56,16 @@ class OrderService
             if (empty($orderData['deliveryAddress'])) {
                 throw new \InvalidArgumentException("L'adresse de livraison est requise");
             }
+            
+            // Validation de l'adresse complète pour la livraison
+            $deliveryZip = $orderData['deliveryZip'] ?? null;
+            $addressValidation = $this->addressValidationService->validateAddressForDelivery($orderData['deliveryAddress'], $deliveryZip);
+            if (!$addressValidation['valid']) {
+                throw new \InvalidArgumentException($addressValidation['error'] ?? 'Livraison non disponible pour cette adresse');
+            }
+            
             $order->setDeliveryAddress($orderData['deliveryAddress']);
-            $order->setDeliveryZip($orderData['deliveryZip'] ?? null);
+            $order->setDeliveryZip($deliveryZip);
             $order->setDeliveryInstructions($orderData['deliveryInstructions'] ?? null);
             $order->setDeliveryFee($orderData['deliveryFee'] ?? number_format($this->restaurantSettings->getDeliveryFee(), 2, '.', ''));
         } else {

@@ -45,6 +45,8 @@ async function initOrderPage() {
     initPaymentOptions();
     initTimeValidation();
     initPhoneValidation();
+    initZipCodeValidation();
+    initAddressValidation();
 
     window.addEventListener('cartUpdated', async function() {
         await loadCartItems();
@@ -195,7 +197,12 @@ function updateOrderSummary() {
     orderData.subtotal = subtotalWithoutTax; orderData.taxAmount = taxAmount; orderData.total = total;
 }
 
-function nextStep(step) { if (validateCurrentStep()) { showStep(step); } }
+async function nextStep(step) { 
+    const isValid = await validateCurrentStep(); 
+    if (isValid) { 
+        showStep(step); 
+    } 
+}
 function prevStep(step) { showStep(step); }
 
 function showStep(step) {
@@ -208,10 +215,10 @@ function showStep(step) {
     if (step === 4) updateFinalSummary();
 }
 
-function validateCurrentStep() {
+async function validateCurrentStep() {
     switch (currentStep) {
         case 1: return validateCartStep();
-        case 2: return validateDeliveryStep();
+        case 2: return await validateDeliveryStep();
         case 3: return validatePaymentStep();
         default: return true;
     }
@@ -219,7 +226,7 @@ function validateCurrentStep() {
 
 function validateCartStep() { if ((orderData.items || []).length === 0) { showNotification('Votre panier est vide', 'error'); return false; } return true; }
 
-function validateDeliveryStep() {
+async function validateDeliveryStep() {
     const mode = document.querySelector('input[name="deliveryMode"]:checked')?.value;
     const date = document.getElementById('deliveryDate')?.value;
     const time = document.getElementById('deliveryTime')?.value;
@@ -232,6 +239,24 @@ function validateDeliveryStep() {
         const address = document.getElementById('deliveryAddress')?.value;
         const zip = document.getElementById('deliveryZip')?.value;
         if (!address || !zip) { showNotification('Veuillez renseigner votre adresse de livraison', 'error'); return false; }
+        
+        // Validation du code postal pour la livraison
+        if (!validateFrenchZipCode(zip)) {
+            showNotification('Format de code postal invalide', 'error');
+            return false;
+        }
+        
+        // Vérifier si la livraison est disponible pour cette adresse
+        try {
+            const addressValidation = await window.zipCodeAPI.validateAddress(address, zip);
+            if (!addressValidation.valid) {
+                showNotification(addressValidation.error || 'Livraison non disponible pour cette adresse', 'error');
+                return false;
+            }
+        } catch (error) {
+            showNotification('Erreur lors de la vérification de l\'adresse', 'error');
+            return false;
+        }
     }
     
     // Validation des informations client
@@ -458,6 +483,267 @@ function removePhoneError() {
     if (existingError) {
         existingError.remove();
     }
+}
+
+// API для валидации почтового индекса и адресов
+window.zipCodeAPI = {
+    async validateZipCode(zipCode) {
+        const res = await fetch('/api/validate-zip-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ zipCode })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data?.error || `Erreur ${res.status}`);
+        }
+        return data;
+    },
+    
+    async validateAddress(address, zipCode = null) {
+        const res = await fetch('/api/validate-address', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ address, zipCode })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data?.error || `Erreur ${res.status}`);
+        }
+        return data;
+    }
+};
+
+// Валидация почтового индекса
+function validateFrenchZipCode(zipCode) {
+    if (!zipCode) return false;
+    
+    // Очистить почтовый индекс
+    const cleanZipCode = zipCode.replace(/[^0-9]/g, '');
+    
+    // Проверить формат французского почтового индекса (5 цифр)
+    return /^[0-9]{5}$/.test(cleanZipCode);
+}
+
+// Инициализация валидации почтового индекса
+function initZipCodeValidation() {
+    const zipInput = document.getElementById('deliveryZip');
+    if (!zipInput) return;
+    
+    let validationTimeout;
+    
+    // Валидация в реальном времени
+    zipInput.addEventListener('input', function() {
+        clearTimeout(validationTimeout);
+        const zipCode = this.value.trim();
+        
+        // Убрать предыдущие классы валидации
+        this.classList.remove('is-valid', 'is-invalid');
+        removeZipCodeError();
+        
+        if (zipCode === '') {
+            return;
+        }
+        
+        // Базовая валидация формата
+        if (!validateFrenchZipCode(zipCode)) {
+            this.classList.add('is-invalid');
+            showZipCodeError('Format de code postal invalide');
+            return;
+        }
+        
+        // Валидация через API с задержкой
+        validationTimeout = setTimeout(async () => {
+            try {
+                const result = await window.zipCodeAPI.validateZipCode(zipCode);
+                
+                if (result.valid) {
+                    this.classList.remove('is-invalid');
+                    showZipCodeSuccess('Livraison disponible');
+                } else {
+                    this.classList.add('is-invalid');
+                    showZipCodeError(result.error || 'Livraison non disponible pour ce code postal');
+                }
+            } catch (error) {
+                this.classList.add('is-invalid');
+                showZipCodeError('Erreur lors de la vérification du code postal');
+            }
+        }, 500); // Задержка 500ms после окончания ввода
+    });
+    
+    // Очистка при фокусе
+    zipInput.addEventListener('focus', function() {
+        this.classList.remove('is-invalid');
+        removeZipCodeError();
+    });
+}
+
+// Показать ошибку валидации почтового индекса
+function showZipCodeError(message) {
+    removeZipCodeError();
+    
+    const zipInput = document.getElementById('deliveryZip');
+    if (!zipInput) return;
+    
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'invalid-feedback zip-validation-error';
+    errorDiv.textContent = message;
+    
+    zipInput.parentNode.appendChild(errorDiv);
+}
+
+// Показать успешную валидацию почтового индекса
+function showZipCodeSuccess(message) {
+    removeZipCodeError();
+    
+    const zipInput = document.getElementById('deliveryZip');
+    if (!zipInput) return;
+    
+    const successDiv = document.createElement('div');
+    successDiv.className = 'valid-feedback zip-validation-success';
+    successDiv.textContent = message;
+    
+    zipInput.parentNode.appendChild(successDiv);
+}
+
+// Удалить сообщения валидации почтового индекса
+function removeZipCodeError() {
+    const existingError = document.querySelector('.zip-validation-error');
+    const existingSuccess = document.querySelector('.zip-validation-success');
+    
+    if (existingError) existingError.remove();
+    if (existingSuccess) existingSuccess.remove();
+}
+
+// Извлечение почтового индекса из адреса
+function extractZipCodeFromAddress(address) {
+    if (!address) return null;
+    
+    // Поиск 5-значного числа в адресе
+    const zipMatch = address.match(/\b(\d{5})\b/);
+    if (zipMatch) {
+        const zipCode = zipMatch[1];
+        // Проверка, что это французский почтовый индекс
+        if (/^[0-9]{5}$/.test(zipCode)) {
+            return zipCode;
+        }
+    }
+    return null;
+}
+
+// Валидация полного адреса
+function validateAddress(address, zipCode) {
+    if (!address) return false;
+    
+    // Базовая проверка - адрес не должен быть пустым
+    const cleanAddress = address.trim();
+    if (cleanAddress.length < 5) return false;
+    
+    return true;
+}
+
+// Инициализация валидации адреса
+function initAddressValidation() {
+    const addressInput = document.getElementById('deliveryAddress');
+    const zipInput = document.getElementById('deliveryZip');
+    
+    if (!addressInput) return;
+    
+    let validationTimeout;
+    
+    // Валидация в реальном времени
+    addressInput.addEventListener('input', function() {
+        clearTimeout(validationTimeout);
+        const address = this.value.trim();
+        
+        // Автоматическое извлечение и подстановка почтового индекса
+        const extractedZipCode = extractZipCodeFromAddress(address);
+        if (extractedZipCode && zipInput) {
+            zipInput.value = extractedZipCode;
+            // Запустить валидацию почтового индекса после подстановки
+            zipInput.dispatchEvent(new Event('input'));
+        }
+        
+        const zipCode = zipInput?.value?.trim() || extractedZipCode || null;
+        
+        // Убрать предыдущие классы валидации
+        this.classList.remove('is-valid', 'is-invalid');
+        removeAddressError();
+        
+        if (address === '') {
+            return;
+        }
+        
+        // Базовая валидация адреса
+        if (!validateAddress(address)) {
+            this.classList.add('is-invalid');
+            showAddressError('Adresse trop courte');
+            return;
+        }
+        
+        // Валидация через API с задержкой (debounce)
+        validationTimeout = setTimeout(async () => {
+            try {
+                const result = await window.zipCodeAPI.validateAddress(address, zipCode);
+                
+                if (result.valid) {
+                    this.classList.remove('is-invalid');
+                    showAddressSuccess(`Livraison disponible (${result.distance}km)`);
+                } else {
+                    this.classList.add('is-invalid');
+                    showAddressError(result.error || 'Livraison non disponible pour cette adresse');
+                }
+            } catch (error) {
+                this.classList.add('is-invalid');
+                showAddressError('Erreur lors de la vérification de l\'adresse');
+            }
+        }, 800); // Задержка 800ms для адреса (больше чем для почтового индекса)
+    });
+    
+    // Очистка при фокусе
+    addressInput.addEventListener('focus', function() {
+        this.classList.remove('is-invalid');
+        removeAddressError();
+    });
+}
+
+// Показать ошибку валидации адреса
+function showAddressError(message) {
+    removeAddressError();
+    
+    const addressInput = document.getElementById('deliveryAddress');
+    if (!addressInput) return;
+    
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'invalid-feedback address-validation-error';
+    errorDiv.textContent = message;
+    
+    addressInput.parentNode.appendChild(errorDiv);
+}
+
+// Показать успешную валидацию адреса
+function showAddressSuccess(message) {
+    removeAddressError();
+    
+    const addressInput = document.getElementById('deliveryAddress');
+    if (!addressInput) return;
+    
+    const successDiv = document.createElement('div');
+    successDiv.className = 'valid-feedback address-validation-success';
+    successDiv.textContent = message;
+    
+    addressInput.parentNode.appendChild(successDiv);
+}
+
+// Удалить сообщения валидации адреса
+function removeAddressError() {
+    const existingError = document.querySelector('.address-validation-error');
+    const existingSuccess = document.querySelector('.address-validation-success');
+    
+    if (existingError) existingError.remove();
+    if (existingSuccess) existingSuccess.remove();
 }
 
 // Globals
