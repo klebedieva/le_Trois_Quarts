@@ -7,7 +7,7 @@
 {% block main %}
     <!-- Tâches prioritaires -->
     <div class="row mb-4">
-        <div class="col-lg-4 col-md-4 mb-4">
+        <div class="col-lg-3 col-md-4 mb-4">
             <div class="card text-white shadow-sm gradient-orange">
                 <div class="card-body text-center">
                     <i class="fas fa-clock fa-2x mb-2 opacity-75"></i>
@@ -17,7 +17,7 @@
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-4 mb-4">
+        <div class="col-lg-3 col-md-4 mb-4">
             <div class="card text-white shadow-sm gradient-blue">
                 <div class="card-body text-center">
                     <i class="fas fa-envelope fa-2x mb-2 opacity-75"></i>
@@ -27,7 +27,7 @@
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-4 mb-4">
+        <div class="col-lg-3 col-md-4 mb-4">
             <div class="card text-white shadow-sm gradient-grey">
                 <div class="card-body text-center">
                     <i class="fas fa-comments fa-2x mb-2 opacity-75"></i>
@@ -37,7 +37,7 @@
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-4 mb-4">
+        <div class="col-lg-3 col-md-4 mb-4">
             <div class="card text-white shadow-sm gradient-red">
                 <div class="card-body text-center">
                     <i class="fas fa-shopping-cart fa-2x mb-2 opacity-75"></i>
@@ -50,7 +50,7 @@
 
     <!-- Statistiques générales -->
     <div class="row mb-4">
-        <div class="col-lg-4 col-md-4 mb-4">
+        <div class="col-lg-3 col-md-4 mb-4">
             <div class="card text-white shadow-sm gradient-indigo">
                 <div class="card-body text-center">
                     <i class="fas fa-calendar-check fa-2x mb-2 opacity-75"></i>
@@ -60,7 +60,7 @@
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-4 mb-4">
+        <div class="col-lg-3 col-md-4 mb-4">
             <div class="card text-white shadow-sm gradient-violet">
                 <div class="card-body text-center">
                     <i class="fas fa-comments fa-2x mb-2 opacity-75"></i>
@@ -70,7 +70,7 @@
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-4 mb-4">
+        <div class="col-lg-3 col-md-4 mb-4">
             <div class="card text-white shadow-sm gradient-green">
                 <div class="card-body text-center">
                     <i class="fas fa-star fa-2x mb-2 opacity-75"></i>
@@ -80,7 +80,7 @@
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-4 mb-4">
+        <div class="col-lg-3 col-md-4 mb-4">
             <div class="card text-white shadow-sm gradient-purple">
                 <div class="card-body text-center">
                     <i class="fas fa-receipt fa-2x mb-2 opacity-75"></i>
@@ -90,7 +90,7 @@
             </div>
         </div>
 
-        <div class="col-lg-4 col-md-4 mb-4">
+        <div class="col-lg-3 col-md-4 mb-4">
             <div class="card text-white shadow-sm gradient-gold">
                 <div class="card-body text-center">
                     <i class="fas fa-euro-sign fa-2x mb-2 opacity-75"></i>
@@ -126,7 +126,7 @@
                         </div>
                         <div class="col-lg-3 col-md-6 mb-3">
                             <a href="{{ ea_url().setController('App\\Controller\\Admin\\ReviewCrudController').setAction('index').set('filters[isApproved][value]', false) }}" 
-                               class="btn btn-secondary w-100 btn-lg">
+                               class="btn btn-reviews-pending w-100 btn-lg">
                                 <i class="fas fa-comments me-2"></i>Avis en attente
                             </a>
                         </div>

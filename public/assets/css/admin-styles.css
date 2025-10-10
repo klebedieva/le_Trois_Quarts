@@ -177,6 +177,39 @@ td .btn {
 .gradient-violet { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
 .gradient-green  { background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%) !important; }
 .gradient-red    { background: linear-gradient(135deg, #ef5350 0%, #e53935 100%) !important; }
+
+/* Custom button style for pending reviews - light gray */
+.btn-reviews-pending {
+    background-color: #d3d1d1 !important;
+    border-color: #c9c7c7 !important;
+    color: #2f2f2f !important;
+}
+
+.btn-reviews-pending:hover {
+    background-color: #c7c5c5 !important;
+    border-color: #bdbbbb !important;
+    color: #1f1f1f !important;
+}
+
+/* Custom hover effects for dashboard action buttons */
+.btn-warning.w-100.btn-lg:hover {
+    background-color: #e0a800 !important;
+    border-color: #d39e00 !important;
+    color: #212529 !important;
+}
+
+.btn-info.w-100.btn-lg:hover {
+    background-color: #138496 !important;
+    border-color: #117a8b !important;
+    color: #fff !important;
+}
+
+.btn-danger.w-100.btn-lg:hover {
+    background-color: #c82333 !important;
+    border-color: #bd2130 !important;
+    color: #fff !important;
+}
+
 .gradient-purple { background: linear-gradient(135deg, #ab47bc 0%, #8e24aa 100%) !important; }
 .gradient-gold   { background: linear-gradient(135deg, #ffca28 0%, #ffc107 100%) !important; }
 

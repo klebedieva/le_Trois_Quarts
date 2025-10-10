@@ -281,11 +281,11 @@ class OrderCrudController extends AbstractCrudController
             ->add(TextFilter::new('clientName', 'Nom du client'))
             ->add(ChoiceFilter::new('status', 'Statut')
                 ->setChoices([
-                    'Nouveau' => OrderStatus::PENDING,
-                    'Confirmée' => OrderStatus::CONFIRMED,
-                    'En préparation' => OrderStatus::PREPARING,
-                    'Livrée' => OrderStatus::DELIVERED,
-                    'Annulée' => OrderStatus::CANCELLED,
+                    'Nouveau' => 'pending',
+                    'Confirmée' => 'confirmed',
+                    'En préparation' => 'preparing',
+                    'Livrée' => 'delivered',
+                    'Annulée' => 'cancelled',
                 ]))
             ->add(ChoiceFilter::new('deliveryMode', 'Mode de livraison')
                 ->setChoices([
