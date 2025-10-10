@@ -44,6 +44,7 @@ async function initOrderPage() {
     initDeliveryOptions();
     initPaymentOptions();
     initTimeValidation();
+    initPhoneValidation();
 
     window.addEventListener('cartUpdated', async function() {
         await loadCartItems();
@@ -222,6 +223,7 @@ function validateDeliveryStep() {
     const mode = document.querySelector('input[name="deliveryMode"]:checked')?.value;
     const date = document.getElementById('deliveryDate')?.value;
     const time = document.getElementById('deliveryTime')?.value;
+    
     if (!mode) { showNotification('Veuillez choisir un mode de récupération', 'error'); return false; }
     if (!date) { showNotification('Veuillez choisir une date', 'error'); return false; }
     if (!time) { showNotification('Veuillez choisir un créneau horaire', 'error'); return false; }
@@ -243,12 +245,19 @@ function validateDeliveryStep() {
     if (!phone) { showNotification('Veuillez renseigner votre numéro de téléphone', 'error'); return false; }
     if (!email) { showNotification('Veuillez renseigner votre adresse email', 'error'); return false; }
     
+    // Validation du numéro de téléphone français
+    if (!validateFrenchPhoneNumber(phone)) {
+        showNotification('Veuillez entrer un numéro de téléphone français valide', 'error');
+        return false;
+    }
+    
     // Validation basique de l'email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) { showNotification('Veuillez renseigner une adresse email valide', 'error'); return false; }
     
     orderData.delivery = { mode, date, time, address: document.getElementById('deliveryAddress')?.value, zip: document.getElementById('deliveryZip')?.value, instructions: document.getElementById('deliveryInstructions')?.value };
     orderData.client = { firstName, lastName, phone, email };
+    
     return true;
 }
 
@@ -347,6 +356,108 @@ function showNotification(message, type = 'info') {
     n.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
     document.body.appendChild(n);
     setTimeout(() => { if (n.parentNode) n.remove(); }, 5000);
+}
+
+// Validation du numéro de téléphone français
+function validateFrenchPhoneNumber(phone) {
+    if (!phone) return false;
+    
+    // Nettoyer le numéro (supprimer espaces, tirets, points)
+    const cleanPhone = phone.replace(/[\s\-\.]/g, '');
+    
+    // Vérifier d'abord la longueur et le format général
+    // Format national: 0X XXXX XXXX (10 chiffres au total, commence par 0)
+    // Format international: +33 X XX XX XX XX (12 caractères, commence par +33)
+    
+    if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) {
+        // Format national français: 0X XXXX XXXX
+        const nationalRegex = /^0[1-9]\d{8}$/;
+        if (!nationalRegex.test(cleanPhone)) {
+            return false;
+        }
+        
+        // Vérifier les premiers chiffres pour les mobiles (06, 07) et fixes (01-05)
+        const firstTwoDigits = cleanPhone.substring(0, 2);
+        const validPrefixes = ['06', '07', '01', '02', '03', '04', '05'];
+        return validPrefixes.includes(firstTwoDigits);
+        
+    } else if (cleanPhone.length === 12 && cleanPhone.startsWith('+33')) {
+        // Format international: +33 X XX XX XX XX
+        const internationalRegex = /^\+33[1-9]\d{8}$/;
+        if (!internationalRegex.test(cleanPhone)) {
+            return false;
+        }
+        
+        // Extraire le numéro sans l'indicatif pays (+33)
+        const withoutCountryCode = cleanPhone.substring(3); // Supprimer '+33'
+        
+        // Vérifier les premiers chiffres pour les mobiles (06, 07) et fixes (01-05)
+        const firstTwoDigits = withoutCountryCode.substring(0, 2);
+        const validPrefixes = ['06', '07', '01', '02', '03', '04', '05'];
+        return validPrefixes.includes(firstTwoDigits);
+    }
+    
+    // Si ni 10 chiffres avec 0, ni 12 caractères avec +33, alors invalide
+    return false;
+}
+
+// Initialisation de la validation du téléphone en temps réel
+function initPhoneValidation() {
+    const phoneInput = document.getElementById('clientPhone');
+    if (!phoneInput) return;
+    
+    // Validation en temps réel pendant la saisie
+    phoneInput.addEventListener('input', function() {
+        const phone = this.value.trim();
+        const isValid = phone === '' || validateFrenchPhoneNumber(phone);
+        
+        // Retirer les classes de validation précédentes
+        this.classList.remove('is-invalid');
+        
+        if (phone !== '' && !isValid) {
+            this.classList.add('is-invalid');
+            showPhoneError('Format de numéro de téléphone invalide');
+        } else {
+            removePhoneError();
+        }
+    });
+    
+    // Validation au blur (quand l'utilisateur quitte le champ)
+    phoneInput.addEventListener('blur', function() {
+        const phone = this.value.trim();
+        if (phone !== '' && !validateFrenchPhoneNumber(phone)) {
+            this.classList.add('is-invalid');
+            showPhoneError('Numéro de téléphone invalide');
+        }
+    });
+    
+    // Nettoyer les erreurs quand l'utilisateur commence à taper
+    phoneInput.addEventListener('focus', function() {
+        this.classList.remove('is-invalid');
+        removePhoneError();
+    });
+}
+
+// Afficher l'erreur de validation du téléphone
+function showPhoneError(message) {
+    removePhoneError(); // Supprimer l'erreur précédente s'il y en a une
+    
+    const phoneInput = document.getElementById('clientPhone');
+    if (!phoneInput) return;
+    
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'invalid-feedback phone-validation-error';
+    errorDiv.textContent = message;
+    
+    phoneInput.parentNode.appendChild(errorDiv);
+}
+
+// Supprimer l'erreur de validation du téléphone
+function removePhoneError() {
+    const existingError = document.querySelector('.phone-validation-error');
+    if (existingError) {
+        existingError.remove();
+    }
 }
 
 // Globals

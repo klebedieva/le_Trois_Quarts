@@ -108,7 +108,8 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="clientPhone" class="form-label">Téléphone *</label>
-                                    <input type="tel" class="form-control" id="clientPhone" placeholder="06 12 34 56 78" required>
+                                    <input type="tel" class="form-control" id="clientPhone" placeholder="Votre numéro de téléphone" required>
+                                    <div class="form-text">Format accepté: 06 12 34 56 78, +33 6 12 34 56 78</div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="clientEmail" class="form-label">Email *</label>
@@ -275,7 +276,7 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="{{ asset('assets/js/order.js') }}?v=4"></script>
+    <script src="{{ asset('assets/js/order.js') }}?v=9"></script>
 {% endblock %}
 
 

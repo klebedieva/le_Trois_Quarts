@@ -43,6 +43,8 @@ Le prénom ne peut contenir que des lettres, espaces et tirets: 'Le prénom ne p
 Le nom ne peut contenir que des lettres, espaces et tirets: 'Le nom ne peut contenir que des lettres, espaces et tirets'
 L'email n'est pas valide: "L'email n'est pas valide"
 Le numéro de téléphone n'est pas valide: "Le numéro de téléphone n'est pas valide"
+Le numéro de téléphone français n'est pas valide: "Veuillez entrer un numéro de téléphone français valide"
+Format de téléphone invalide: "Format de numéro de téléphone invalide"
 Veuillez sélectionner un sujet valide: 'Veuillez sélectionner un sujet valide'
 Le message doit contenir entre 10 et 1000 caractères et ne peut pas contenir de balises HTML: 'Le message doit contenir entre 10 et 1000 caractères et ne peut pas contenir de balises HTML'
 
