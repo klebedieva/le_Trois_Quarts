@@ -43,9 +43,20 @@ class HomeController extends AbstractController
     }
 
     #[Route('/gallery', name: 'app_gallery')]
-    public function gallery(): Response
+    public function gallery(EntityManagerInterface $entityManager): Response
     {
-        return $this->render('pages/gallery.html.twig');
+        $galleryRepository = $entityManager->getRepository(\App\Entity\GalleryImage::class);
+        
+        // Get all active images
+        $images = $galleryRepository->findAllActive();
+        
+        // Get counts by category for filter display
+        $categoryCounts = $galleryRepository->countByCategory();
+        
+        return $this->render('pages/gallery.html.twig', [
+            'images' => $images,
+            'categoryCounts' => $categoryCounts
+        ]);
     }
 
     #[Route('/reservation', name: 'app_reservation', methods: ['GET','POST'])]

@@ -10,6 +10,7 @@ use App\Entity\Review;
 use App\Entity\Table;
 use App\Entity\Order;
 use App\Entity\OrderItem;
+use App\Entity\GalleryImage;
 use App\Repository\ContactMessageRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\ReviewRepository;
@@ -147,6 +148,7 @@ class DashboardController extends AbstractDashboardController
         ]);
         yield EaMenuItem::linkToCrud('Messages de contact', 'fas fa-envelope', ContactMessage::class);
         yield EaMenuItem::linkToCrud('Avis', 'fas fa-comments', Review::class);
+        yield EaMenuItem::linkToCrud('Galerie', 'fas fa-images', GalleryImage::class);
         yield EaMenuItem::linkToUrl('Retour au site', 'fas fa-external-link-alt', '/');
     }
 
@@ -160,5 +162,6 @@ class DashboardController extends AbstractDashboardController
         yield Table::class => TableCrudController::class;
         yield Order::class => OrderCrudController::class;
         yield OrderItem::class => OrderItemCrudController::class;
+        yield GalleryImage::class => GalleryImageCrudController::class;
     }
 }

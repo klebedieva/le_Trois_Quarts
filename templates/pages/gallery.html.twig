@@ -46,84 +46,23 @@
     <section class="gallery-grid py-5">
         <div class="container">
             <div class="row g-3" id="galleryContainer">
-                {# Examples (same set as Restaurant). Replace with real images if needed #}
-                <div class="col-lg-4 col-md-6 gallery-item" data-category="terrasse">
-                    <div class="gallery-card" data-image="https://images.pexels.com/photos/1581384/pexels-photo-1581384.jpeg?auto=compress&cs=tinysrgb&w=800" data-title="Terrasse ensoleillée" data-description="Notre belle terrasse pour profiter du soleil marseillais">
-                        <img src="https://images.pexels.com/photos/1581384/pexels-photo-1581384.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Terrasse ensoleillée" class="img-fluid">
+                {% for image in images %}
+                <div class="col-lg-4 col-md-6 gallery-item" data-category="{{ image.category }}">
+                    <div class="gallery-card" 
+                         data-image="{{ asset(image.fullImagePath) }}" 
+                         data-title="{{ image.title }}" 
+                         data-description="{{ image.description }}">
+                        <img src="{{ asset(image.fullImagePath) }}" alt="{{ image.title }}" class="img-fluid">
                         <div class="gallery-overlay">
                             <div class="gallery-content">
-                                <h5>Terrasse ensoleillée</h5>
-                                <p>Notre belle terrasse pour profiter du soleil</p>
+                                <h5>{{ image.title }}</h5>
+                                <p>{{ image.description }}</p>
                                 <i class="bi bi-zoom-in"></i>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="col-lg-4 col-md-6 gallery-item" data-category="interieur">
-                    <div class="gallery-card" data-image="https://images.pexels.com/photos/1267320/pexels-photo-1267320.jpeg?auto=compress&cs=tinysrgb&w=800" data-title="Salle principale" data-description="L'intérieur chaleureux de notre brasserie">
-                        <img src="https://images.pexels.com/photos/1267320/pexels-photo-1267320.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Salle principale" class="img-fluid">
-                        <div class="gallery-overlay">
-                            <div class="gallery-content">
-                                <h5>Salle principale</h5>
-                                <p>L'intérieur chaleureux de notre brasserie</p>
-                                <i class="bi bi-zoom-in"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6 gallery-item" data-category="plats">
-                    <div class="gallery-card" data-image="https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800" data-title="Bouillabaisse marseillaise" data-description="Notre spécialité : la bouillabaisse traditionnelle">
-                        <img src="https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Bouillabaisse marseillaise" class="img-fluid">
-                        <div class="gallery-overlay">
-                            <div class="gallery-content">
-                                <h5>Bouillabaisse marseillaise</h5>
-                                <p>Notre spécialité traditionnelle</p>
-                                <i class="bi bi-zoom-in"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6 gallery-item" data-category="plats">
-                    <div class="gallery-card" data-image="https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=800" data-title="Salade fraîche" data-description="Nos salades composées avec des produits frais">
-                        <img src="https://images.pexels.com/photos/1639562/pexels-photo-1639562.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Salade fraîche" class="img-fluid">
-                        <div class="gallery-overlay">
-                            <div class="gallery-content">
-                                <h5>Salade fraîche</h5>
-                                <p>Produits frais et de saison</p>
-                                <i class="bi bi-zoom-in"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6 gallery-item" data-category="plats">
-                    <div class="gallery-card" data-image="https://images.pexels.com/photos/1126728/pexels-photo-1126728.jpeg?auto=compress&cs=tinysrgb&w=800" data-title="Desserts maison" data-description="Nos desserts préparés avec amour">
-                        <img src="https://images.pexels.com/photos/1126728/pexels-photo-1126728.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Desserts maison" class="img-fluid">
-                        <div class="gallery-overlay">
-                            <div class="gallery-content">
-                                <h5>Desserts maison</h5>
-                                <p>Préparés avec amour par notre chef</p>
-                                <i class="bi bi-zoom-in"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6 gallery-item" data-category="ambiance">
-                    <div class="gallery-card" data-image="https://images.pexels.com/photos/1307698/pexels-photo-1307698.jpeg?auto=compress&cs=tinysrgb&w=800" data-title="Bar et boissons" data-description="Notre sélection de vins et cocktails">
-                        <img src="https://images.pexels.com/photos/1307698/pexels-photo-1307698.jpeg?auto=compress&cs=tinysrgb&w=400" alt="Bar et boissons" class="img-fluid">
-                        <div class="gallery-overlay">
-                            <div class="gallery-content">
-                                <h5>Bar et boissons</h5>
-                                <p>Sélection de vins et cocktails</p>
-                                <i class="bi bi-zoom-in"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {% endfor %}
             </div>
 
             <div class="text-center mt-5">
