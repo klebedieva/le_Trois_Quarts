@@ -190,6 +190,14 @@ class GalleryImageCrudController extends AbstractCrudController
                     $entityInstance->setImagePath($originalEntity->getImagePath());
                 }
             }
+            
+            // Handle display order changes using original value from UnitOfWork
+            $unitOfWork = $entityManager->getUnitOfWork();
+            $originalData = $unitOfWork->getOriginalEntityData($entityInstance);
+            $originalOrder = $originalData['displayOrder'] ?? null;
+            if ($originalOrder !== null) {
+                $this->handleDisplayOrderUpdate($entityManager, $entityInstance, (int) $originalOrder);
+            }
         }
         parent::updateEntity($entityManager, $entityInstance);
     }
@@ -216,6 +224,9 @@ class GalleryImageCrudController extends AbstractCrudController
             if (empty($entityInstance->getImagePath())) {
                 throw new \InvalidArgumentException('Image is required for new gallery items');
             }
+            
+            // Handle display order for new images
+            $this->handleDisplayOrderForNewImage($entityManager, $entityInstance);
         }
         parent::persistEntity($entityManager, $entityInstance);
     }
@@ -246,6 +257,87 @@ class GalleryImageCrudController extends AbstractCrudController
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Handle display order updates to maintain sequential ordering
+     */
+    private function handleDisplayOrderUpdate(EntityManagerInterface $entityManager, GalleryImage $updatedImage, ?int $originalOrder = null): void
+    {
+        $newOrder = $updatedImage->getDisplayOrder();
+        $imageId = $updatedImage->getId();
+        
+        // Determine original order (prefer UnitOfWork value if provided)
+        if ($originalOrder === null) {
+            $originalImage = $entityManager->getRepository(GalleryImage::class)->find($imageId);
+            if (!$originalImage) {
+                return;
+            }
+            $originalOrder = $originalImage->getDisplayOrder();
+        }
+        
+        // If order hasn't changed, no need to update others
+        if ($newOrder === $originalOrder) {
+            return;
+        }
+        
+        $repository = $entityManager->getRepository(GalleryImage::class);
+        
+        if ($newOrder < $originalOrder) {
+            // Moving up: increment orders of images between newOrder and originalOrder
+            $qb = $repository->createQueryBuilder('g')
+                ->where('g.id != :currentId')
+                ->andWhere('g.displayOrder >= :newOrder')
+                ->andWhere('g.displayOrder < :originalOrder')
+                ->setParameter('currentId', $imageId)
+                ->setParameter('newOrder', $newOrder)
+                ->setParameter('originalOrder', $originalOrder);
+                
+            $imagesToUpdate = $qb->getQuery()->getResult();
+            
+            foreach ($imagesToUpdate as $image) {
+                $image->setDisplayOrder($image->getDisplayOrder() + 1);
+                $entityManager->persist($image);
+            }
+        } else {
+            // Moving down: decrement orders of images between originalOrder and newOrder
+            $qb = $repository->createQueryBuilder('g')
+                ->where('g.id != :currentId')
+                ->andWhere('g.displayOrder > :originalOrder')
+                ->andWhere('g.displayOrder <= :newOrder')
+                ->setParameter('currentId', $imageId)
+                ->setParameter('originalOrder', $originalOrder)
+                ->setParameter('newOrder', $newOrder);
+                
+            $imagesToUpdate = $qb->getQuery()->getResult();
+            
+            foreach ($imagesToUpdate as $image) {
+                $image->setDisplayOrder($image->getDisplayOrder() - 1);
+                $entityManager->persist($image);
+            }
+        }
+    }
+
+    /**
+     * Handle display order for new images
+     */
+    private function handleDisplayOrderForNewImage(EntityManagerInterface $entityManager, GalleryImage $newImage): void
+    {
+        $newOrder = $newImage->getDisplayOrder();
+        $repository = $entityManager->getRepository(GalleryImage::class);
+        
+        // Find all images with order >= newOrder
+        $qb = $repository->createQueryBuilder('g')
+            ->where('g.displayOrder >= :newOrder')
+            ->setParameter('newOrder', $newOrder);
+            
+        $imagesToUpdate = $qb->getQuery()->getResult();
+        
+        // Increment their order by 1
+        foreach ($imagesToUpdate as $image) {
+            $image->setDisplayOrder($image->getDisplayOrder() + 1);
+            $entityManager->persist($image);
         }
     }
 }
