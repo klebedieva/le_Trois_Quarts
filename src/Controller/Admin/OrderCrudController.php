@@ -28,6 +28,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Filter\DateTimeFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\NumericFilter;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use EasyCorp\Bundle\EasyAdminBundle\Context\AdminContext;
+use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGenerator;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -37,11 +38,13 @@ class OrderCrudController extends AbstractCrudController
 {
     private EntityManagerInterface $entityManager;
     private SymfonyEmailService $emailService;
+    private AdminUrlGenerator $adminUrlGenerator;
 
-    public function __construct(EntityManagerInterface $entityManager, SymfonyEmailService $emailService)
+    public function __construct(EntityManagerInterface $entityManager, SymfonyEmailService $emailService, AdminUrlGenerator $adminUrlGenerator)
     {
         $this->entityManager = $entityManager;
         $this->emailService = $emailService;
+        $this->adminUrlGenerator = $adminUrlGenerator;
     }
 
     public static function getEntityFqcn(): string
@@ -158,21 +161,21 @@ class OrderCrudController extends AbstractCrudController
                        ->setStoredAsCents(false)
                        ->hideOnForm()
                        ->setRequired(false)
-                       ->setHelp('Montant hors taxes'),
+                       ->setHelp('Montant hors taxes (calculé automatiquement)'),
 
                    MoneyField::new('taxAmount', 'TVA (10%)')
                        ->setCurrency('EUR')
                        ->setStoredAsCents(false)
                        ->hideOnForm()
                        ->setRequired(false)
-                       ->setHelp('Taxe sur la valeur ajoutée'),
+                       ->setHelp('Taxe sur la valeur ajoutée (calculée automatiquement)'),
 
                    MoneyField::new('total', 'Total TTC')
                        ->setCurrency('EUR')
                        ->setStoredAsCents(false)
                        ->hideOnForm()
                        ->setRequired(false)
-                       ->setHelp('Total toutes taxes comprises'),
+                       ->setHelp('Total toutes taxes comprises (calculé automatiquement)'),
 
             DateTimeField::new('createdAt', 'Date de création')
                 ->hideOnForm()
@@ -274,6 +277,59 @@ class OrderCrudController extends AbstractCrudController
             ->setPermission(Action::DELETE, 'ROLE_ADMIN');
     }
 
+    /**
+     * Prefill defaults when opening the "new" form so the first field (order number) is auto-filled.
+     */
+    public function createEntity(string $entityFqcn)
+    {
+        $order = new Order();
+        $order->setCreatedAt(new \DateTimeImmutable());
+        $order->setNo($this->generateOrderNo());
+        // Set default values for required financial fields
+        $order->setSubtotal('0.00');
+        $order->setTaxAmount('0.00');
+        $order->setTotal('0.00');
+        return $order;
+    }
+
+    /**
+     * Safety net to ensure required fields are set on persist.
+     */
+    public function persistEntity(EntityManagerInterface $entityManager, $entity): void
+    {
+        if ($entity instanceof Order) {
+            if (!$entity->getCreatedAt()) {
+                $entity->setCreatedAt(new \DateTimeImmutable());
+            }
+            if (!$entity->getNo()) {
+                $entity->setNo($this->generateOrderNo());
+            }
+            // Recalculate totals based on order items
+            $entity->recalculateTotals();
+        }
+        parent::persistEntity($entityManager, $entity);
+    }
+
+    /**
+     * Update entity and recalculate totals
+     */
+    public function updateEntity(EntityManagerInterface $entityManager, $entityInstance): void
+    {
+        if ($entityInstance instanceof Order) {
+            // Recalculate totals when order is updated
+            $entityInstance->recalculateTotals();
+        }
+        parent::updateEntity($entityManager, $entityInstance);
+    }
+
+    private function generateOrderNo(): string
+    {
+        $datePart = (new \DateTimeImmutable())->format('Ymd');
+        $timePart = (new \DateTimeImmutable())->format('His');
+        $randPart = (string) random_int(1000, 9999);
+        return 'ORD-A-' . $datePart . '-' . $randPart;
+    }
+
     public function configureFilters(Filters $filters): Filters
     {
         return $filters
@@ -310,14 +366,14 @@ class OrderCrudController extends AbstractCrudController
         $entityId = $request->query->get('entityId');
         if (!$entityId) {
             $this->addFlash('error', 'ID de la commande non trouvé.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         /** @var Order|null $order */
         $order = $this->entityManager->getRepository(Order::class)->find($entityId);
         if (!$order) {
             $this->addFlash('error', 'Commande non trouvée.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         if ($request->isMethod('POST')) {
@@ -359,7 +415,7 @@ class OrderCrudController extends AbstractCrudController
                 $this->addFlash('error', 'Erreur lors de la confirmation: ' . $e->getMessage());
             }
 
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         // GET: render confirmation page
@@ -376,13 +432,13 @@ class OrderCrudController extends AbstractCrudController
         $entityId = $request->query->get('entityId');
         if (!$entityId) {
             $this->addFlash('error', 'ID de la commande non trouvé.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         $order = $this->entityManager->getRepository(Order::class)->find($entityId);
         if (!$order) {
             $this->addFlash('error', 'Commande non trouvée.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         $order->setStatus(OrderStatus::PREPARING);
@@ -390,7 +446,7 @@ class OrderCrudController extends AbstractCrudController
         
         $this->addFlash('success', 'Commande marquée en préparation !');
         
-        return $this->redirectToRoute('admin');
+        return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
     }
 
     /**
@@ -401,13 +457,13 @@ class OrderCrudController extends AbstractCrudController
         $entityId = $request->query->get('entityId');
         if (!$entityId) {
             $this->addFlash('error', 'ID de la commande non trouvé.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         $order = $this->entityManager->getRepository(Order::class)->find($entityId);
         if (!$order) {
             $this->addFlash('error', 'Commande non trouvée.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         $order->setStatus(OrderStatus::DELIVERED);
@@ -415,7 +471,7 @@ class OrderCrudController extends AbstractCrudController
         
         $this->addFlash('success', 'Commande marquée comme livrée !');
         
-        return $this->redirectToRoute('admin');
+        return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
     }
 
     /**
@@ -426,13 +482,13 @@ class OrderCrudController extends AbstractCrudController
         $entityId = $request->query->get('entityId');
         if (!$entityId) {
             $this->addFlash('error', 'ID de la commande non trouvé.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         $order = $this->entityManager->getRepository(Order::class)->find($entityId);
         if (!$order) {
             $this->addFlash('error', 'Commande non trouvée.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         $order->setStatus(OrderStatus::CANCELLED);
@@ -440,7 +496,7 @@ class OrderCrudController extends AbstractCrudController
         
         $this->addFlash('success', 'Commande annulée !');
         
-        return $this->redirectToRoute('admin');
+        return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
     }
 
     /**
@@ -455,7 +511,7 @@ class OrderCrudController extends AbstractCrudController
                 return $this->json(['success' => false, 'message' => 'ID de la commande non trouvé.'], 400);
             }
             $this->addFlash('error', 'ID de la commande non trouvé.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         /** @var Order|null $order */
@@ -465,7 +521,7 @@ class OrderCrudController extends AbstractCrudController
                 return $this->json(['success' => false, 'message' => 'Commande non trouvée.'], 404);
             }
             $this->addFlash('error', 'Commande non trouvée.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
         }
 
         // Status cycle for click: pending -> confirmed -> preparing -> delivered -> cancelled -> pending
@@ -519,6 +575,6 @@ class OrderCrudController extends AbstractCrudController
             $statusLabels[$next->value]
         ));
 
-        return $this->redirectToRoute('admin');
+        return $this->redirect($this->adminUrlGenerator->setController(OrderCrudController::class)->setAction('index')->generateUrl());
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\OrderItem;
+use App\Entity\MenuItem;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
@@ -17,6 +18,9 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\TextFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\NumericFilter;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 
 #[IsGranted('ROLE_ADMIN')]
 class OrderItemCrudController extends AbstractCrudController
@@ -52,11 +56,14 @@ class OrderItemCrudController extends AbstractCrudController
         return parent::getPageTitle($pageName);
     }
 
+    // Removed dynamic menu item info endpoint; manual input restored
+
     /**
      * Обновляет заказ после изменения статьи
      */
     public function updateEntity(EntityManagerInterface $entityManager, $entityInstance): void
     {
+        // Manual mode: keep values as entered
         // Пересчитываем суммы статьи
         if ($entityInstance->getUnitPrice() && $entityInstance->getQuantity()) {
             $total = (float) $entityInstance->getUnitPrice() * $entityInstance->getQuantity();
@@ -84,6 +91,7 @@ class OrderItemCrudController extends AbstractCrudController
      */
     public function persistEntity(EntityManagerInterface $entityManager, $entityInstance): void
     {
+        // Manual mode: keep values as entered
         // Пересчитываем суммы статьи
         if ($entityInstance->getUnitPrice() && $entityInstance->getQuantity()) {
             $total = (float) $entityInstance->getUnitPrice() * $entityInstance->getQuantity();
@@ -105,6 +113,7 @@ class OrderItemCrudController extends AbstractCrudController
     {
         return [
             IdField::new('id')->hideOnForm(),
+            // Menu selection removed; values are entered manually
             
             IntegerField::new('productId', 'ID du produit')
                 ->setRequired(true)

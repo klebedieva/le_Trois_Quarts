@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\OrderItemRepository;
 use App\Entity\Order;
+use App\Entity\MenuItem;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -33,6 +34,10 @@ class OrderItem
     #[ORM\ManyToOne(inversedBy: 'items', cascade: ['persist'])]
     #[ORM\JoinColumn(name: 'order_id', nullable: false, onDelete: 'CASCADE')]
     private ?Order $orderRef = null;
+
+    #[ORM\ManyToOne(targetEntity: MenuItem::class)]
+    #[ORM\JoinColumn(name: 'menu_item_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?MenuItem $menuItem = null;
 
     public function getId(): ?int
     {
@@ -115,6 +120,24 @@ class OrderItem
     {
         $this->orderRef = $orderRef;
 
+        return $this;
+    }
+
+    public function getMenuItem(): ?MenuItem
+    {
+        return $this->menuItem;
+    }
+
+    public function setMenuItem(?MenuItem $menuItem): static
+    {
+        $this->menuItem = $menuItem;
+        if ($menuItem) {
+            // Keep denormalized fields in sync for reporting and resilience
+            $this->productId = $menuItem->getId();
+            $this->productName = (string) $menuItem->getName();
+            $this->unitPrice = (string) $menuItem->getPrice();
+            $this->recalculateTotal();
+        }
         return $this;
     }
 
