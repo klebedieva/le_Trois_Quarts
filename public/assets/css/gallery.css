@@ -46,6 +46,8 @@
 /* Enable native sticky just under the navbar */
 .gallery-filters {
     /* position: sticky; top: var(--nav-offset, 72px); z-index: 1020; */
+    /* Ensure background matches page fill (white) to avoid blue strip */
+    background-color: #ffffff !important;
 }
 
 /* Smooth sticky behavior for gallery filters */

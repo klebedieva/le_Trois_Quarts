@@ -6,6 +6,7 @@ use App\DTO\ApiResponseDTO;
 use App\DTO\OrderItemDTO;
 use App\DTO\OrderResponseDTO;
 use App\Service\OrderService;
+use App\Service\SymfonyEmailService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,7 +17,8 @@ use OpenApi\Attributes as OA;
 class OrderController extends AbstractController
 {
     public function __construct(
-        private OrderService $orderService
+        private OrderService $orderService,
+        private SymfonyEmailService $emailService
     ) {}
 
     #[Route('/order', name: 'app_order')]
@@ -148,6 +150,14 @@ class OrderController extends AbstractController
             
             // Créer la commande
             $order = $this->orderService->createOrder($data ?? []);
+
+            // Notify admin about new order (non-blocking)
+            try {
+                $this->emailService->sendOrderNotificationToAdmin($order);
+            } catch (\Exception $e) {
+                // Log silently; do not break order creation
+                error_log('Error sending order admin notification: ' . $e->getMessage());
+            }
 
             // Convertir les items en DTOs
             $orderItems = [];

@@ -400,6 +400,8 @@ function initStickyFiltersFallback() {
     // Spacer to avoid layout jump when fixed
     const spacer = document.createElement('div');
     spacer.style.display = 'none';
+    // Ensure spacer matches page background to avoid visible colored strip
+    spacer.style.backgroundColor = '#ffffff';
     filtersSection.parentNode.insertBefore(spacer, filtersSection.nextSibling);
 
     // Sentinel placed right before filters to decide the exact sticking moment
@@ -408,6 +410,7 @@ function initStickyFiltersFallback() {
     sentinel.style.height = '1px';
     sentinel.style.margin = '0';
     sentinel.style.padding = '0';
+    sentinel.style.backgroundColor = '#ffffff';
     filtersSection.parentNode.insertBefore(sentinel, filtersSection);
 
     function onScroll() {
