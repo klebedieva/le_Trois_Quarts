@@ -45,6 +45,7 @@ async function initOrderPage() {
     initPaymentOptions();
     initTimeValidation();
     initPhoneValidation();
+    initNameEmailValidation();
     initZipCodeValidation();
     initAddressValidation();
 
@@ -52,6 +53,51 @@ async function initOrderPage() {
         await loadCartItems();
         updateOrderSummary();
     });
+}
+
+// Real-time validation for first/last name and email (same style as phone)
+function initNameEmailValidation() {
+    const firstNameInput = document.getElementById('clientFirstName');
+    const lastNameInput = document.getElementById('clientLastName');
+    const emailInput = document.getElementById('clientEmail');
+
+    const nameRegex = /^[a-zA-ZÀ-ÿ\s\-']+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
+    function attachValidation(input, validator, messages) {
+        if (!input) return;
+        const onValidate = () => {
+            const value = (input.value || '').trim();
+            input.classList.remove('is-invalid');
+            removeInlineError(input);
+            if (value === '') {
+                input.classList.add('is-invalid');
+                showInlineError(input, messages.empty);
+            } else if (!validator(value)) {
+                input.classList.add('is-invalid');
+                showInlineError(input, messages.invalid);
+            } 
+        };
+        input.addEventListener('input', onValidate);
+        input.addEventListener('blur', onValidate);
+        input.addEventListener('focus', () => { input.classList.remove('is-invalid'); removeInlineError(input); });
+    }
+
+    attachValidation(firstNameInput, v => nameRegex.test(v), { empty: 'Le prénom est requis', invalid: 'Le prénom ne peut contenir que des lettres, espaces et tirets' });
+    attachValidation(lastNameInput, v => nameRegex.test(v), { empty: 'Le nom est requis', invalid: 'Le nom ne peut contenir que des lettres, espaces et tirets' });
+    attachValidation(emailInput, v => emailRegex.test(v), { empty: "L'email est requis", invalid: "L'email n'est pas valide" });
+}
+
+function showInlineError(input, message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'invalid-feedback name-email-validation-error';
+    errorDiv.textContent = message;
+    input.parentNode.appendChild(errorDiv);
+}
+
+function removeInlineError(input) {
+    const existing = input.parentNode?.querySelector('.name-email-validation-error');
+    if (existing) existing.remove();
 }
 
 async function loadCartItems() {
@@ -633,6 +679,27 @@ function extractZipCodeFromAddress(address) {
     return null;
 }
 
+// Extract only the street part from a full address that may contain ZIP and city
+function extractStreetWithoutZipCity(address) {
+    if (!address) return '';
+    const text = String(address);
+    const zipMatch = text.match(/\b(\d{5})\b/);
+    if (zipMatch) {
+        // Keep everything before the ZIP code
+        const cutIndex = zipMatch.index || 0;
+        let street = text.substring(0, cutIndex);
+        // Remove trailing commas, spaces
+        street = street.replace(/[\s,]+$/g, '').trim();
+        return street;
+    }
+    // If no ZIP detected but a pattern like ", Marseille" exists, drop city after comma
+    const commaIndex = text.lastIndexOf(',');
+    if (commaIndex > -1) {
+        return text.substring(0, commaIndex).trim();
+    }
+    return text.trim();
+}
+
 // Валидация полного адреса
 function validateAddress(address, zipCode) {
     if (!address) return false;
@@ -664,6 +731,12 @@ function initAddressValidation() {
             zipInput.value = extractedZipCode;
             // Запустить валидацию почтового индекса после подстановки
             zipInput.dispatchEvent(new Event('input'));
+        }
+
+        // Keep only the street part in the address input (leave ZIP/City in their own fields)
+        const streetOnly = extractStreetWithoutZipCity(address);
+        if (streetOnly && streetOnly !== this.value.trim()) {
+            this.value = streetOnly;
         }
         
         const zipCode = zipInput?.value?.trim() || extractedZipCode || null;

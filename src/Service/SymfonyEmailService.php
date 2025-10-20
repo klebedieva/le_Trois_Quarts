@@ -654,7 +654,7 @@ class SymfonyEmailService
                         <hr style='margin: 20px 0; border: none; border-top: 1px solid #eee;'>
                         <h4 style='color: #8b4513; margin-bottom: 15px;'>Articles :</h4>
                         {$itemsHtml}
-                        <div class='total-row'><span class='detail-label'>Total :</span><span>{$total}€</span></div>
+                        <div class='total-row'><span class='detail-label'>Total :&nbsp;</span><span>{$total}€</span></div>
                     </div>
                     <div style='text-align: center; margin: 30px 0;'>
                         <a href='http://127.0.0.1:8000/admin/order' class='btn btn-admin'>Voir dans l'admin</a>
