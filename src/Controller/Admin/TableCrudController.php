@@ -40,7 +40,7 @@ class TableCrudController extends AbstractCrudController
             ->update(Crud::PAGE_INDEX, Action::EDIT, function(Action $action){
                 return $action->setIcon('fa fa-edit')
                     ->setLabel('Modifier')
-                    ->setCssClass('btn btn-soft-secondary btn-sm');
+                    ->setCssClass('btn btn-soft-success btn-sm');
             })
             ->update(Crud::PAGE_INDEX, Action::DETAIL, function(Action $action){
                 return $action->setIcon('fa fa-eye')
