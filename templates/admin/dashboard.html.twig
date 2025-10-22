@@ -5,9 +5,11 @@
 {% endblock %}
 
 {% block main %}
+    {# Responsive column sizes: admins see 4 cards per row (col-lg-3), moderators see 3 per row (col-lg-4) #}
+    {% set dashCol = is_granted('ROLE_ADMIN') ? 'col-lg-3 col-md-4 mb-4' : 'col-lg-4 col-md-6 mb-4' %}
     <!-- Tâches prioritaires -->
     <div class="row mb-4">
-        <div class="col-lg-3 col-md-4 mb-4">
+        <div class="{{ dashCol }}">
             <div class="card text-white shadow-sm gradient-orange">
                 <div class="card-body text-center">
                     <i class="fas fa-clock fa-2x mb-2 opacity-75"></i>
@@ -17,7 +19,7 @@
             </div>
         </div>
 
-        <div class="col-lg-3 col-md-4 mb-4">
+        <div class="{{ dashCol }}">
             <div class="card text-white shadow-sm gradient-blue">
                 <div class="card-body text-center">
                     <i class="fas fa-envelope fa-2x mb-2 opacity-75"></i>
@@ -27,7 +29,7 @@
             </div>
         </div>
 
-        <div class="col-lg-3 col-md-4 mb-4">
+        <div class="{{ dashCol }}">
             <div class="card text-white shadow-sm gradient-grey">
                 <div class="card-body text-center">
                     <i class="fas fa-comments fa-2x mb-2 opacity-75"></i>
@@ -37,7 +39,8 @@
             </div>
         </div>
 
-        <div class="col-lg-3 col-md-4 mb-4">
+        {% if is_granted('ROLE_ADMIN') %}
+        <div class="{{ dashCol }}">
             <div class="card text-white shadow-sm gradient-red">
                 <div class="card-body text-center">
                     <i class="fas fa-shopping-cart fa-2x mb-2 opacity-75"></i>
@@ -46,11 +49,12 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <!-- Statistiques générales -->
     <div class="row mb-4">
-        <div class="col-lg-3 col-md-4 mb-4">
+        <div class="{{ dashCol }}">
             <div class="card text-white shadow-sm gradient-indigo">
                 <div class="card-body text-center">
                     <i class="fas fa-calendar-check fa-2x mb-2 opacity-75"></i>
@@ -60,7 +64,7 @@
             </div>
         </div>
 
-        <div class="col-lg-3 col-md-4 mb-4">
+        <div class="{{ dashCol }}">
             <div class="card text-white shadow-sm gradient-violet">
                 <div class="card-body text-center">
                     <i class="fas fa-comments fa-2x mb-2 opacity-75"></i>
@@ -70,7 +74,7 @@
             </div>
         </div>
 
-        <div class="col-lg-3 col-md-4 mb-4">
+        <div class="{{ dashCol }}">
             <div class="card text-white shadow-sm gradient-green">
                 <div class="card-body text-center">
                     <i class="fas fa-star fa-2x mb-2 opacity-75"></i>
@@ -80,7 +84,8 @@
             </div>
         </div>
 
-        <div class="col-lg-3 col-md-4 mb-4">
+        {% if is_granted('ROLE_ADMIN') %}
+        <div class="{{ dashCol }}">
             <div class="card text-white shadow-sm gradient-purple">
                 <div class="card-body text-center">
                     <i class="fas fa-receipt fa-2x mb-2 opacity-75"></i>
@@ -90,7 +95,7 @@
             </div>
         </div>
 
-        <div class="col-lg-3 col-md-4 mb-4">
+        <div class="{{ dashCol }}">
             <div class="card text-white shadow-sm gradient-gold">
                 <div class="card-body text-center">
                     <i class="fas fa-euro-sign fa-2x mb-2 opacity-75"></i>
@@ -99,6 +104,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <!-- Actions rapides -->
@@ -130,12 +136,14 @@
                                 <i class="fas fa-comments me-2"></i>Avis en attente
                             </a>
                         </div>
+                        {% if is_granted('ROLE_ADMIN') %}
                         <div class="col-lg-3 col-md-6 mb-3">
                             <a href="{{ ea_url().setController('App\\Controller\\Admin\\OrderCrudController').setAction('index').set('filters[status][comparison]', '=').set('filters[status][value]', 'pending') }}" 
                                class="btn btn-danger w-100 btn-lg">
                                 <i class="fas fa-shopping-cart me-2"></i>Commandes en attente
                             </a>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

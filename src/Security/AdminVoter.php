@@ -21,9 +21,19 @@ class AdminVoter extends Voter
         }
 
         $roles = $user->getRoles();
-        
-        // Allow access if user has ROLE_ADMIN or ROLE_MODERATOR
-        return in_array('ROLE_ADMIN', $roles) || in_array('ROLE_MODERATOR', $roles);
+
+        // Strict role checks:
+        // - ROLE_ADMIN is granted only to admins
+        // - ROLE_MODERATOR is granted to moderators and admins (admins inherit moderator permissions)
+        if ($attribute === 'ROLE_ADMIN') {
+            return in_array('ROLE_ADMIN', $roles, true);
+        }
+
+        if ($attribute === 'ROLE_MODERATOR') {
+            return in_array('ROLE_MODERATOR', $roles, true) || in_array('ROLE_ADMIN', $roles, true);
+        }
+
+        return false;
     }
 }
 

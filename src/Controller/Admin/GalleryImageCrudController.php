@@ -23,7 +23,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Filter\DateTimeFilter;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_MODERATOR')]
 class GalleryImageCrudController extends AbstractCrudController
 {
     private EntityManagerInterface $entityManager;
@@ -58,6 +58,16 @@ class GalleryImageCrudController extends AbstractCrudController
     {
         $imageBasePath = '/assets/img/';
         $imageUploadPath = 'public/assets/img/';
+
+        // For moderators editing: allow toggling only the visibility status
+        if (!$this->isGranted('ROLE_ADMIN') && $pageName === Crud::PAGE_EDIT) {
+            return [
+                IdField::new('id')->hideOnForm()->hideOnIndex(),
+                BooleanField::new('isActive', 'Active')
+                    ->setHelp('Cochez pour afficher l\'image sur le site')
+                    ->setColumns(6),
+            ];
+        }
 
         return [
             IdField::new('id')
@@ -158,7 +168,8 @@ class GalleryImageCrudController extends AbstractCrudController
                     ->setLabel('Supprimer')
                     ->setCssClass('action-delete btn btn-soft-danger btn-sm');
             })
-            ->setPermission(Action::DELETE, 'ROLE_ADMIN');
+            ->setPermission(Action::DELETE, 'ROLE_ADMIN')
+            ->setPermission(Action::NEW, 'ROLE_ADMIN');
     }
 
     public function configureFilters(Filters $filters): Filters
@@ -183,6 +194,18 @@ class GalleryImageCrudController extends AbstractCrudController
         if ($entityInstance instanceof GalleryImage) {
             $entityInstance->setUpdatedAt(new \DateTime());
             
+            // If current user is a moderator, lock all fields except isActive
+            if (!$this->isGranted('ROLE_ADMIN')) {
+                $originalEntity = $entityManager->getRepository(GalleryImage::class)->find($entityInstance->getId());
+                if ($originalEntity) {
+                    $entityInstance->setTitle($originalEntity->getTitle());
+                    $entityInstance->setDescription($originalEntity->getDescription());
+                    $entityInstance->setCategory($originalEntity->getCategory());
+                    $entityInstance->setDisplayOrder($originalEntity->getDisplayOrder());
+                    $entityInstance->setImagePath($originalEntity->getImagePath());
+                }
+            }
+
             // If imagePath is empty, keep the existing value
             if (empty($entityInstance->getImagePath())) {
                 $originalEntity = $entityManager->getRepository(GalleryImage::class)->find($entityInstance->getId());

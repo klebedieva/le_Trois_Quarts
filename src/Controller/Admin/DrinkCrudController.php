@@ -13,7 +13,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_MODERATOR')]
 class DrinkCrudController extends AbstractCrudController
 {
     public static function getEntityFqcn(): string
@@ -55,7 +55,8 @@ class DrinkCrudController extends AbstractCrudController
             ->update(Crud::PAGE_INDEX, Action::DELETE, fn(Action $a) => $a->setCssClass('action-delete btn btn-soft-danger btn-sm'))
             ->update(Crud::PAGE_INDEX, Action::EDIT, fn(Action $a) => $a->setCssClass('btn btn-soft-success btn-sm'))
             ->update(Crud::PAGE_INDEX, Action::DETAIL, fn(Action $a) => $a->setCssClass('btn btn-soft-info btn-sm'))
-            ->setPermission(Action::DELETE, 'ROLE_ADMIN');
+            ->setPermission(Action::DELETE, 'ROLE_ADMIN')
+            ->setPermission(Action::NEW, 'ROLE_ADMIN');
     }
 }
 

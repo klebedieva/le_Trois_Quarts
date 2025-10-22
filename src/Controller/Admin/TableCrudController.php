@@ -10,7 +10,9 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+#[IsGranted('ROLE_MODERATOR')]
 class TableCrudController extends AbstractCrudController
 {
     public static function getEntityFqcn(): string
@@ -46,6 +48,9 @@ class TableCrudController extends AbstractCrudController
                 return $action->setIcon('fa fa-eye')
                     ->setLabel('Voir')
                     ->setCssClass('btn btn-soft-info btn-sm');
-            });
+            })
+            ->setPermission(Action::DELETE, 'ROLE_ADMIN')
+            ->setPermission(Action::NEW, 'ROLE_ADMIN')
+            ->setPermission(Action::EDIT, 'ROLE_ADMIN');
     }
 }

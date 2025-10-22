@@ -56,26 +56,36 @@ class DashboardController extends AbstractDashboardController
         // Get reservations statistics
         $totalReservations = $reservationRepository->count([]);
         $confirmedReservations = $reservationRepository->count(['status' => 'confirmed']);
-        $pendingReservations = $reservationRepository->count(['status' => 'new']);
+        $pendingReservations = $reservationRepository->count(['status' => 'pending']);
         $cancelledReservations = $reservationRepository->count(['status' => 'cancelled']);
         
-        // Get orders statistics
-        $totalOrders = $orderRepository->count([]);
-        $pendingOrders = $orderRepository->count(['status' => 'pending']);
-        $confirmedOrders = $orderRepository->count(['status' => 'confirmed']);
-        $preparingOrders = $orderRepository->count(['status' => 'preparing']);
-        $deliveredOrders = $orderRepository->count(['status' => 'delivered']);
-        $cancelledOrders = $orderRepository->count(['status' => 'cancelled']);
+        // Get orders statistics (only for admins)
+        $totalOrders = 0;
+        $pendingOrders = 0;
+        $confirmedOrders = 0;
+        $preparingOrders = 0;
+        $deliveredOrders = 0;
+        $cancelledOrders = 0;
+        $totalRevenue = 0;
         
-        // Get total revenue
-        $totalRevenue = $orderRepository->createQueryBuilder('o')
-            ->select('SUM(o.total)')
-            ->where('o.status IN (:deliveredStatuses)')
-            ->setParameter('deliveredStatuses', ['delivered'])
-            ->getQuery()
-            ->getSingleScalarResult();
-        
-        $totalRevenue = $totalRevenue ? (float) $totalRevenue : 0;
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $totalOrders = $orderRepository->count([]);
+            $pendingOrders = $orderRepository->count(['status' => 'pending']);
+            $confirmedOrders = $orderRepository->count(['status' => 'confirmed']);
+            $preparingOrders = $orderRepository->count(['status' => 'preparing']);
+            $deliveredOrders = $orderRepository->count(['status' => 'delivered']);
+            $cancelledOrders = $orderRepository->count(['status' => 'cancelled']);
+            
+            // Get total revenue
+            $totalRevenue = $orderRepository->createQueryBuilder('o')
+                ->select('SUM(o.total)')
+                ->where('o.status IN (:deliveredStatuses)')
+                ->setParameter('deliveredStatuses', ['delivered'])
+                ->getQuery()
+                ->getSingleScalarResult();
+            
+            $totalRevenue = $totalRevenue ? (float) $totalRevenue : 0;
+        }
         
         // Get average rating
         $avgRating = $reviewRepository->createQueryBuilder('r')
@@ -142,10 +152,15 @@ class DashboardController extends AbstractDashboardController
         ]);
         yield EaMenuItem::linkToCrud('Tables', 'fas fa-chair', Table::class);
         yield EaMenuItem::linkToCrud('Réservations', 'fas fa-calendar-check', Reservation::class);
-        yield EaMenuItem::subMenu('Commandes', 'fas fa-shopping-cart')->setSubItems([
-            EaMenuItem::linkToCrud('Commandes', 'fas fa-receipt', Order::class),
-            EaMenuItem::linkToCrud('Articles de commande', 'fas fa-list', OrderItem::class),
-        ]);
+        
+        // Only show orders menu for admins
+        if ($this->isGranted('ROLE_ADMIN')) {
+            yield EaMenuItem::subMenu('Commandes', 'fas fa-shopping-cart')->setSubItems([
+                EaMenuItem::linkToCrud('Commandes', 'fas fa-receipt', Order::class),
+                EaMenuItem::linkToCrud('Articles de commande', 'fas fa-list', OrderItem::class),
+            ]);
+        }
+        
         yield EaMenuItem::linkToCrud('Messages de contact', 'fas fa-envelope', ContactMessage::class);
         yield EaMenuItem::linkToCrud('Avis', 'fas fa-comments', Review::class);
         yield EaMenuItem::linkToCrud('Galerie', 'fas fa-images', GalleryImage::class);

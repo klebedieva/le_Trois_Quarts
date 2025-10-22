@@ -29,7 +29,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_MODERATOR')]
 class ReservationCrudController extends AbstractCrudController
 {
     private EntityManagerInterface $entityManager;
@@ -249,7 +249,8 @@ class ReservationCrudController extends AbstractCrudController
                     ->displayIf(function ($entity) {
                         return $entity instanceof Reservation && $entity->getId() !== null;
                     });
-            });
+            })
+            ->setPermission(Action::DELETE, 'ROLE_ADMIN');
     }
 
     public function configureFilters(Filters $filters): Filters

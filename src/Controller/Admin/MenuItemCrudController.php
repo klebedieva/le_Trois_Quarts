@@ -26,7 +26,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Filter\BooleanFilter;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use App\Repository\AllergenRepository;
 
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_MODERATOR')]
 class MenuItemCrudController extends AbstractCrudController
 {
     public static function getEntityFqcn(): string
@@ -157,7 +157,8 @@ class MenuItemCrudController extends AbstractCrudController
             ->update(Crud::PAGE_INDEX, Action::DETAIL, function(Action $action){
                 return $action->setCssClass('btn btn-soft-info btn-sm');
             })
-            ->setPermission(Action::DELETE, 'ROLE_ADMIN');
+            ->setPermission(Action::DELETE, 'ROLE_ADMIN')
+            ->setPermission(Action::NEW, 'ROLE_ADMIN');
     }
 
     public function configureFilters(Filters $filters): Filters
