@@ -319,52 +319,7 @@ function initAnimations() {
     });
 }
 
-// Notification system
-function showNotification(message, type = 'info') {
-    // Remove existing notifications
-    const existingNotifications = document.querySelectorAll('.notification');
-    existingNotifications.forEach(notification => notification.remove());
-    
-    // Create the notification element
-    const notification = document.createElement('div');
-    notification.className = `notification alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show`;
-    notification.style.cssText = `
-        position: fixed;
-        top: 100px;
-        right: 20px;
-        z-index: 9999;
-        min-width: 300px;
-        max-width: 500px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        opacity: 0;
-        transition: opacity 0.3s ease-in;
-    `;
-    
-    notification.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" onclick="this.parentElement.style.opacity='0'; setTimeout(() => this.parentElement.remove(), 500)"></button>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Trigger fade-in
-    setTimeout(() => {
-        notification.style.opacity = '1';
-    }, 10);
-    
-    // Auto-remove after 5 seconds with fade-out
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.style.transition = 'opacity 0.5s ease-out';
-            notification.style.opacity = '0';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 500);
-        }
-    }, 5000);
-}
+// Notification system - moved to global functions below
 
 // Utility functions
 function debounce(func, wait) {
@@ -697,4 +652,76 @@ function showConfirmDialog(title, message, onConfirm) {
 
 // Expose confirm dialog globally
 window.showConfirmDialog = showConfirmDialog;
+
+// Global notification function for forms (centered)
+window.showNotification = function(message, type = 'info') {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notification => notification.remove());
+    
+    // Create the notification element
+    const notification = document.createElement('div');
+    notification.className = `notification alert alert-${type === 'error' ? 'danger' : type} alert-dismissible show position-fixed`;
+    notification.style.cssText = 'top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 300px; text-align: center;';
+    
+    const icon = type === 'success' ? 'bi-check-circle' : 
+                 type === 'error' ? 'bi-exclamation-triangle' : 
+                 type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle';
+    
+    notification.innerHTML = `
+        <i class="bi ${icon} me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.style.transition = 'opacity 0.5s ease-out';
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 500);
+        }
+    }, 5000);
+};
+
+// Global notification function for menu and cart (right side)
+window.showCartNotification = function(message, type = 'info') {
+    // Remove existing cart notifications
+    const existingNotifications = document.querySelectorAll('.cart-notification');
+    existingNotifications.forEach(notification => notification.remove());
+    
+    // Create the notification element
+    const notification = document.createElement('div');
+    notification.className = `cart-notification alert alert-${type === 'error' ? 'danger' : type} alert-dismissible show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    
+    const icon = type === 'success' ? 'bi-check-circle' : 
+                 type === 'error' ? 'bi-exclamation-triangle' : 
+                 type === 'warning' ? 'bi-exclamation-triangle' : 'bi-info-circle';
+    
+    notification.innerHTML = `
+        <i class="bi ${icon} me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-hide after 3 seconds (shorter for cart notifications)
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.style.transition = 'opacity 0.5s ease-out';
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 500);
+        }
+    }, 3000);
+};
 

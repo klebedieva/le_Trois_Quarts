@@ -266,6 +266,11 @@ function initCartSidebar() {
                     await updateCartNavigation();
                     await updateCartSidebar();
                     
+                    // Show notification for cart clearing
+                    if (window.showCartNotification) {
+                        window.showCartNotification('Panier vidé avec succès', 'success');
+                    }
+                    
                     // Trigger global renderMenu if available
                     if (window.renderMenu && typeof window.renderMenu === 'function') {
                         await window.renderMenu();
@@ -281,7 +286,11 @@ function initCartSidebar() {
                     }
                 } catch (error) {
                     console.error('Erreur lors du vidage du panier:', error);
-                    alert('Erreur lors du vidage du panier');
+                    if (window.showCartNotification) {
+                        window.showCartNotification('Erreur lors du vidage du panier', 'error');
+                    } else {
+                        alert('Erreur lors du vidage du panier');
+                    }
                 }
             }
         });
@@ -295,8 +304,8 @@ function initCartSidebar() {
             if (cart.items.length > 0) {
                 window.location.href = '/order';
             } else {
-                if (typeof showNotification === 'function') {
-                    showNotification('Votre panier est vide', 'warning');
+                if (window.showCartNotification) {
+                    window.showCartNotification('Votre panier est vide', 'warning');
                 } else {
                     alert('Votre panier est vide');
                 }
@@ -406,8 +415,16 @@ window.removeFromCartSidebar = async function(itemId) {
         if (item) {
             if (item.quantity > 1) {
                 await window.cartAPI.updateQuantity(itemId, item.quantity - 1);
+                // Show notification for quantity decrease
+                if (window.showCartNotification) {
+                    window.showCartNotification(`Quantité de ${item.name} diminuée`, 'info');
+                }
             } else {
                 await window.cartAPI.removeItem(itemId);
+                // Show notification for item removal
+                if (window.showCartNotification) {
+                    window.showCartNotification(`${item.name} supprimé du panier`, 'info');
+                }
             }
             
             await updateCartSidebar();
@@ -421,6 +438,9 @@ window.removeFromCartSidebar = async function(itemId) {
         }
     } catch (error) {
         console.error('Erreur removeFromCartSidebar:', error);
+        if (window.showCartNotification) {
+            window.showCartNotification('Erreur lors de la modification de la quantité', 'error');
+        }
     }
 };
 
@@ -438,10 +458,18 @@ window.addToCartSidebar = async function(itemId) {
                 window.updateQuantityDisplay(itemId);
             }
             
+            // Show notification for quantity increase
+            if (window.showCartNotification) {
+                window.showCartNotification(`Quantité de ${item.name} augmentée`, 'success');
+            }
+            
             window.dispatchEvent(new CustomEvent('cartUpdated'));
         }
     } catch (error) {
         console.error('Erreur addToCartSidebar:', error);
+        if (window.showCartNotification) {
+            window.showCartNotification('Erreur lors de la modification de la quantité', 'error');
+        }
     }
 };
 

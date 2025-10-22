@@ -286,14 +286,20 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showSuccessMessage(data.message);
+                if (window.showNotification) {
+                    window.showNotification(data.message, 'success');
+                }
                 resetForm();
             } else {
-                showErrorMessage(data.message || 'Une erreur est survenue lors de l\'envoi de votre réservation.');
+                if (window.showNotification) {
+                    window.showNotification(data.message || 'Une erreur est survenue lors de l\'envoi de votre réservation.', 'error');
+                }
             }
         })
         .catch(error => {
-            showErrorMessage('Une erreur est survenue lors de l\'envoi de votre réservation.');
+            if (window.showNotification) {
+                window.showNotification('Une erreur est survenue lors de l\'envoi de votre réservation.', 'error');
+            }
         })
         .finally(() => {
             // Restore button state
@@ -302,59 +308,7 @@
         });
     }
 
-    function showSuccessMessage(message) {
-        
-        // Create success alert
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
-        alert.style.cssText = 'top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 300px; text-align: center;';
-        alert.innerHTML = `
-            <i class="bi bi-check-circle me-2"></i>${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        
-        document.body.appendChild(alert);
-        
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            if (alert.parentNode) {
-                alert.style.transition = 'opacity 0.5s ease-out';
-                alert.style.opacity = '0';
-                setTimeout(() => {
-                    if (alert.parentNode) {
-                        alert.remove();
-                    }
-                }, 500);
-            }
-        }, 5000);
-    }
-
-    function showErrorMessage(message) {
-        
-        // Create error alert
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-danger alert-dismissible fade show position-fixed';
-        alert.style.cssText = 'top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 300px; text-align: center;';
-        alert.innerHTML = `
-            <i class="bi bi-exclamation-triangle me-2"></i>${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        
-        document.body.appendChild(alert);
-        
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            if (alert.parentNode) {
-                alert.style.transition = 'opacity 0.5s ease-out';
-                alert.style.opacity = '0';
-                setTimeout(() => {
-                    if (alert.parentNode) {
-                        alert.remove();
-                    }
-                }, 500);
-            }
-        }, 5000);
-    }
+    // Use global showNotification function from main.js
 
     function resetForm() {
         const form = document.getElementById('reservationForm');

@@ -95,6 +95,12 @@ function initCartSidebar() {
                     localStorage.setItem('cart', JSON.stringify([]));
                     updateCartNavigation();
                     updateCartSidebar();
+                    
+                    // Show notification for cart clearing
+                    if (window.showCartNotification) {
+                        window.showCartNotification('Panier vidé avec succès', 'success');
+                    }
+                    
                     // Inform other modules (menu page) to refresh quantities
                     window.dispatchEvent(new CustomEvent('cartUpdated'));
                     if (typeof window.renderMenu === 'function') {
@@ -113,6 +119,12 @@ function initCartSidebar() {
                     localStorage.setItem('cart', JSON.stringify([]));
                     updateCartNavigation();
                     updateCartSidebar();
+                    
+                    // Show notification for cart clearing
+                    if (window.showCartNotification) {
+                        window.showCartNotification('Panier vidé avec succès', 'success');
+                    }
+                    
                     // Inform other modules (menu page) to refresh quantities
                     window.dispatchEvent(new CustomEvent('cartUpdated'));
                     if (typeof window.renderMenu === 'function') {
@@ -139,8 +151,8 @@ function initCartSidebar() {
                 window.location.href = '/order';
             } else {
                 // Show non-blocking notification (aligned with the Restaurant project)
-                if (typeof showNotification === 'function') {
-                    showNotification('Votre panier est vide', 'warning');
+                if (window.showCartNotification) {
+                    window.showCartNotification('Votre panier est vide', 'warning');
                 } else {
                     alert('Votre panier est vide');
                 }

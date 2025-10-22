@@ -270,25 +270,25 @@ async function validateCurrentStep() {
     }
 }
 
-function validateCartStep() { if ((orderData.items || []).length === 0) { showNotification('Votre panier est vide', 'error'); return false; } return true; }
+function validateCartStep() { if ((orderData.items || []).length === 0) { window.showNotification('Votre panier est vide', 'error'); return false; } return true; }
 
 async function validateDeliveryStep() {
     const mode = document.querySelector('input[name="deliveryMode"]:checked')?.value;
     const date = document.getElementById('deliveryDate')?.value;
     const time = document.getElementById('deliveryTime')?.value;
     
-    if (!mode) { showNotification('Veuillez choisir un mode de récupération', 'error'); return false; }
-    if (!date) { showNotification('Veuillez choisir une date', 'error'); return false; }
-    if (!time) { showNotification('Veuillez choisir un créneau horaire', 'error'); return false; }
+    if (!mode) { window.showNotification('Veuillez choisir un mode de récupération', 'error'); return false; }
+    if (!date) { window.showNotification('Veuillez choisir une date', 'error'); return false; }
+    if (!time) { window.showNotification('Veuillez choisir un créneau horaire', 'error'); return false; }
     if (!validateSelectedTime()) return false;
     if (mode === 'delivery') {
         const address = document.getElementById('deliveryAddress')?.value;
         const zip = document.getElementById('deliveryZip')?.value;
-        if (!address || !zip) { showNotification('Veuillez renseigner votre adresse de livraison', 'error'); return false; }
+        if (!address || !zip) { window.showNotification('Veuillez renseigner votre adresse de livraison', 'error'); return false; }
         
         // Validation du code postal pour la livraison
         if (!validateFrenchZipCode(zip)) {
-            showNotification('Format de code postal invalide', 'error');
+            window.showNotification('Format de code postal invalide', 'error');
             return false;
         }
         
@@ -296,11 +296,11 @@ async function validateDeliveryStep() {
         try {
             const addressValidation = await window.zipCodeAPI.validateAddress(address, zip);
             if (!addressValidation.valid) {
-                showNotification(addressValidation.error || 'Livraison non disponible pour cette adresse', 'error');
+                window.showNotification(addressValidation.error || 'Livraison non disponible pour cette adresse', 'error');
                 return false;
             }
         } catch (error) {
-            showNotification('Erreur lors de la vérification de l\'adresse', 'error');
+            window.showNotification('Erreur lors de la vérification de l\'adresse', 'error');
             return false;
         }
     }
@@ -311,20 +311,20 @@ async function validateDeliveryStep() {
     const phone = document.getElementById('clientPhone')?.value?.trim();
     const email = document.getElementById('clientEmail')?.value?.trim();
     
-    if (!firstName) { showNotification('Veuillez renseigner votre prénom', 'error'); return false; }
-    if (!lastName) { showNotification('Veuillez renseigner votre nom', 'error'); return false; }
-    if (!phone) { showNotification('Veuillez renseigner votre numéro de téléphone', 'error'); return false; }
-    if (!email) { showNotification('Veuillez renseigner votre adresse email', 'error'); return false; }
+    if (!firstName) { window.showNotification('Veuillez renseigner votre prénom', 'error'); return false; }
+    if (!lastName) { window.showNotification('Veuillez renseigner votre nom', 'error'); return false; }
+    if (!phone) { window.showNotification('Veuillez renseigner votre numéro de téléphone', 'error'); return false; }
+    if (!email) { window.showNotification('Veuillez renseigner votre adresse email', 'error'); return false; }
     
     // Validation du numéro de téléphone français
     if (!validateFrenchPhoneNumber(phone)) {
-        showNotification('Veuillez entrer un numéro de téléphone français valide', 'error');
+        window.showNotification('Veuillez entrer un numéro de téléphone français valide', 'error');
         return false;
     }
     
     // Validation basique de l'email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) { showNotification('Veuillez renseigner une adresse email valide', 'error'); return false; }
+    if (!emailRegex.test(email)) { window.showNotification('Veuillez renseigner une adresse email valide', 'error'); return false; }
     
     orderData.delivery = { mode, date, time, address: document.getElementById('deliveryAddress')?.value, zip: document.getElementById('deliveryZip')?.value, instructions: document.getElementById('deliveryInstructions')?.value };
     orderData.client = { firstName, lastName, phone, email };
@@ -334,7 +334,7 @@ async function validateDeliveryStep() {
 
 function validatePaymentStep() {
     const mode = document.querySelector('input[name="paymentMode"]:checked')?.value;
-    if (!mode) { showNotification('Veuillez choisir un mode de paiement', 'error'); return false; }
+    if (!mode) { window.showNotification('Veuillez choisir un mode de paiement', 'error'); return false; }
     orderData.payment = { mode };
     return true;
 }
@@ -377,7 +377,7 @@ function updateFinalSummary() {
 
 async function confirmOrder() {
     const accept = document.getElementById('acceptTerms')?.checked;
-    if (!accept) { showNotification('Veuillez accepter les conditions générales', 'error'); return; }
+    if (!accept) { window.showNotification('Veuillez accepter les conditions générales', 'error'); return; }
 
     // Build payload expected by backend API
     const payload = {
@@ -401,14 +401,14 @@ async function confirmOrder() {
         try { if (window.updateCartNavigation) window.updateCartNavigation(); } catch (_) {}
         showOrderConfirmation(created.no, created.id, created.total);
     } catch (e) {
-        showNotification(e.message || 'Erreur lors de la création de la commande', 'error');
+        window.showNotification(e.message || 'Erreur lors de la création de la commande', 'error');
     }
 }
 
 function sendConfirmationEmail(order) {
     const emailData = { to: 'client@example.com', subject: `Confirmation de commande ${order.id} - Le Trois Quarts`, body: `Votre commande ${order.id} a été confirmée. Total: ${order.total.toFixed(2)}€` };
     const emails = JSON.parse(localStorage.getItem('sentEmails') || '[]'); emails.push({ ...emailData, sentAt: new Date().toISOString(), orderId: order.id }); localStorage.setItem('sentEmails', JSON.stringify(emails));
-    showNotification('Email de confirmation envoyé !', 'success');
+    window.showNotification('Email de confirmation envoyé !', 'success');
 }
 
 function showOrderConfirmation(orderNo, orderId, total) {
@@ -417,17 +417,10 @@ function showOrderConfirmation(orderNo, orderId, total) {
     if (container) {
         container.innerHTML = `<div class="text-center py-5"><div class="mb-4"><i class="bi bi-check-circle-fill text-success icon-success-large"></i></div><h2 class="text-success mb-3">Commande confirmée !</h2><p class="lead mb-2">Numéro de commande: <strong>${orderNo || orderId}</strong></p><p class="lead mb-4">Montant total: <strong>${Number(total || 0).toFixed(2)}€</strong></p><div class="alert alert-info"><h5><i class="bi bi-info-circle me-2"></i>Prochaines étapes :</h5><ul class="list-unstyled mb-0"><li>• Vous recevrez un email de confirmation</li><li>• Votre commande sera préparée selon le créneau choisi</li></ul></div><div class="mt-4"><a href="${window.appMenuPath || '#'}" class="btn btn-primary"><i class="bi bi-arrow-left me-2"></i>Retour au menu</a></div></div>`;
     }
-    showNotification('Commande confirmée avec succès !', 'success');
+    window.showNotification('Commande confirmée avec succès !', 'success');
 }
 
-function showNotification(message, type = 'info') {
-    document.querySelectorAll('.notification').forEach(n => n.remove());
-    const n = document.createElement('div');
-    n.className = `notification alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show`;
-    n.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-    document.body.appendChild(n);
-    setTimeout(() => { if (n.parentNode) n.remove(); }, 5000);
-}
+// Use global window.showNotification function from main.js
 
 // Validation du numéro de téléphone français
 function validateFrenchPhoneNumber(phone) {
@@ -897,7 +890,7 @@ function validateSelectedTime() {
     const today = new Date().toISOString().split('T')[0]; const currentTime = new Date();
     if (selectedDate === today && selectedTime) {
         const dt = new Date(`${selectedDate}T${selectedTime}`);
-        if (dt <= currentTime) { showNotification('Ce créneau n\'est plus disponible. Veuillez choisir un autre créneau.', 'error'); timeSelect.value = ''; return false; }
+        if (dt <= currentTime) { window.showNotification('Ce créneau n\'est plus disponible. Veuillez choisir un autre créneau.', 'error'); timeSelect.value = ''; return false; }
     }
     return true;
 }
