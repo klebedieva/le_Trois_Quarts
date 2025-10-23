@@ -84,10 +84,10 @@
 // Admin reply functionality
 // Ensure script runs after EasyAdmin loads the page content
 (function() {
-    // Récupérer le prénom du client injecté depuis le template (via window.AdminConfig)
+    // Get client first name injected from template (via window.AdminConfig)
     const clientFirstName = (window.AdminConfig && window.AdminConfig.clientFirstName) ? window.AdminConfig.clientFirstName : '';
     
-    // Fonction pour insérer un template de réponse
+    // Function to insert a reply template
     function insertTemplate(template) {
         const messageTextarea = document.getElementById('message');
         if (messageTextarea) {
@@ -96,9 +96,9 @@
         }
     }
     
-    // Templates de réponses
+    // Reply templates
     const templates = {
-        // Utilisés dans l'UI (data-template)
+        // Used in UI (data-template)
         reservation: `Nous avons bien reçu votre demande de réservation. Nous allons vérifier nos disponibilités et vous confirmer dans les plus brefs délais.
 
 En attendant, vous pouvez également nous appeler au 04 91 92 96 16 pour une réservation immédiate.`,
@@ -117,7 +117,7 @@ Nous ferons le nécessaire pour vous apporter une solution rapidement.`,
 
         general: `Merci pour votre message. Nous revenons vers vous très prochainement avec plus d'informations.`,
 
-        // Alias internes (pour compat éventuelle)
+        // Internal aliases (for eventual compatibility)
         confirmation: `Merci pour votre message. Nous avons bien reçu votre demande et nous vous répondrons dans les plus brefs délais.`,
 
         information: `Pour répondre à votre demande, voici les informations que vous recherchez :

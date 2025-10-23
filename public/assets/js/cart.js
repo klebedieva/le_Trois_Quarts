@@ -247,70 +247,54 @@ function updateCartSidebar() {
 
 // Global helpers for the sidebar cart
 window.removeFromCartSidebar = function(itemId) {
-    console.log('removeFromCartSidebar called with itemId:', itemId, 'type:', typeof itemId);
     // Normalize to string for robust comparison
     const key = String(itemId);
     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    console.log('Current cart before removal:', cart);
     const index = cart.findIndex(item => String(item.id) === key);
-    console.log('Item index found:', index);
 
     if (index !== -1) {
         const item = cart[index];
-        console.log('Item found:', item);
         if (item.quantity > 1) {
             item.quantity -= 1;
-            console.log('Decreased quantity to:', item.quantity);
         } else {
             cart.splice(index, 1);
-            console.log('Removed item completely');
         }
 
         localStorage.setItem('cart', JSON.stringify(cart));
-        console.log('Updated cart in localStorage:', cart);
         updateCartSidebar();
         updateCartNavigation();
         
         // Update quantity display on dish detail page
         if (window.updateQuantityDisplay) {
-            console.log('Calling updateQuantityDisplay for itemId:', key);
             window.updateQuantityDisplay(key);
         }
         
         // Dispatch custom event for cart updates
         window.dispatchEvent(new CustomEvent('cartUpdated'));
     } else {
-        console.log('Item not found in cart');
     }
 };
 
 window.addToCartSidebar = function(itemId) {
-    console.log('addToCartSidebar called with itemId:', itemId, 'type:', typeof itemId);
     // Normalize to string for robust comparison
     const key = String(itemId);
     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    console.log('Current cart before addition:', cart);
     const index = cart.findIndex(item => String(item.id) === key);
-    console.log('Item index found:', index);
 
     if (index !== -1) {
         cart[index].quantity += 1;
-        console.log('Increased quantity to:', cart[index].quantity);
         localStorage.setItem('cart', JSON.stringify(cart));
-        console.log('Updated cart in localStorage:', cart);
         updateCartSidebar();
         updateCartNavigation();
         
         // Update quantity display on dish detail page
         if (window.updateQuantityDisplay) {
-            console.log('Calling updateQuantityDisplay for itemId:', key);
             window.updateQuantityDisplay(key);
         }
         
         // Dispatch custom event for cart updates
         window.dispatchEvent(new CustomEvent('cartUpdated'));
     } else {
-        console.log('Item not found in cart');
     }
 };
 

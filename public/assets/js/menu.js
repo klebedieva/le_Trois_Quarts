@@ -175,7 +175,7 @@ function setupNavOffset() {
     const root = document.documentElement;
     const compute = () => {
         const navH = navbar ? navbar.getBoundingClientRect().height : 64;
-        const gap = 0; // zero gap: collé à la nav
+        const gap = 0; // zero gap: attached to nav
         root.style.setProperty('--nav-offset', (gap) + 'px');
         // keep legacy var too, in case CSS still reads it
         root.style.setProperty('--menu-sticky-top', (gap) + 'px');

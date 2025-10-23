@@ -40,7 +40,7 @@ class CartAPI {
         this._cartCacheAt = Date.now();
         return cart;
       } catch (error) {
-        console.error('Erreur getCart:', error);
+        console.error('Error getting cart:', error);
         return { items: [], total: 0, itemCount: 0 };
       } finally {
         this._inflightCart = null;
@@ -68,7 +68,7 @@ class CartAPI {
             
             return data.cart;
         } catch (error) {
-            console.error('Erreur addItem:', error);
+            console.error('Error adding item:', error);
             throw error;
         }
     }
@@ -91,7 +91,7 @@ class CartAPI {
             
             return data.cart;
         } catch (error) {
-            console.error('Erreur removeItem:', error);
+            console.error('Error removing item:', error);
             throw error;
         }
     }
@@ -115,7 +115,7 @@ class CartAPI {
             
             return data.cart;
         } catch (error) {
-            console.error('Erreur updateQuantity:', error);
+            console.error('Error updating quantity:', error);
             throw error;
         }
     }
@@ -138,7 +138,7 @@ class CartAPI {
             
             return data.cart;
         } catch (error) {
-            console.error('Erreur clearCart:', error);
+            console.error('Error clearing cart:', error);
             throw error;
         }
     }
@@ -152,7 +152,7 @@ class CartAPI {
       const cart = await this.getCart();
       return cart.itemCount || 0;
     } catch (error) {
-      console.error('Erreur getCount:', error);
+      console.error('Error getting count:', error);
       return 0;
     }
     }
@@ -273,7 +273,7 @@ function initCartSidebar() {
                         window.cartIsActive = false;
                     }
                 } catch (error) {
-                    console.error('Erreur lors du vidage du panier:', error);
+                    console.error('Error clearing cart:', error);
                     if (window.showCartNotification) {
                         window.showCartNotification('Erreur lors du vidage du panier', 'error');
                     } else {
@@ -383,7 +383,7 @@ async function updateCartSidebar() {
             });
         });
     } catch (error) {
-        console.error('Erreur updateCartSidebar:', error);
+        console.error('Error updating cart sidebar:', error);
         cartItems.innerHTML = `
             <div class="cart-empty">
                 <i class="bi bi-exclamation-triangle"></i>
@@ -425,7 +425,7 @@ window.removeFromCartSidebar = async function(itemId) {
             window.dispatchEvent(new CustomEvent('cartUpdated'));
         }
     } catch (error) {
-        console.error('Erreur removeFromCartSidebar:', error);
+        console.error('Error removing from cart sidebar:', error);
         if (window.showCartNotification) {
             window.showCartNotification('Erreur lors de la modification de la quantité', 'error');
         }
@@ -454,7 +454,7 @@ window.addToCartSidebar = async function(itemId) {
             window.dispatchEvent(new CustomEvent('cartUpdated'));
         }
     } catch (error) {
-        console.error('Erreur addToCartSidebar:', error);
+        console.error('Error adding to cart sidebar:', error);
         if (window.showCartNotification) {
             window.showCartNotification('Erreur lors de la modification de la quantité', 'error');
         }
@@ -469,7 +469,7 @@ window.addMenuItemToCart = async function(itemId) {
         await updateCartSidebar();
         window.dispatchEvent(new CustomEvent('cartUpdated'));
     } catch (error) {
-        console.error('Erreur addMenuItemToCart:', error);
+        console.error('Error adding menu item to cart:', error);
         alert('Erreur lors de l\'ajout au panier');
     }
 };
@@ -482,7 +482,7 @@ window.removeMenuItemFromCart = async function(itemId) {
         await updateCartSidebar();
         window.dispatchEvent(new CustomEvent('cartUpdated'));
     } catch (error) {
-        console.error('Erreur removeMenuItemFromCart:', error);
+        console.error('Error removing menu item from cart:', error);
     }
 };
 
@@ -494,7 +494,7 @@ async function updateCartNavigation() {
             cartCount.textContent = count;
             cartCount.classList.remove('hidden');
         } catch (error) {
-            console.error('Erreur updateCartNavigation:', error);
+            console.error('Error updating cart navigation:', error);
         }
     }
 }

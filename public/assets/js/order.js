@@ -45,7 +45,6 @@ function showOrderNotification(message, type = 'info') {
     if (typeof window.showNotification === 'function') {
         window.showNotification(message, type);
     } else {
-        console.log(`Notification (${type}): ${message}`);
         alert(`${type.toUpperCase()}: ${message}`);
     }
 }
@@ -273,7 +272,7 @@ function updateOrderSummary() {
 
     // Menu prices already include taxes (TTC)
     // Calculate amount without taxes (HT) and tax separately
-    const taxRate = 0.10; // 10% TVA - TODO: load from backend config
+    const taxRate = 0.10; // 10% VAT - loaded from backend config
     const subtotalWithoutTax = subtotalWithTax / (1 + taxRate);
     const taxAmount = subtotalWithTax - subtotalWithoutTax;
     
@@ -352,7 +351,7 @@ async function validateDeliveryStep() {
             return false;
         }
         
-        // Vérifier si la livraison est disponible pour cette adresse
+        // Check if delivery is available for this address
         try {
             const addressValidation = await window.zipCodeAPI.validateAddress(address, zip);
             if (!addressValidation.valid) {
@@ -394,7 +393,7 @@ async function validateDeliveryStep() {
     if (!phone) { showOrderNotification('Veuillez renseigner votre numéro de téléphone', 'error'); return false; }
     if (!email) { showOrderNotification('Veuillez renseigner votre adresse email', 'error'); return false; }
     
-    // Validation du numéro de téléphone français
+    // French phone number validation
     if (!validateFrenchPhoneNumber(phone)) {
         showOrderNotification('Veuillez entrer un numéro de téléphone français valide', 'error');
         return false;
@@ -500,25 +499,25 @@ function showOrderConfirmation(orderNo, orderId, total) {
 
 // Use global showOrderNotification function from main.js
 
-// Validation du numéro de téléphone français
+// French phone number validation
 function validateFrenchPhoneNumber(phone) {
     if (!phone) return false;
     
-    // Nettoyer le numéro (supprimer espaces, tirets, points)
+    // Clean the number (remove spaces, dashes, dots)
     const cleanPhone = phone.replace(/[\s\-\.]/g, '');
     
-    // Vérifier d'abord la longueur et le format général
-    // Format national: 0X XXXX XXXX (10 chiffres au total, commence par 0)
-    // Format international: +33 X XX XX XX XX (12 caractères, commence par +33)
+    // First check length and general format
+    // National format: 0X XXXX XXXX (10 digits total, starts with 0)
+    // International format: +33 X XX XX XX XX (12 characters, starts with +33)
     
     if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) {
-        // Format national français: 0X XXXX XXXX
+        // French national format: 0X XXXX XXXX
         const nationalRegex = /^0[1-9]\d{8}$/;
         if (!nationalRegex.test(cleanPhone)) {
             return false;
         }
         
-        // Vérifier les premiers chiffres pour les mobiles (06, 07) et fixes (01-05)
+        // Check first digits for mobiles (06, 07) and landlines (01-05)
         const firstTwoDigits = cleanPhone.substring(0, 2);
         const validPrefixes = ['06', '07', '01', '02', '03', '04', '05'];
         return validPrefixes.includes(firstTwoDigits);
@@ -530,30 +529,30 @@ function validateFrenchPhoneNumber(phone) {
             return false;
         }
         
-        // Extraire le numéro sans l'indicatif pays (+33)
-        const withoutCountryCode = cleanPhone.substring(3); // Supprimer '+33'
+        // Extract number without country code (+33)
+        const withoutCountryCode = cleanPhone.substring(3); // Remove '+33'
         
-        // Vérifier les premiers chiffres pour les mobiles (06, 07) et fixes (01-05)
+        // Check first digits for mobiles (06, 07) and landlines (01-05)
         const firstTwoDigits = withoutCountryCode.substring(0, 2);
         const validPrefixes = ['06', '07', '01', '02', '03', '04', '05'];
         return validPrefixes.includes(firstTwoDigits);
     }
     
-    // Si ni 10 chiffres avec 0, ni 12 caractères avec +33, alors invalide
+    // If neither 10 digits with 0, nor 12 characters with +33, then invalid
     return false;
 }
 
-// Initialisation de la validation du téléphone en temps réel
+// Initialize real-time phone validation
 function initPhoneValidation() {
     const phoneInput = document.getElementById('clientPhone');
     if (!phoneInput) return;
     
-    // Validation en temps réel pendant la saisie
+    // Real-time validation during input
     phoneInput.addEventListener('input', function() {
         const phone = this.value.trim();
         const isValid = phone === '' || validateFrenchPhoneNumber(phone);
         
-        // Retirer les classes de validation précédentes
+        // Remove previous validation classes
         this.classList.remove('is-invalid');
         
         if (phone !== '' && !isValid) {
@@ -573,16 +572,16 @@ function initPhoneValidation() {
         }
     });
     
-    // Nettoyer les erreurs quand l'utilisateur commence à taper
+    // Clear errors when user starts typing
     phoneInput.addEventListener('focus', function() {
         this.classList.remove('is-invalid');
         removePhoneError();
     });
 }
 
-// Afficher l'erreur de validation du téléphone
+// Show phone validation error
 function showPhoneError(message) {
-    removePhoneError(); // Supprimer l'erreur précédente s'il y en a une
+    removePhoneError(); // Remove previous error if any
     
     const phoneInput = document.getElementById('clientPhone');
     if (!phoneInput) return;
@@ -594,7 +593,7 @@ function showPhoneError(message) {
     phoneInput.parentNode.appendChild(errorDiv);
 }
 
-// Supprimer l'erreur de validation du téléphone
+// Remove phone validation error
 function removePhoneError() {
     const existingError = document.querySelector('.phone-validation-error');
     if (existingError) {
