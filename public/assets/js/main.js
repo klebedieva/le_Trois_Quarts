@@ -82,14 +82,27 @@ function initNavbar() {
     // Close the mobile menu when clicking a link
     const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
     const navbarCollapse = document.querySelector('.navbar-collapse');
+    const navbarToggler = document.querySelector('.navbar-toggler');
     
+    // Close menu when clicking on nav links
     navLinks.forEach(link => {
         link.addEventListener('click', () => {
-            if (navbarCollapse.classList.contains('show')) {
+            if (navbarCollapse && navbarCollapse.classList.contains('show')) {
                 const bsCollapse = new bootstrap.Collapse(navbarCollapse);
                 bsCollapse.hide();
             }
         });
+    });
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (navbarCollapse && navbarCollapse.classList.contains('show')) {
+            // Check if click is outside navbar
+            if (!navbar.contains(e.target)) {
+                const bsCollapse = new bootstrap.Collapse(navbarCollapse);
+                bsCollapse.hide();
+            }
+        }
     });
 }
 
