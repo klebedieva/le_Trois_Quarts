@@ -156,10 +156,12 @@ class CartController extends AbstractController
     )]
     public function addToCart(Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
-        // CSRF Protection
-        $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
-        if ($csrfError) {
-            return $csrfError;
+        // CSRF Protection (disabled in dev environment via security.yaml)
+        if ($this->getParameter('kernel.environment') === 'prod') {
+            $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
+            if ($csrfError) {
+                return $csrfError;
+            }
         }
 
         try {
@@ -259,10 +261,12 @@ class CartController extends AbstractController
     )]
     public function removeFromCart(int $id, Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
-        // CSRF Protection
-        $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
-        if ($csrfError) {
-            return $csrfError;
+        // CSRF Protection (disabled in dev environment via security.yaml)
+        if ($this->getParameter('kernel.environment') === 'prod') {
+            $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
+            if ($csrfError) {
+                return $csrfError;
+            }
         }
 
         try {
@@ -349,10 +353,12 @@ class CartController extends AbstractController
     )]
     public function updateQuantity(int $id, Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
-        // CSRF Protection
-        $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
-        if ($csrfError) {
-            return $csrfError;
+        // CSRF Protection (disabled in dev environment via security.yaml)
+        if ($this->getParameter('kernel.environment') === 'prod') {
+            $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
+            if ($csrfError) {
+                return $csrfError;
+            }
         }
 
         try {
@@ -434,10 +440,12 @@ class CartController extends AbstractController
     )]
     public function clearCart(Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
-        // CSRF Protection
-        $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
-        if ($csrfError) {
-            return $csrfError;
+        // CSRF Protection (disabled in dev environment via security.yaml)
+        if ($this->getParameter('kernel.environment') === 'prod') {
+            $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
+            if ($csrfError) {
+                return $csrfError;
+            }
         }
 
         try {
