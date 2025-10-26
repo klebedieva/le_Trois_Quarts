@@ -543,12 +543,42 @@
     }
 
     // Load more reviews functionality
+    let currentPage = 1;
     function initLoadMoreExistingReviews() {
         const loadMoreBtn = document.getElementById('loadMoreReviews');
         if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', function() {
-                // This would load more reviews from the server
-                
+            loadMoreBtn.addEventListener('click', async function() {
+                try {
+                    // Show loading state
+                    this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Chargement...';
+                    this.disabled = true;
+                    
+                    // Load next page
+                    currentPage++;
+                    const response = await fetch(`${window.REVIEWS_LIST_ENDPOINT}?page=${currentPage}&limit=6`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.reviews) {
+                        // Append new reviews to existing ones
+                        appendReviews(data.reviews);
+                        
+                        // Hide button if no more reviews
+                        if (!data.pagination.has_more) {
+                            this.style.display = 'none';
+                        } else {
+                            // Reset button state
+                            this.innerHTML = '<i class="bi bi-arrow-down me-2"></i>Charger plus d\'avis';
+                            this.disabled = false;
+                        }
+                    } else {
+                        throw new Error('Failed to load reviews');
+                    }
+                } catch (error) {
+                    console.error('Error loading more reviews:', error);
+                    // Reset button state on error
+                    this.innerHTML = '<i class="bi bi-arrow-down me-2"></i>Charger plus d\'avis';
+                    this.disabled = false;
+                }
             });
         }
     }
@@ -556,23 +586,53 @@
     // Fetch and render reviews from API
     async function fetchAndRenderReviews(endpoint) {
         try {
-            const response = await fetch(endpoint);
+            const response = await fetch(`${endpoint}?page=1&limit=6`);
             const data = await response.json();
             
             if (data.success && data.reviews) {
                 renderReviews(data.reviews);
+                
+                // Manage load more button visibility
+                const loadMoreBtn = document.getElementById('loadMoreReviews');
+                if (loadMoreBtn) {
+                    if (data.pagination && !data.pagination.has_more) {
+                        loadMoreBtn.style.display = 'none';
+                    } else {
+                        loadMoreBtn.style.display = 'inline-block';
+                    }
+                }
             }
         } catch (error) {
-            
+            console.error('Error fetching reviews:', error);
         }
     }
 
     function renderReviews(reviews) {
         const container = document.getElementById('reviewsContainer');
-        if (!container) return;
-        
+        // Clear existing content when rendering initial reviews
         container.innerHTML = '';
         
+        if (reviews.length === 0) {
+            // Show empty state
+            container.innerHTML = `
+                <div class="col-12 text-center">
+                    <div class="py-5">
+                        <i class="bi bi-chat-dots icon-large"></i>
+                        <h4 class="mt-3">Aucun avis trouvé</h4>
+                        <p class="text-muted">Aucun avis disponible pour le moment.</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            appendReviews(reviews);
+        }
+    }
+
+    function appendReviews(reviews) {
+        const container = document.getElementById('reviewsContainer');
+        if (!container) return;
+        
+        // Append new reviews to existing ones (don't clear container)
         reviews.forEach(review => {
             const reviewElement = createReviewElement(review);
             container.appendChild(reviewElement);
@@ -583,7 +643,15 @@
         const div = document.createElement('div');
         div.className = 'col-lg-6 col-md-6 mb-4';
         
-        const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+        // Generate Bootstrap stars
+        let starsHTML = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= review.rating) {
+                starsHTML += '<i class="bi bi-star-fill text-warning"></i>';
+            } else {
+                starsHTML += '<i class="bi bi-star text-warning"></i>';
+            }
+        }
         
         div.innerHTML = `
             <div class="review-item" data-rating="${review.rating}">
@@ -600,7 +668,7 @@
                     </div>
                 </div>
                 <div class="review-stars">
-                    ${stars}
+                    ${starsHTML}
                 </div>
                 <p class="review-text">"${review.comment}"</p>
             </div>

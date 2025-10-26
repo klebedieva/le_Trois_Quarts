@@ -62,44 +62,14 @@
     <section class="reviews-list py-3 pb-5">
         <div class="container">
             <div class="row mb-1" id="reviewsContainer">
-                        {% if reviews is empty %}
-                            <div class="col-12 text-center">
-                                <div class="py-5">
-                                    <i class="bi bi-chat-dots icon-large"></i>
-                                    <h4 class="mt-3">Aucun avis trouvé</h4>
-                                    <p class="text-muted">Aucun avis disponible pour le moment.</p>
-                                </div>
-                            </div>
-                        {% else %}
-                            {% for review in reviews %}
-                        <div class="col-lg-6 col-md-6 mb-4">
-                            <div class="review-item" data-rating="{{ review.rating }}">
-                                <div class="review-header">
-                                    <div class="reviewer-info">
-                                        <div class="reviewer-avatar">{{ review.name|first|upper }}</div>
-                                        <div class="reviewer-details">
-                                            <h5>{{ review.name }}</h5>
-                                            <small>{{ review.createdAt|date('d/m/Y') }}</small>
-                                        </div>
-                                    </div>
-                                    <div class="review-rating">
-                                        <span class="rating-number">{{ review.rating }}/5</span>
-                                    </div>
-                                </div>
-                                <div class="review-stars">
-                                            {% for i in 1..5 %}
-                                                {% if i <= review.rating %}
-                                                    <i class="bi bi-star-fill text-warning"></i>
-                                                {% else %}
-                                                    <i class="bi bi-star text-warning"></i>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                <p class="review-text">"{{ review.comment }}"</p>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        {% endif %}
+                <!-- Reviews will be loaded dynamically via JavaScript -->
+                <div class="col-12 text-center" id="reviewsLoading">
+                    <div class="py-5">
+                        <i class="bi bi-hourglass-split icon-large"></i>
+                        <h4 class="mt-3">Chargement des avis...</h4>
+                        <p class="text-muted">Veuillez patienter pendant le chargement des avis.</p>
+                    </div>
+                </div>
             </div>
             <div class="text-center mb-3">
                 <button class="btn btn-soft-secondary btn-lg" id="loadMoreReviews">

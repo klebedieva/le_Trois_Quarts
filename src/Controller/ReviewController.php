@@ -42,15 +42,31 @@ class ReviewController extends AbstractController
             ]
         )
     )]
-    public function list(EntityManagerInterface $em): JsonResponse
+    public function list(Request $request, EntityManagerInterface $em): JsonResponse
     {
+        // Pagination parameters
+        $page = (int) $request->query->get('page', 1);
+        $limit = (int) $request->query->get('limit', 6);
+        $offset = ($page - 1) * $limit;
+
         $qb = $em->getRepository(Review::class)->createQueryBuilder('r')
             ->andWhere('r.menuItem IS NULL')
             ->andWhere('r.isApproved = 1')
             ->orderBy('r.createdAt', 'DESC')
-            ->setMaxResults(100);
+            ->setFirstResult($offset)
+            ->setMaxResults($limit);
 
         $reviews = $qb->getQuery()->getResult();
+
+        // Get total count for pagination info
+        $totalCount = $em->getRepository(Review::class)->createQueryBuilder('r')
+            ->select('COUNT(r.id)')
+            ->andWhere('r.menuItem IS NULL')
+            ->andWhere('r.isApproved = 1')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $hasMore = ($offset + count($reviews)) < $totalCount;
 
         $data = array_map(static function (Review $r) {
             return [
@@ -62,7 +78,16 @@ class ReviewController extends AbstractController
             ];
         }, $reviews);
 
-        return $this->json(['success' => true, 'reviews' => $data]);
+        return $this->json([
+            'success' => true, 
+            'reviews' => $data,
+            'pagination' => [
+                'current_page' => $page,
+                'total_count' => $totalCount,
+                'per_page' => $limit,
+                'has_more' => $hasMore
+            ]
+        ]);
     }
 
     #[Route('/review', name: 'api_review_create', methods: ['POST'])]
