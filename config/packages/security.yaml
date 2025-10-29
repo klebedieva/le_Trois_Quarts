@@ -15,9 +15,6 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
-        api_dev:
-            pattern: ^/api/
-            security: false
         main:
             lazy: true
             provider: app_user_provider
@@ -40,6 +37,7 @@ security:
     access_control:
         - { path: ^/admin, roles: [ROLE_ADMIN, ROLE_MODERATOR] }
         - { path: ^/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: PUBLIC_ACCESS }
 
 when@test:
     security:

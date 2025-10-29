@@ -19,11 +19,13 @@ nelmio_api_doc:
             version: '1.0.0'
             contact:
                 name: 'Le Trois Quarts'
-                url: 'http://127.0.0.1:8000'
+                url: 'https://127.0.0.1:8000'
                 email: 'contact@letroisquarts.com'
         servers:
+            - url: 'https://127.0.0.1:8000'
+              description: 'Development server (HTTPS)'
             - url: 'http://127.0.0.1:8000'
-              description: 'Development server'
+              description: 'Development server (HTTP)'
         tags:
             - name: 'Cart'
               description: 'Shopping cart operations'
