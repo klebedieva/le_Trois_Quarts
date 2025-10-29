@@ -19,6 +19,11 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
+    # Dedicated monolog logger alias for security audit events
+    securityAuditLogger:
+        alias: monolog.logger.security_audit
+        public: false
+
     # Event Listeners
     App\EventListener\OrderItemListener:
         tags:
