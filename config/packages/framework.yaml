@@ -4,7 +4,11 @@ framework:
     default_locale: fr
 
     # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    session:
+        cookie_secure: 'auto'
+        cookie_samesite: 'lax'
+        cookie_httponly: true
+        use_strict_mode: true
 
     #esi: true
     #fragments: true
