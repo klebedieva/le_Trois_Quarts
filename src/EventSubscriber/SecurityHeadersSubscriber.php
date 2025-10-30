@@ -51,7 +51,9 @@ class SecurityHeadersSubscriber implements EventSubscriberInterface
             }
             // Allow webfonts from jsDelivr (Bootstrap Icons) and Google Fonts, include data: for embedded fonts
             $fontSrc = "'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net";
-            $csp = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.jsdelivr.net/npm; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src $imgSrc; font-src $fontSrc; connect-src $connectSrc; frame-ancestors 'none'";
+            // Allow embedding Google Maps iframe on contact page; restrict to known hosts
+            $frameSrc = "'self' https://www.google.com https://maps.google.com";
+            $csp = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.jsdelivr.net/npm; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src $imgSrc; font-src $fontSrc; connect-src $connectSrc; frame-src $frameSrc; frame-ancestors 'none'";
             $response->headers->set('Content-Security-Policy', $csp);
         }
 

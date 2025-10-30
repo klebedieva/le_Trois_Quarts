@@ -370,9 +370,7 @@ section .text-center.mb-5 {
 
 /* About Section */
 
-.feature-item {
-    padding: 1rem;
-}
+/* Removed: use Bootstrap p-3 utility on markup instead of custom padding */
 
 .feature-icon {
     font-size: 2.5rem;
@@ -387,23 +385,22 @@ section .text-center.mb-5 {
     max-width: 100%;
 }
 
+/* Homepage about image specific presentation extracted from inline styles */
+.about-image .about-photo {
+    max-height: 700px;
+    width: 580px;
+    object-fit: cover;
+    filter: brightness(0.85) contrast(1.1) sepia(0.15) saturate(1.1);
+}
+
 .about-image img:hover {
     transform: scale(1.05);
 }
 
 /* Menu Section */
-.menu-category-card {
-    background: white;
-    overflow: hidden;
-    box-shadow: var(--shadow);
-    transition: var(--transition);
-    height: 100%;
-}
-
-.menu-category-card:hover {
-    transform: translateY(-10px);
-    box-shadow: var(--shadow-lg);
-}
+/* Generic hover shadow utility (use with Bootstrap shadow-sm on base) */
+.hover-shadow { transition: var(--transition); }
+.hover-shadow:hover { transform: translateY(-10px); box-shadow: var(--shadow-lg) !important; }
 
 .menu-card-image {
     height: 200px;
@@ -417,7 +414,7 @@ section .text-center.mb-5 {
     transition: var(--transition);
 }
 
-.menu-category-card:hover .menu-card-image img {
+.hover-shadow:hover .menu-card-image img {
     transform: scale(1.1);
 }
 
@@ -426,22 +423,6 @@ section .text-center.mb-5 {
     font-family: 'Playfair Display', serif;
 }
 
-.menu-items {
-    list-style: none;
-    padding: 0;
-}
-
-.menu-items li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.menu-items li:last-child {
-    border-bottom: none;
-}
 
 .price {
     font-weight: 600;
@@ -454,88 +435,7 @@ section .text-center.mb-5 {
     gap: 0.7rem;
     flex-wrap: nowrap;
 }
-.menu-item-actions .btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.98rem;
-    box-shadow: none;
-    border: 1.5px solid var(--border-color);
-    background: #fff;
-    color: var(--text-light);
-    transition: background 0.18s, color 0.18s, box-shadow 0.18s, border-color 0.18s, transform 0.18s;
-    padding: 0;
-}
-.menu-item-actions .btn:hover {
-    background: #cccccc;
-    color: var(--text-light);
-    box-shadow: none;
-    border-color: var(--border-color);
-    transform: scale(1.13);
-}
-.menu-item-actions .btn-outline-secondary {
-    border-color: var(--border-color);
-}
-.menu-item-actions .btn-outline-secondary:hover {
-    background: #cccccc;
-    color: var(--text-light);
-    border-color: var(--border-color);
-    transform: scale(1.13);
-}
-.menu-item-actions .btn-outline-secondary i {
-    font-size: 1rem;
-}
-.menu-item-qty {
-    min-width: 2.2em;
-    text-align: center;
-    font-weight: 700;
-    font-size: 1.2em;
-    color: var(--dark-color);
-}
-.menu-item-price {
-    font-weight: 700;
-    font-size: 1.2em;
-    color: var(--primary-color);
-    white-space: nowrap;
-    margin-left: 4.5rem;
-    margin-right: 0;
-    display: flex;
-    align-items: center;
-    height: 32px;
-    line-height: 1;
-    vertical-align: middle;
-    position: relative;
-    top: 9px;
-}
-
-.col-md-2 {
-    min-width: 180px;
-}
-
-.col-md-2, .col-md-2.text-end {
-    display: flex !important;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 1.5rem;
-    min-width: 220px;
-    width: 100%;
-}
-.menu-item-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-.menu-item-price {
-    font-weight: 600;
-    font-size: 1.3em;
-    color: var(--primary-color);
-    white-space: nowrap;
-    margin: 0;
-}
+/* Removed legacy menu list/button sizing rules in favor of Bootstrap utilities on markup */
 
 /* Gallery Section */
 .gallery-item {
@@ -609,14 +509,8 @@ section .text-center.mb-5 {
 }
 
 /* Contact Section */
-.contact-info {
-    border-radius: 10px;
-    transition: var(--transition);
-}
-
-.contact-info:hover {
-    background: var(--light-color);
-}
+/* Hover background utility for light surfaces (used on contact cards) */
+.hover-bg-light:hover { background: var(--light-color) !important; }
 
 .contact-icon {
     width: 80px;
@@ -654,6 +548,19 @@ footer {
     max-width: none !important;
     margin-bottom: 0 !important;
     padding-bottom: 0 !important;
+}
+
+/* Demo template helper styles extracted from inline <style> in templates/menu/index.html.twig */
+.example-wrapper {
+    margin: 1em auto;
+    max-width: 800px;
+    width: 95%;
+    font: 18px/1.5 sans-serif;
+}
+
+.example-wrapper code {
+    background: #F5F5F5;
+    padding: 2px 6px;
 }
 
 footer .container {
@@ -2408,10 +2315,7 @@ footer a[href^="mailto:"] {
 }
 
 .reservation-stats .stat-item {
-    text-align: center;
-    padding: 1rem;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     transition: all 0.3s ease;
@@ -2663,71 +2567,7 @@ footer a[href^="mailto:"] {
     justify-content: center;
 }
 
-/* Override Bootstrap primary classes with higher specificity */
-section.bg-primary,
-.py-5.bg-primary,
-.bg-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
-    background-color: var(--primary-color) !important;
-}
-
-.text-primary {
-    color: var(--primary-color) !important;
-}
-
-.border-primary {
-    border-color: var(--primary-color) !important;
-}
-
-/* Override Bootstrap primary button */
-.btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
-    background-color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
-}
-
-.btn-primary:hover {
-    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)) !important;
-    background-color: var(--secondary-color) !important;
-    border-color: var(--secondary-color) !important;
-}
-
-/* CRITICAL: Override Bootstrap primary classes - MUST be at the end */
-body .bg-primary,
-html body .bg-primary,
-section.bg-primary,
-.py-5.bg-primary,
-#reservation.bg-primary,
-#avis.bg-primary,
-#gallery.bg-primary {
-    background: linear-gradient(135deg, #d4a574, #8b4513) !important;
-    background-color: #d4a574 !important;
-    background-image: linear-gradient(135deg, #d4a574, #8b4513) !important;
-}
-
-body .text-primary,
-html body .text-primary {
-    color: #d4a574 !important;
-}
-
-body .border-primary,
-html body .border-primary {
-    border-color: #d4a574 !important;
-}
-
-body .btn-primary,
-html body .btn-primary {
-    background: linear-gradient(135deg, #d4a574, #8b4513) !important;
-    background-color: #d4a574 !important;
-    border-color: #d4a574 !important;
-}
-
-body .btn-primary:hover,
-html body .btn-primary:hover {
-    background: linear-gradient(135deg, #8b4513, #d4a574) !important;
-    background-color: #8b4513 !important;
-    border-color: #8b4513 !important;
-}
+/* Bootstrap theme overrides are centralized in global.css; duplicates removed here for maintainability. */
 
 /* Star Rating Styles for Review Form */
 .rating-stars {

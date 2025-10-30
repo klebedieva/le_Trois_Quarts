@@ -144,10 +144,7 @@
     border-color: var(--secondary-color);
 }
 
-.gallery-grid {
-    background: white;
-    padding: 1rem 0 2rem 0;
-}
+/* Spacing handled via Bootstrap py-5; background moved to class in template */
 
 .gallery-item {
     margin-bottom: 1.5rem;

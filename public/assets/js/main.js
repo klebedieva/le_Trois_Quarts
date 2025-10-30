@@ -55,30 +55,13 @@ function initNavbar() {
     window.addEventListener('scroll', function() {
         if (window.scrollY > 100) {
             navbar.classList.add('scrolled');
-            if (logoImg) {
-                logoImg.src = '/logo2.png';
-                logoImg.style.boxShadow = 'none';
-            }
+            if (logoImg) { logoImg.src = '/logo2.png'; }
         } else {
             navbar.classList.remove('scrolled');
-            if (logoImg) {
-                logoImg.src = '/logo-footer1.png';
-                logoImg.style.boxShadow = '';
-            }
+            if (logoImg) { logoImg.src = '/logo-footer1.png'; }
         }
     });
-    if (logoImg) {
-        logoImg.addEventListener('mouseenter', function() {
-            this.style.boxShadow = '0 4px 16px rgba(212, 165, 116, 0.25)';
-        });
-        logoImg.addEventListener('mouseleave', function() {
-            if (window.scrollY > 100) {
-                this.style.boxShadow = 'none';
-            } else {
-                this.style.boxShadow = '';
-        }
-    });
-    }
+    // Hover shadows handled purely by CSS (see .navbar-brand img:hover)
     // Close the mobile menu when clicking a link
     const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
     const navbarCollapse = document.querySelector('.navbar-collapse');

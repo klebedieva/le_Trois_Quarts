@@ -46,6 +46,65 @@ Le numéro de téléphone n'est pas valide: "Le numéro de téléphone n'est pas
 Le numéro de téléphone français n'est pas valide: "Veuillez entrer un numéro de téléphone français valide"
 Format de téléphone invalide: "Format de numéro de téléphone invalide"
 Format de code postal invalide: "Format de code postal invalide"
+
+# Libellés de l'administration (pour éviter les messages manquants)
+Carte (Menu): 'Carte (Menu)'
+Plats: 'Plats'
+Boissons: 'Boissons'
+Tables: 'Tables'
+Réservations: 'Réservations'
+Commandes: 'Commandes'
+Articles de commande: 'Articles de commande'
+Codes promo: 'Codes promo'
+
+# Libellés liés aux plats
+Plat: 'Plat'
+Carte - Plats: 'Carte - Plats'
+Gestion de la carte: 'Gestion de la carte'
+Prix: 'Prix'
+Image: 'Image'
+Catégorie: 'Catégorie'
+Créé le: 'Créé le'
+Modifiée le: 'Modifiée le'
+Entrées: 'Entrées'
+Desserts: 'Desserts'
+
+# Libellés liés aux boissons
+Boisson: 'Boisson'
+Gestion des boissons: 'Gestion des boissons'
+Type: 'Type'
+Boissons fraîches: 'Boissons fraîches'
+Boissons chaudes: 'Boissons chaudes'
+Bières: 'Bières'
+Vins: 'Vins'
+
+# Libellés liés aux tables
+Table: 'Table'
+ID: 'ID'
+Nom de table: 'Nom de table'
+Capacité: 'Capacité'
+
+# Libellés liés aux réservations
+Gestion des réservations: 'Gestion des réservations'
+Nouvelle réservation: 'Nouvelle réservation'
+Date: 'Date'
+Heure: 'Heure'
+Nombre de personnes: 'Nombre de personnes'
+Statut: 'Statut'
+Date de confirmation: 'Date de confirmation'
+Message de confirmation: 'Message de confirmation'
+16:00: '16:00'
+16:30: '16:30'
+17:00: '17:00'
+19:00: '19:00'
+19:30: '19:30'
+3 personnes: '3 personnes'
+5 personnes: '5 personnes'
+6 personnes: '6 personnes'
+7 personnes: '7 personnes'
+8 personnes: '8 personnes'
+Annuler: 'Annuler'
+Confirmer: 'Confirmer'
 Code postal introuvable: "Code postal introuvable"
 Livraison non disponible pour ce code postal: "Livraison non disponible pour ce code postal"
 Livraison non disponible au-delà de: "Livraison non disponible au-delà de"

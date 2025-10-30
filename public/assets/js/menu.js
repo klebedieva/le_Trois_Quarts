@@ -431,7 +431,7 @@ function renderMenuItem(item, cartItems = []) {
 
     return `
         <div class="col-lg-4 col-md-6">
-            <div class="menu-card" data-item-id="${item.id}">
+            <div class="menu-card shadow-sm hover-shadow h-100" data-item-id="${item.id}">
                 <div class="menu-card-image">
                     <img src="${item.image}" alt="${item.name}">
                     <div class="menu-card-overlay">
@@ -447,16 +447,16 @@ function renderMenuItem(item, cartItems = []) {
                     <p class="menu-card-description">${item.description}</p>
                     <div class="menu-card-footer d-flex align-items-center justify-content-between">
                         <div class="menu-card-price">${item.price}€</div>
-                        <div class="menu-card-actions">
+                        <div class="menu-card-actions d-flex align-items-center gap-2">
                             ${quantity > 0 ? `
                                 <div class="quantity-controls">
-                                    <button class="add-to-cart-btn" onclick="removeFromCart('${item.id}')">
+                                    <button class="add-to-cart-btn btn btn-sm d-flex align-items-center justify-content-center p-0" onclick="removeFromCart('${item.id}')">
                                         <i class="bi bi-dash"></i>
                                     </button>
                                     <span class="quantity-display">${quantity}</span>
                                 </div>
                             ` : ''}
-                            <button class="add-to-cart-btn" onclick="addToCart('${item.id}')">
+                            <button class="add-to-cart-btn btn btn-sm d-flex align-items-center justify-content-center p-0" onclick="addToCart('${item.id}')">
                                 <i class="bi bi-plus"></i>
                             </button>
                         </div>
