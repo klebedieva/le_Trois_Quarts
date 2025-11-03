@@ -1,9 +1,16 @@
-// Order page JavaScript — single implementation modeled after Restaurant
+// Order page JavaScript
+// Purpose: drive the multi‑step checkout (cart → delivery → payment → confirmation)
+// This file intentionally avoids external dependencies. All helpers are defined inline
+// and exposed on window only when needed to keep the surface area small.
 
+'use strict';
+
+// UI state
 let currentStep = 1;
+// Canonical state bag used across steps and for payload build
 let orderData = { items: [], delivery: {}, payment: {}, total: 0, coupon: null, discount: 0 };
 
-// XSS detection patterns
+// XSS detection patterns (simple heuristics to catch obvious injections)
 const xssPatterns = [
     /<[^>]*>/gi,                    // HTML tags
     /javascript:/gi,                // JavaScript protocol
@@ -20,7 +27,7 @@ const xssPatterns = [
     /<meta[^>]*http-equiv\s*=\s*["\']?refresh/gi // Meta refresh
 ];
 
-// XSS detection function
+// Return true if a given string likely contains an XSS attempt
 function containsXssAttempt(value) {
     for (let pattern of xssPatterns) {
         if (pattern.test(value)) {
@@ -30,7 +37,7 @@ function containsXssAttempt(value) {
     return false;
 }
 
-// Sanitize input by removing dangerous content
+// Sanitize a string by stripping risky characters and HTML constructs
 function sanitizeInput(value) {
     return value
         .replace(/<[^>]*>/g, '')           // Remove HTML tags
@@ -40,7 +47,7 @@ function sanitizeInput(value) {
         .trim();
 }
 
-// Helper function for safe notification display
+// Safe notification shim – uses global notification if available, falls back to alert
 function showOrderNotification(message, type = 'info') {
     if (typeof window.showNotification === 'function') {
         window.showNotification(message, type);
@@ -49,7 +56,7 @@ function showOrderNotification(message, type = 'info') {
     }
 }
 
-// Simple Order API client using the new backend endpoints
+// Lightweight Order API client using the new backend endpoints
 window.orderAPI = {
     async createOrder(payload) {
         const res = await window.apiRequest('/api/order', {
@@ -79,7 +86,7 @@ window.orderAPI = {
     }
 };
 
-// Coupon API client
+// Lightweight Coupon API client
 window.couponAPI = {
     async validateCoupon(code, orderAmount) {
         const res = await fetch('/api/coupon/validate', {
@@ -110,10 +117,15 @@ window.couponAPI = {
     }
 };
 
-    document.addEventListener('DOMContentLoaded', function() {
-        initOrderPage();
+// Initialize once DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    initOrderPage();
 });
 
+/**
+ * Bootstrap the order page: load cart, wire up UI and validations,
+ * and subscribe to shared cart update events.
+ */
 async function initOrderPage() {
     await loadCartItems();
     updateOrderSummary();
@@ -126,6 +138,7 @@ async function initOrderPage() {
     initAddressValidation();
     initPromoCode();
 
+    // Keep cart block in sync with changes from other widgets (sidebar/menu)
     window.addEventListener('cartUpdated', async function() {
         await loadCartItems();
         updateOrderSummary();
@@ -141,6 +154,7 @@ function initNameEmailValidation() {
     const nameRegex = /^[a-zA-ZÀ-ÿ\s\-']+$/;
     const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
 
+    // Attach minimal live validation to a single input
     function attachValidation(input, validator, messages) {
         if (!input) return;
         const onValidate = () => {
@@ -177,6 +191,7 @@ function removeInlineError(input) {
     if (existing) existing.remove();
 }
 
+// Load current cart and render the order summary items block
 async function loadCartItems() {
     const container = document.getElementById('orderCartItems');
     if (!container) return;
@@ -219,6 +234,7 @@ async function loadCartItems() {
     });
     container.innerHTML = html;
 
+    // Quantity +/- events
     container.querySelectorAll('.quantity-btn').forEach(btn => {
         btn.addEventListener('click', async function(e) {
         e.preventDefault();
@@ -246,6 +262,7 @@ async function loadCartItems() {
         });
     });
 
+    // Remove line events
     container.querySelectorAll('.remove-from-cart').forEach(btn => {
         btn.addEventListener('click', async function(e) {
             e.preventDefault();
@@ -261,6 +278,7 @@ async function loadCartItems() {
     });
 }
 
+// Wire up delivery option toggles and auto fee updates
 function initDeliveryOptions() {
     const options = document.querySelectorAll('input[name="deliveryMode"]');
     const details = document.getElementById('deliveryDetails');
@@ -275,6 +293,7 @@ function initDeliveryOptions() {
     if (checked) checked.dispatchEvent(new Event('change'));
 }
 
+// Wire up payment option toggles (show extra fields for card when needed)
 function initPaymentOptions() {
     const options = document.querySelectorAll('input[name="paymentMode"]');
     const cardDetails = document.getElementById('cardDetails');
@@ -285,12 +304,14 @@ function initPaymentOptions() {
     if (checked) checked.dispatchEvent(new Event('change'));
 }
 
+// Update fee in state and UI
 function updateDeliveryFee(fee) {
     orderData.deliveryFee = fee;
     const el = document.getElementById('deliveryFee');
     if (el) el.textContent = fee + '€';
 }
 
+// Recompute and render the financial summary (HT/TVA/Total), including discounts
 function updateOrderSummary() {
     const container = document.getElementById('summaryItems');
     if (!container) return;
@@ -340,6 +361,7 @@ function updateOrderSummary() {
     orderData.subtotal = subtotalWithoutTax; orderData.taxAmount = taxAmount; orderData.total = total;
 }
 
+// Stepper navigation helpers
 async function nextStep(step) { 
     const isValid = await validateCurrentStep(); 
     if (isValid) { 
@@ -369,6 +391,7 @@ async function validateCurrentStep() {
 
 function validateCartStep() { if ((orderData.items || []).length === 0) { showOrderNotification('Votre panier est vide', 'error'); return false; } return true; }
 
+// Validate the whole delivery/contact step (including async zip/address checks)
 async function validateDeliveryStep() {
     const mode = document.querySelector('input[name="deliveryMode"]:checked')?.value;
     const date = document.getElementById('deliveryDate')?.value;
@@ -461,6 +484,7 @@ async function validateDeliveryStep() {
     return true;
 }
 
+// Validate the payment choice (no processor integration here)
 function validatePaymentStep() {
     const mode = document.querySelector('input[name="paymentMode"]:checked')?.value;
     if (!mode) { showOrderNotification('Veuillez choisir un mode de paiement', 'error'); return false; }
@@ -468,6 +492,7 @@ function validatePaymentStep() {
     return true;
 }
 
+// Build the final confirmation view using current orderData
 function updateFinalSummary() {
     const itemsEl = document.getElementById('finalOrderItems');
     if (itemsEl) {
@@ -504,6 +529,7 @@ function updateFinalSummary() {
     }
 }
 
+// Build payload and call the backend to create the order
 async function confirmOrder() {
     const accept = document.getElementById('acceptTerms')?.checked;
     if (!accept) { showOrderNotification('Veuillez accepter les conditions générales', 'error'); return; }
@@ -550,12 +576,14 @@ async function confirmOrder() {
     }
 }
 
+// Local stub to demonstrate confirmation email; persisted to localStorage only
 function sendConfirmationEmail(order) {
     const emailData = { to: 'client@example.com', subject: `Confirmation de commande ${order.id} - Le Trois Quarts`, body: `Votre commande ${order.id} a été confirmée. Total: ${order.total.toFixed(2)}€` };
     const emails = JSON.parse(localStorage.getItem('sentEmails') || '[]'); emails.push({ ...emailData, sentAt: new Date().toISOString(), orderId: order.id }); localStorage.setItem('sentEmails', JSON.stringify(emails));
     showOrderNotification('Email de confirmation envoyé !', 'success');
 }
 
+// Replace main container with a success screen after order creation
 function showOrderConfirmation(orderNo, orderId, total) {
     document.querySelectorAll('.order-step-content').forEach(c => c.classList.remove('active'));
     const container = document.querySelector('.order-section .container');
@@ -568,6 +596,7 @@ function showOrderConfirmation(orderNo, orderId, total) {
 // Use global showOrderNotification function from main.js
 
 // French phone number validation
+// Validate FR phone (national 0XXXXXXXXX or +33XXXXXXXXX with basic prefix checks)
 function validateFrenchPhoneNumber(phone) {
     if (!phone) return false;
     
@@ -611,6 +640,7 @@ function validateFrenchPhoneNumber(phone) {
 }
 
 // Initialize real-time phone validation
+// Live UI feedback for the phone field
 function initPhoneValidation() {
     const phoneInput = document.getElementById('clientPhone');
     if (!phoneInput) return;
@@ -648,6 +678,7 @@ function initPhoneValidation() {
 }
 
 // Show phone validation error
+// Render an inline phone error under the input
 function showPhoneError(message) {
     removePhoneError(); // Remove previous error if any
     
@@ -662,6 +693,7 @@ function showPhoneError(message) {
 }
 
 // Remove phone validation error
+// Remove the live phone error element if present
 function removePhoneError() {
     const existingError = document.querySelector('.phone-validation-error');
     if (existingError) {
@@ -670,6 +702,7 @@ function removePhoneError() {
 }
 
 // API for postal code and address validation
+// Zip/Address backend validation helpers
 window.zipCodeAPI = {
     async validateZipCode(zipCode) {
         const res = await fetch('/api/validate-zip-code', {
@@ -701,6 +734,7 @@ window.zipCodeAPI = {
 };
 
 // Postal code validation
+// Check a French postal code: strictly 5 digits
 function validateFrenchZipCode(zipCode) {
     if (!zipCode) return false;
     
@@ -712,6 +746,7 @@ function validateFrenchZipCode(zipCode) {
 }
 
 // Initialize postal code validation
+// Live validation for ZIP input with async backend check (debounced)
 function initZipCodeValidation() {
     const zipInput = document.getElementById('deliveryZip');
     if (!zipInput) return;
@@ -765,6 +800,7 @@ function initZipCodeValidation() {
 }
 
 // Show postal code validation error
+// Render an inline ZIP error
 function showZipCodeError(message) {
     removeZipCodeError();
     
@@ -779,6 +815,7 @@ function showZipCodeError(message) {
 }
 
 // Show successful postal code validation
+// Render an inline ZIP success helper
 function showZipCodeSuccess(message) {
     removeZipCodeError();
     
@@ -793,6 +830,7 @@ function showZipCodeSuccess(message) {
 }
 
 // Remove postal code validation messages
+// Remove both error/success messages for ZIP input
 function removeZipCodeError() {
     const existingError = document.querySelector('.zip-validation-error');
     const existingSuccess = document.querySelector('.zip-validation-success');
@@ -802,6 +840,7 @@ function removeZipCodeError() {
 }
 
 // Extract postal code from address
+// Extract a 5‑digit ZIP code contained in a free‑form address string
 function extractZipCodeFromAddress(address) {
     if (!address) return null;
     
@@ -818,6 +857,7 @@ function extractZipCodeFromAddress(address) {
 }
 
 // Extract only the street part from a full address that may contain ZIP and city
+// From a free‑form address, keep only the street part (drop ZIP and city)
 function extractStreetWithoutZipCity(address) {
     if (!address) return '';
     const text = String(address);
@@ -839,6 +879,7 @@ function extractStreetWithoutZipCity(address) {
 }
 
 // Full address validation
+// Minimal address sanity check (not an external validation)
 function validateAddress(address, zipCode) {
     if (!address) return false;
     
@@ -850,6 +891,7 @@ function validateAddress(address, zipCode) {
 }
 
 // Initialize address validation
+// Live validation and normalization for address input (auto ZIP extraction)
 function initAddressValidation() {
     const addressInput = document.getElementById('deliveryAddress');
     const zipInput = document.getElementById('deliveryZip');
@@ -921,6 +963,7 @@ function initAddressValidation() {
 }
 
 // Show address validation error
+// Render an inline address error
 function showAddressError(message) {
     removeAddressError();
     
@@ -935,6 +978,7 @@ function showAddressError(message) {
 }
 
 // Show successful address validation
+// Render an inline address success helper
 function showAddressSuccess(message) {
     removeAddressError();
     
@@ -949,6 +993,7 @@ function showAddressSuccess(message) {
 }
 
 // Remove address validation messages
+// Remove both error/success messages for address input
 function removeAddressError() {
     const existingError = document.querySelector('.address-validation-error');
     const existingSuccess = document.querySelector('.address-validation-success');
@@ -958,6 +1003,7 @@ function removeAddressError() {
 }
 
 // Initialize promo code functionality
+// Wire up promo code apply button and Enter key behavior
 function initPromoCode() {
     const promoInput = document.getElementById('promoCode');
     const promoButton = document.querySelector('.promo-code button');
@@ -979,6 +1025,7 @@ function initPromoCode() {
 }
 
 // Apply promo code
+// Validate and apply a coupon; update order summary and UI
 async function applyPromoCode() {
     const promoInput = document.getElementById('promoCode');
     const promoButton = document.querySelector('.promo-code button');
@@ -1040,6 +1087,7 @@ async function applyPromoCode() {
 }
 
 // Add remove coupon button
+// Create a small button that lets the user remove the currently applied coupon
 function addRemoveCouponButton() {
     const promoCodeDiv = document.querySelector('.promo-code');
     if (!promoCodeDiv) return;
@@ -1078,6 +1126,7 @@ function addRemoveCouponButton() {
 }
 
 // Remove coupon
+// Remove an applied coupon and refresh totals/controls
 function removeCoupon() {
     const promoInput = document.getElementById('promoCode');
     const promoButton = document.querySelector('.promo-code button');

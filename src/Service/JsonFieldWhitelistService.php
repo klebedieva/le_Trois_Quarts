@@ -47,17 +47,10 @@ class JsonFieldWhitelistService
             'discountAmount',
         ],
         
-        // Cart endpoints
-        '/api/cart/add' => [
+        // Cart endpoints (allow dynamic segments via wildcard)
+        '/api/cart/*' => [
             'itemId',
             'quantity',
-        ],
-        '/api/cart/update' => [
-            'itemId',
-            'quantity',
-        ],
-        '/api/cart/remove' => [
-            'itemId',
         ],
         
         // Coupon endpoints

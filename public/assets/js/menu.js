@@ -1,6 +1,10 @@
-// Menu features for Le Trois Quarts
+// Menu page features for Le Trois Quarts
+// Goal: render the menu grid, provide category/search/price filters, and
+// keep cart quantities in sync with the global cart state.
 
-// State
+'use strict';
+
+// Filter state (kept simple and serializable)
 let currentCategory = 'all';
 let searchTerm = '';
 let priceFilter = '';
@@ -10,7 +14,7 @@ let dietaryFilters = {
     glutenFree: false
 };
 
-// DOM elements
+// Cached DOM refs
 let menuGrid;
 let noResults;
 
@@ -52,7 +56,7 @@ function initMenu() {
     });
 }
 
-// Menu event listeners
+// Menu event listeners (filters/search/price and dietary tags)
 function setupMenuEventListeners() {
     // Category filters
     document.querySelectorAll('.filter-category').forEach(btn => {
@@ -91,7 +95,7 @@ function setupMenuEventListeners() {
     });
 }
 
-// Render menu
+// Render menu grid according to current filters
 async function renderMenu() {
     if (!menuGrid) return;
     
@@ -114,7 +118,7 @@ async function renderMenu() {
     menuGrid.style.display = 'block';
     noResults.style.display = 'none';
 
-    // Load cart once for all items
+    // Load cart once for all items (to compute per‑item quantities)
     let cartItems = [];
     try {
         const cart = await window.cartAPI.getCart();
@@ -144,7 +148,7 @@ async function renderMenu() {
     await updateCartDisplay();
 }
 
-// Compute and set CSS var for sticky top so the filters sit below the navbar with small gap
+// Compute and set CSS var for sticky top so the filters sit below the navbar
 function setupStickyFiltersOffset(useFixed76 = false) {
     const navbar = document.getElementById('mainNav');
     const root = document.documentElement;
@@ -169,7 +173,7 @@ function setupStickyFiltersOffset(useFixed76 = false) {
     }
 }
 
-// Same approach as gallery page: expose --nav-offset = navbar height + small gap
+// Same approach as gallery page: expose --nav-offset (distance from viewport top)
 function setupNavOffset() {
     const navbar = document.getElementById('mainNav');
     const root = document.documentElement;
@@ -186,7 +190,7 @@ function setupNavOffset() {
     window.addEventListener('scroll', compute, { passive: true });
 }
 
-// Add a class while sticky for subtle shadow change
+// Toggle .is-sticky while filters are stuck to the viewport (visual only)
 function observeStickyState() {
     const section = document.querySelector('.menu-filters-section');
     if (!section) return;
@@ -223,7 +227,7 @@ function observeStickyState() {
     onScroll();
 }
 
-// Sticky fallback for the menu filters: mirrors gallery behavior
+// Sticky fallback for the menu filters: mirrors gallery behavior for old browsers
 function initMenuStickyFallback() {
     const section = document.querySelector('.menu-filters-section');
     if (!section) return;
@@ -282,6 +286,7 @@ function initMenuStickyFallback() {
     onScroll();
 }
 
+// Insert a placeholder element right under the filters to avoid layout jump
 function insertFiltersPlaceholder(section) {
     const placeholder = document.createElement('div');
     placeholder.className = 'menu-filters-placeholder';
@@ -295,7 +300,7 @@ function insertFiltersPlaceholder(section) {
     resize();
 }
 
-// Filter items
+// Compute filtered list using current criteria
 function filterItems() {
     if (!window.menuItems) return [];
     
@@ -341,7 +346,7 @@ function filterItems() {
     });
 }
 
-// Group items by category
+// Group visible items by category to render sections
 function groupItemsByCategory(items) {
     const grouped = {
         entrees: [],
@@ -358,7 +363,7 @@ function groupItemsByCategory(items) {
     return grouped;
 }
 
-// Render a category section
+// Render a single category section with a grid of menu cards
 function renderCategorySection(category, items, cartItems = []) {
     const categoryNames = {
         entrees: 'Entrées',
@@ -384,7 +389,7 @@ function renderCategorySection(category, items, cartItems = []) {
     return html;
 }
 
-// Render a single menu item
+// Render a single menu item card including quantity controls and add button
 function renderMenuItem(item, cartItems = []) {
     // Convert both IDs to numbers for comparison
     const itemId = parseInt(item.id);
@@ -467,7 +472,7 @@ function renderMenuItem(item, cartItems = []) {
     `;
 }
 
-// Render the drinks section
+// Render the separate static "drinks" section (data provided server side)
 function renderDrinksSection() {
     if (!window.drinksData) return '';
     
@@ -543,7 +548,7 @@ function renderDrinksSection() {
     return html;
 }
 
-// Add event listeners to menu items
+// Add event listeners to elements inside freshly rendered cards
 function addMenuItemEventListeners() {
     // Quick view buttons - now redirect to the dish detail page
     document.querySelectorAll('.quick-view-btn').forEach(btn => {
@@ -559,7 +564,7 @@ function addMenuItemEventListeners() {
     });
 }
 
-// Menu-specific cart functions
+// Menu-specific cart functions (override global cart helpers on this page)
 async function addToCart(itemId) {
     const key = String(itemId);
     const item = window.menuItems.find(i => String(i.id) === key || parseInt(i.id) === parseInt(itemId));
@@ -651,6 +656,7 @@ async function removeFromCart(itemId) {
     }
 }
 
+// Helper to read quantity of a single item from cart
 async function getItemQuantity(itemId) {
     try {
         const cart = await window.cartAPI.getCart();
@@ -662,6 +668,7 @@ async function getItemQuantity(itemId) {
     }
 }
 
+// Update the small cart count in header and the cart sidebar (if present)
 async function updateCartDisplay() {
     const cartNavCount = document.getElementById('cartNavCount');
     if (cartNavCount) {

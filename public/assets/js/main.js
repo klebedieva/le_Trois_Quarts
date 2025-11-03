@@ -162,7 +162,7 @@ function initGallery() {
                 updateCounter();
             }
         } catch (error) {
-            console.warn('Failed to fetch gallery images from API, falling back to DOM:', error);
+            // Silent fallback to DOM list if API is unavailable
             // Fallback to DOM method
             const newGalleryItems = document.querySelectorAll('.gallery-item');
             galleryImages = Array.from(newGalleryItems).map(item => ({

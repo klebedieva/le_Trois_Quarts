@@ -468,10 +468,12 @@ window.addMenuItemToCart = async function(itemId) {
         await updateCartNavigation();
         await updateCartSidebar();
         window.dispatchEvent(new CustomEvent('cartUpdated'));
-    } catch (error) {
-        console.error('Error adding menu item to cart:', error);
-        alert('Erreur lors de l\'ajout au panier');
-    }
+        } catch (error) {
+            // Show non-blocking notification instead of alert in production
+            if (window.showCartNotification) {
+                window.showCartNotification("Erreur lors de l'ajout au panier", 'error');
+            }
+        }
 };
 
 // Remove a menu item from the cart (menu page)

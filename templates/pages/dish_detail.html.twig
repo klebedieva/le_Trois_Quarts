@@ -65,7 +65,7 @@
             <div class="dish-allergens">
                 <h4>Allergènes</h4>
                 <div class="allergen-badges">
-                            {% for al in allergens %}<span class="badge bg-info">{{ al }}</span>{% endfor %}
+                            {% for al in allergens %}<span class="badge">{{ al }}</span>{% endfor %}
                 </div>
             </div>
 
@@ -163,8 +163,6 @@
             window.menuItems = [];
         }
         window.menuItems.push(window.dishData);
-        
-        console.log('Dish data initialized:', window.dishData);
     </script>
 {% endblock %}
 

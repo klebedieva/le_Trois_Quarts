@@ -45,7 +45,8 @@
 
 .dish-allergens { margin-bottom: 2rem; }
 .dish-allergens h4 { color: var(--dark-color); margin-bottom: 1rem; font-weight: 600; }
-.allergen-badges .badge { margin-right: 0.5rem; font-size: 0.8rem; padding: 0.4rem 0.8rem; }
+/* Make allergen badges white (no blue background) to match previous design */
+.allergen-badges .badge { margin-right: 0.5rem; font-size: 0.8rem; padding: 0.4rem 0.8rem; background: #ffffff !important; color: var(--text-dark) !important; border: 1px solid var(--border-color); }
 
 .dish-actions { background: var(--light-color); padding: 2rem; border-radius: 15px; margin-bottom: 2rem; }
 .dish-actions .menu-card-actions { margin-left: -2rem; padding-left: 0; }
