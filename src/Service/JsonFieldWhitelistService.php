@@ -52,6 +52,10 @@ class JsonFieldWhitelistService
             'itemId',
             'quantity',
         ],
+        // Cart update endpoint (specific pattern for /api/cart/update/{id})
+        '/api/cart/update/*' => [
+            'quantity',
+        ],
         
         // Coupon endpoints
         '/api/coupon/validate' => [
@@ -69,6 +73,14 @@ class JsonFieldWhitelistService
         ],
         
         // Review endpoints
+        '/api/review' => [
+            'name',
+            'email',
+            'rating',
+            'comment',
+            'dish_id', // For dish reviews
+        ],
+        // Backward-compat: older clients may still call /api/review/create
         '/api/review/create' => [
             'name',
             'email',
@@ -76,7 +88,15 @@ class JsonFieldWhitelistService
             'comment',
         ],
         
-        // Dish review endpoints
+        // Dish review endpoints (dynamic route: /api/dishes/{id}/review)
+        '/api/dishes/*/review' => [
+            'name',
+            'email',
+            'rating',
+            'comment',
+            'dish_id',
+        ],
+        // Backward-compat: older dish review endpoint
         '/api/dish-review/create' => [
             'name',
             'email',
@@ -103,9 +123,23 @@ class JsonFieldWhitelistService
         }
         
         // Pattern matching for dynamic routes (e.g., /api/cart/*)
-        foreach (self::ENDPOINT_WHITELISTS as $pattern => $fields) {
+        // Sort patterns by specificity (more specific patterns first)
+        // This ensures /api/cart/update/* is checked before /api/cart/*
+        $patterns = array_keys(self::ENDPOINT_WHITELISTS);
+        usort($patterns, function($a, $b) {
+            // Count wildcards - fewer wildcards = more specific
+            $aWildcards = substr_count($a, '*');
+            $bWildcards = substr_count($b, '*');
+            if ($aWildcards !== $bWildcards) {
+                return $aWildcards <=> $bWildcards; // Fewer wildcards first
+            }
+            // If same number of wildcards, longer pattern = more specific
+            return strlen($b) <=> strlen($a);
+        });
+        
+        foreach ($patterns as $pattern) {
             if ($this->matchesPattern($normalizedPath, $pattern)) {
-                return $fields;
+                return self::ENDPOINT_WHITELISTS[$pattern];
             }
         }
         
@@ -193,10 +227,14 @@ class JsonFieldWhitelistService
      */
     private function matchesPattern(string $path, string $pattern): bool
     {
-        // Simple wildcard support: /api/cart/* matches /api/cart/add, /api/cart/remove, etc.
-        if (str_ends_with($pattern, '*')) {
-            $prefix = rtrim($pattern, '*');
-            return str_starts_with($path, $prefix);
+        // Simple wildcard support:
+        // - /api/cart/* matches /api/cart/add, /api/cart/remove, etc.
+        // - /api/dishes/*/review matches /api/dishes/1/review, /api/dishes/2/review, etc.
+        if (str_contains($pattern, '*')) {
+            // Convert pattern to regex: replace * with .+
+            $regexPattern = '#^' . preg_quote($pattern, '#') . '$#';
+            $regexPattern = str_replace('\*', '[^/]+', $regexPattern);
+            return preg_match($regexPattern, $path) === 1;
         }
         
         return $path === $pattern;
