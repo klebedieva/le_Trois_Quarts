@@ -77,4 +77,8 @@ Thumbs.db
 
 # Upload directories (if any)
 public/uploads/
+
+# Postman collections (local development/testing)
+*.postman_collection.json
+POSTMAN_COLLECTION_README.md
 ###< Custom additions ###
