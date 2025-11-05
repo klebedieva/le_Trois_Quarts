@@ -4,6 +4,21 @@ namespace App\DTO;
 
 use OpenApi\Attributes as OA;
 
+/**
+ * Order Item Data Transfer Object
+ *
+ * Represents a single item within an order. This is the persisted state
+ * of what was ordered, including prices at the time of order creation.
+ * Used when returning order details to clients.
+ *
+ * Contains:
+ * - id: Order item entity ID (database primary key)
+ * - productId: Original menu item ID that was ordered
+ * - productName: Name of the menu item at time of order
+ * - unitPrice: Price per unit at time of order
+ * - quantity: Number of items ordered
+ * - total: Line total (unitPrice × quantity)
+ */
 #[OA\Schema(
     schema: 'OrderItem',
     description: 'Order item representation',
@@ -31,6 +46,11 @@ class OrderItemDTO
         public float $total
     ) {}
 
+    /**
+     * Convert DTO to array for JSON serialization
+     *
+     * @return array Array representation of order item
+     */
     public function toArray(): array
     {
         return [

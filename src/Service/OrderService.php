@@ -16,7 +16,21 @@ use App\Strategy\Delivery\DeliveryStrategyFactory;
 use App\Strategy\Pricing\PricingStrategyFactory;
 
 /**
- * Service to manage orders.
+ * Order Management Service
+ *
+ * Handles order creation, validation, and retrieval. Coordinates between
+ * cart service, delivery strategies, pricing strategies, and database persistence.
+ *
+ * Responsibilities:
+ * - Create orders from cart contents
+ * - Validate delivery addresses and customer information
+ * - Apply delivery fees and calculate totals (via pricing strategy)
+ * - Handle coupon application and discount calculation
+ * - Generate unique order numbers
+ * - Clear cart after successful order creation
+ * - Retrieve order details by ID
+ *
+ * Uses Strategy pattern for delivery and pricing calculations.
  */
 class OrderService
 {
@@ -35,34 +49,43 @@ class OrderService
     ) {}
 
     /**
-     * Create a new order from cart
+     * Create a new order from current cart contents
+     *
+     * Validates cart is not empty, creates Order entity, applies delivery strategy
+     * (validates address and populates delivery fields), calculates pricing via
+     * pricing strategy, handles coupon application if provided, creates order items
+     * from cart, and persists to database. Clears cart after successful creation.
+     *
+     * @param array $orderData Order data including delivery mode, address, client info, optional coupon
+     * @return Order Created and persisted Order entity
+     * @throws \InvalidArgumentException If cart is empty or validation fails
      */
     public function createOrder(array $orderData): Order
     {
-        // Get the cart
+        // Validate cart is not empty
         $cart = $this->cartService->getCart();
         
         if (empty($cart['items'])) {
             throw new \InvalidArgumentException("Le panier est vide");
         }
 
-        // Create Order entity
+        // Create Order entity with initial state
         $order = new Order();
         $order->setNo($this->generateOrderNumber());
         $order->setStatus(OrderStatus::PENDING);
         $order->setCreatedAt(new \DateTimeImmutable());
 
-        // Set delivery mode
+        // Set delivery mode (default to DELIVERY if not specified)
         $deliveryMode = isset($orderData['deliveryMode']) 
             ? DeliveryMode::from($orderData['deliveryMode'])
             : DeliveryMode::DELIVERY;
         $order->setDeliveryMode($deliveryMode);
 
-        // Apply delivery strategy (validates and populates order delivery fields)
+        // Apply delivery strategy (validates address and populates delivery fields)
         $deliveryStrategy = $this->deliveryStrategies->forMode($deliveryMode);
         $deliveryStrategy->validateAndPopulate($order, $orderData);
 
-        // Set payment mode
+        // Set payment mode (default to CARD if not specified)
         $paymentMode = isset($orderData['paymentMode']) 
             ? PaymentMode::from($orderData['paymentMode'])
             : PaymentMode::CARD;
@@ -72,7 +95,7 @@ class OrderService
         $order->setClientFirstName($orderData['clientFirstName'] ?? null);
         $order->setClientLastName($orderData['clientLastName'] ?? null);
         
-        // French phone number validation
+        // Validate French phone number format if provided
         $clientPhone = $orderData['clientPhone'] ?? null;
         if ($clientPhone && !$this->validateFrenchPhoneNumber($clientPhone)) {
             throw new \InvalidArgumentException("Numéro de téléphone invalide");
@@ -81,20 +104,21 @@ class OrderService
         
         $order->setClientEmail($orderData['clientEmail'] ?? null);
         
-        // Generate full name automatically if possible
+        // Generate full name automatically if both first and last name are provided
         if ($order->getClientFirstName() && $order->getClientLastName()) {
             $order->setClientName($order->getClientFirstName() . ' ' . $order->getClientLastName());
         }
 
-        // Calculate amounts via pricing strategy (preserves existing behavior)
+        // Calculate amounts via pricing strategy (subtotal, tax, total, delivery fee)
         $subtotalWithTax = $cart['total'];
         $this->pricingStrategies->default()->computeAndSetTotals($order, (float) $subtotalWithTax);
 
-        // Handle coupon if provided
+        // Handle coupon application if provided
         $discount = 0;
         if (isset($orderData['couponId'])) {
             $coupon = $this->couponRepository->find($orderData['couponId']);
             
+            // Apply coupon if valid and applicable to order amount
             if ($coupon && $coupon->canBeAppliedToAmount((float) $order->getTotal())) {
                 $discount = $coupon->calculateDiscount((float) $order->getTotal());
                 $order->setCoupon($coupon);
@@ -102,7 +126,7 @@ class OrderService
                 $newTotal = (float) $order->getTotal() - $discount;
                 $order->setTotal(number_format($newTotal, 2, '.', ''));
             } elseif (isset($orderData['discountAmount'])) {
-                // Fallback to discount amount if coupon is not valid
+                // Fallback to direct discount amount if coupon is not valid
                 $discount = (float) $orderData['discountAmount'];
                 $order->setDiscountAmount(number_format($discount, 2, '.', ''));
                 $newTotal = (float) $order->getTotal() - $discount;
@@ -110,8 +134,7 @@ class OrderService
             }
         }
 
-
-        // Add order items
+        // Create order items from cart items (preserves item details at order time)
         foreach ($cart['items'] as $cartItem) {
             $orderItem = new OrderItem();
             $orderItem->setProductId($cartItem['id']);
@@ -124,18 +147,21 @@ class OrderService
             $order->addItem($orderItem);
         }
 
-        // Persist the order
+        // Persist order and items to database
         $this->entityManager->persist($order);
         $this->entityManager->flush();
 
-        // Clear cart after order creation
+        // Clear cart after successful order creation
         $this->cartService->clear();
 
         return $order;
     }
 
     /**
-     * Get order by ID
+     * Retrieve order by ID
+     *
+     * @param int $orderId Order entity ID
+     * @return Order|null Order entity if found, null otherwise
      */
     public function getOrder(int $orderId): ?Order
     {
@@ -144,6 +170,11 @@ class OrderService
 
     /**
      * Generate unique order number
+     *
+     * Format: ORD-YYYYMMDD-XXX where XXX is a 3-digit sequential number
+     * for orders created on the same day. Ensures uniqueness and readability.
+     *
+     * @return string Unique order number (e.g., ORD-20250107-001)
      */
     private function generateOrderNumber(): string
     {

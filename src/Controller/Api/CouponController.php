@@ -2,6 +2,7 @@
 
 namespace App\Controller\Api;
 
+use App\DTO\CouponValidateRequest;
 use App\Entity\Coupon;
 use App\Repository\CouponRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -9,6 +10,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
  * Coupon API Controller
@@ -29,7 +31,8 @@ class CouponController extends AbstractController
 {
     public function __construct(
         private CouponRepository $couponRepository,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
+        private ValidatorInterface $validator
     ) {
     }
 
@@ -44,6 +47,12 @@ class CouponController extends AbstractController
      * @return JsonResponse Validation result with discount details or error message
      */
     #[Route('/validate', name: 'validate', methods: ['POST'])]
+    /**
+     * Validate coupon using DTO + Validator
+     *
+     * Payload is validated via CouponValidateRequest. On validation failure,
+     * responds with 422 and array of errors. Normalizes code to uppercase.
+     */
     #[\OpenApi\Attributes\Post(
         path: '/api/coupon/validate',
         summary: 'Validate coupon code and compute discount',
@@ -109,21 +118,30 @@ class CouponController extends AbstractController
             // Parse JSON request body
             $data = json_decode($request->getContent(), true);
             
-            // Validate required coupon code parameter
-            if (!isset($data['code'])) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Code promo requis');
-                return $this->json($response->toArray(), 422);
+            if (!is_array($data)) {
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'JSON invalide');
+                return $this->json($response->toArray(), 400);
             }
 
-            // Validate required order amount parameter
-            if (!isset($data['orderAmount'])) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Montant de commande requis');
+            // Map payload to DTO and validate via Symfony Validator
+            $dto = new CouponValidateRequest();
+            $dto->code = isset($data['code']) ? trim((string)$data['code']) : null;
+            $dto->orderAmount = isset($data['orderAmount']) ? (float)$data['orderAmount'] : null;
+
+            // Validate DTO
+            $violations = $this->validator->validate($dto);
+            if (count($violations) > 0) {
+                $errors = [];
+                foreach ($violations as $violation) {
+                    $errors[] = $violation->getMessage();
+                }
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
                 return $this->json($response->toArray(), 422);
             }
 
             // Normalize coupon code (uppercase, trimmed)
-            $code = strtoupper(trim($data['code']));
-            $orderAmount = (float) $data['orderAmount'];
+            $code = strtoupper(trim($dto->code));
+            $orderAmount = (float) $dto->orderAmount;
 
             // Find coupon by code in database
             $coupon = $this->couponRepository->findOneBy(['code' => $code]);

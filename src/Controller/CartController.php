@@ -3,9 +3,11 @@
 namespace App\Controller;
 
 use App\DTO\ApiResponseDTO;
+use App\DTO\CartAddRequest;
 use App\DTO\CartItemDTO;
 use App\DTO\CartResponseDTO;
 use App\Service\CartService;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -32,7 +34,8 @@ use OpenApi\Attributes as OA;
 class CartController extends AbstractController
 {
     public function __construct(
-        private CartService $cartService
+        private CartService $cartService,
+        private ValidatorInterface $validator
     ) {}
 
     /**
@@ -126,6 +129,12 @@ class CartController extends AbstractController
      * @return JsonResponse Updated cart contents
      */
     #[Route('/add', name: 'api_cart_add', methods: ['POST'])]
+    /**
+     * Add item to cart using validated DTO input
+     *
+     * Uses Symfony Validator with CartAddRequest DTO to validate payload.
+     * Returns 422 and a list of validation errors when input is invalid.
+     */
     #[OA\Post(
         path: '/api/cart/add',
         summary: 'Add item to cart',
@@ -160,27 +169,30 @@ class CartController extends AbstractController
             // Parse JSON request body
             $data = json_decode($request->getContent(), true);
             
-            // Validate required itemId parameter
-            if (!isset($data['itemId'])) {
-                $response = new ApiResponseDTO(
-                    success: false,
-                    message: 'itemId est requis'
-                );
+            if (!is_array($data)) {
+                $response = new ApiResponseDTO(success: false, message: 'JSON invalide');
+                return $this->json($response->toArray(), 400);
+            }
+
+            // Map payload to DTO and validate via Symfony Validator
+            $dto = new CartAddRequest();
+            $dto->itemId = isset($data['itemId']) ? (int)$data['itemId'] : null;
+            $dto->quantity = isset($data['quantity']) ? (int)$data['quantity'] : 1;
+
+            // Validate DTO
+            $violations = $this->validator->validate($dto);
+            if (count($violations) > 0) {
+                $errors = [];
+                foreach ($violations as $violation) {
+                    $errors[] = $violation->getMessage();
+                }
+                $response = new ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
                 return $this->json($response->toArray(), 422);
             }
 
-            // Extract and validate itemId and quantity
-            $itemId = (int) $data['itemId'];
-            $quantity = isset($data['quantity']) ? (int) $data['quantity'] : 1; // Default quantity is 1
-
-            // Ensure quantity is positive
-            if ($quantity < 1) {
-                $response = new ApiResponseDTO(
-                    success: false,
-                    message: 'La quantité doit être au moins 1'
-                );
-                return $this->json($response->toArray(), 422);
-            }
+            // Extract validated values
+            $itemId = $dto->itemId;
+            $quantity = $dto->quantity ?? 1;
 
             // Add item to cart via service (handles existence check and quantity increment)
             $cart = $this->cartService->add($itemId, $quantity);

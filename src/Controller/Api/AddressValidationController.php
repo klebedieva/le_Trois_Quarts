@@ -2,11 +2,14 @@
 
 namespace App\Controller\Api;
 
+use App\DTO\AddressFullValidationRequest;
+use App\DTO\AddressValidationRequest;
 use App\Service\AddressValidationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use OpenApi\Attributes as OA;
 
 /**
@@ -23,7 +26,8 @@ use OpenApi\Attributes as OA;
 class AddressValidationController extends AbstractController
 {
     public function __construct(
-        private AddressValidationService $addressValidationService
+        private AddressValidationService $addressValidationService,
+        private ValidatorInterface $validator
     ) {}
 
     /**
@@ -36,6 +40,12 @@ class AddressValidationController extends AbstractController
      * @return JsonResponse Validation result with distance and coordinates
      */
     #[Route('/validate-zip-code', name: 'validate_zip_code', methods: ['POST'])]
+    /**
+     * Validate zip code via DTO + Validator
+     *
+     * Accepts JSON with zipCode and validates it using AddressValidationRequest.
+     * Returns 422 with validation errors on failure; 400 on invalid JSON.
+     */
     #[OA\Post(
         path: '/api/validate-zip-code',
         summary: 'Validate zip code for delivery',
@@ -88,13 +98,28 @@ class AddressValidationController extends AbstractController
         try {
             // Parse JSON request body
             $data = json_decode($request->getContent(), true);
-            $zipCode = $data['zipCode'] ?? null;
+            
+            if (!is_array($data)) {
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'JSON invalide');
+                return $this->json($response->toArray(), 400);
+            }
 
-            // Validate required zip code parameter
-            if (!$zipCode) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Code postal requis');
+            // Map payload to DTO and validate via Symfony Validator
+            $dto = new AddressValidationRequest();
+            $dto->zipCode = isset($data['zipCode']) ? trim((string)$data['zipCode']) : null;
+
+            // Validate DTO
+            $violations = $this->validator->validate($dto);
+            if (count($violations) > 0) {
+                $errors = [];
+                foreach ($violations as $violation) {
+                    $errors[] = $violation->getMessage();
+                }
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
                 return $this->json($response->toArray(), 422);
             }
+
+            $zipCode = $dto->zipCode;
 
             // Validate zip code using service (checks distance, coordinates, etc.)
             $result = $this->addressValidationService->validateZipCodeForDelivery($zipCode);
@@ -129,6 +154,14 @@ class AddressValidationController extends AbstractController
      * @return JsonResponse Validation result with distance and coordinates
      */
     #[Route('/validate-address', name: 'validate_address', methods: ['POST'])]
+    /**
+     * Validate full address via DTO + Validator
+     *
+     * Accepts JSON with address and optional zipCode, validates with
+     * AddressFullValidationRequest. Returns 422 with validation errors on failure;
+     * 400 on invalid JSON. If zipCode is valid, it is used directly; otherwise the
+     * service attempts to geocode the address.
+     */
     #[OA\Post(
         path: '/api/validate-address',
         summary: 'Validate full address for delivery',
@@ -187,14 +220,30 @@ class AddressValidationController extends AbstractController
         try {
             // Parse JSON request body
             $data = json_decode($request->getContent(), true);
-            $address = $data['address'] ?? null;
-            $zipCode = $data['zipCode'] ?? null; // Optional zip code for additional validation
+            
+            if (!is_array($data)) {
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'JSON invalide');
+                return $this->json($response->toArray(), 400);
+            }
 
-            // Validate required address parameter
-            if (!$address) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Adresse requise');
+            // Map payload to DTO and validate via Symfony Validator
+            $dto = new AddressFullValidationRequest();
+            $dto->address = isset($data['address']) ? trim((string)$data['address']) : null;
+            $dto->zipCode = isset($data['zipCode']) ? trim((string)$data['zipCode']) : null;
+
+            // Validate DTO
+            $violations = $this->validator->validate($dto);
+            if (count($violations) > 0) {
+                $errors = [];
+                foreach ($violations as $violation) {
+                    $errors[] = $violation->getMessage();
+                }
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
                 return $this->json($response->toArray(), 422);
             }
+
+            $address = $dto->address;
+            $zipCode = $dto->zipCode;
 
             // Validate address using service (geocodes address and checks distance)
             $result = $this->addressValidationService->validateAddressForDelivery($address, $zipCode);

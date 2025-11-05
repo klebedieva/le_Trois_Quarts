@@ -4,6 +4,23 @@ namespace App\Service;
 
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
+/**
+ * Address Validation Service
+ *
+ * Validates delivery addresses and postal codes to ensure they are within
+ * the restaurant's delivery radius. Uses geocoding APIs to resolve coordinates
+ * and calculates distances using the Haversine formula.
+ *
+ * Features:
+ * - Postal code validation for French format (5 digits)
+ * - Geocoding via OpenStreetMap Nominatim API (free)
+ * - Distance calculation from restaurant location
+ * - Delivery radius validation
+ * - Full address validation with optional postal code
+ *
+ * Coordinates are hardcoded for the restaurant location (Marseille, France).
+ * Delivery radius is retrieved from RestaurantSettingsService.
+ */
 class AddressValidationService
 {
     private const RESTAURANT_COORDINATES = [
@@ -17,14 +34,25 @@ class AddressValidationService
     ) {}
 
     /**
-     * Validate postal code for delivery
+     * Validate postal code for delivery eligibility
+     *
+     * Checks if a French postal code is within the restaurant's delivery radius.
+     * Validates format, geocodes the postal code, calculates distance, and
+     * determines if delivery is available.
+     *
+     * @param string $zipCode French postal code (5 digits, may contain spaces/dashes)
+     * @return array Validation result with keys:
+     *   - valid: boolean indicating if delivery is available
+     *   - error: string error message if invalid, null if valid
+     *   - distance: float distance in kilometers (rounded to 1 decimal)
+     *   - coordinates: array with lat, lng, display_name if found
      */
     public function validateZipCodeForDelivery(string $zipCode): array
     {
-        // Clean postal code
+        // Normalize postal code (remove spaces, dashes, etc.)
         $cleanZipCode = preg_replace('/[^0-9]/', '', $zipCode);
         
-        // Check basic French postal code format
+        // Validate French postal code format (exactly 5 digits)
         if (!preg_match('/^[0-9]{5}$/', $cleanZipCode)) {
             return [
                 'valid' => false,
@@ -33,7 +61,7 @@ class AddressValidationService
             ];
         }
 
-        // Get postal code coordinates
+        // Geocode postal code to get coordinates
         $coordinates = $this->getCoordinatesForZipCode($cleanZipCode);
         
         if (!$coordinates) {
@@ -44,7 +72,7 @@ class AddressValidationService
             ];
         }
 
-        // Calculate distance
+        // Calculate distance from restaurant to postal code location
         $distance = $this->calculateDistance(
             self::RESTAURANT_COORDINATES['lat'],
             self::RESTAURANT_COORDINATES['lng'],
@@ -52,6 +80,7 @@ class AddressValidationService
             $coordinates['lng']
         );
 
+        // Check if within delivery radius
         $deliveryRadius = $this->restaurantSettings->getDeliveryRadius();
         $isWithinRadius = $distance <= $deliveryRadius;
 
@@ -64,7 +93,13 @@ class AddressValidationService
     }
 
     /**
-     * Get coordinates by postal code
+     * Geocode postal code to get coordinates
+     *
+     * Uses OpenStreetMap Nominatim API to resolve postal code to coordinates.
+     * Returns null if postal code not found or API error occurs.
+     *
+     * @param string $zipCode Clean 5-digit postal code
+     * @return array|null Coordinates with lat, lng, display_name, or null if not found
      */
     private function getCoordinatesForZipCode(string $zipCode): ?array
     {
@@ -103,7 +138,16 @@ class AddressValidationService
     }
 
     /**
-     * Calculate distance between two points (haversine formula)
+     * Calculate distance between two geographic coordinates using Haversine formula
+     *
+     * Computes the great-circle distance between two points on Earth's surface
+     * given their latitude and longitude. Result is in kilometers.
+     *
+     * @param float $lat1 Latitude of first point
+     * @param float $lng1 Longitude of first point
+     * @param float $lat2 Latitude of second point
+     * @param float $lng2 Longitude of second point
+     * @return float Distance in kilometers
      */
     private function calculateDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
@@ -122,7 +166,13 @@ class AddressValidationService
     }
 
     /**
-     * Fallback coordinates for popular Marseille postal codes
+     * Get fallback coordinates for known Marseille postal codes
+     *
+     * Used when geocoding API fails. Provides hardcoded coordinates for
+     * common Marseille postal codes as a backup mechanism.
+     *
+     * @param string $zipCode Postal code to look up
+     * @return array|null Coordinates with lat, lng, name, or null if not found
      */
     private function getFallbackCoordinates(string $zipCode): ?array
     {
@@ -157,7 +207,18 @@ class AddressValidationService
     }
 
     /**
-     * Validate full address for delivery
+     * Validate full address for delivery eligibility
+     *
+     * Attempts to validate an address string by:
+     * 1. Using provided postal code if available
+     * 2. Extracting postal code from address string if not provided
+     * 3. Geocoding full address if postal code extraction fails
+     *
+     * Then calculates distance and checks against delivery radius.
+     *
+     * @param string $address Full address string
+     * @param string|null $zipCode Optional postal code (if provided, used directly)
+     * @return array Validation result with valid, error, distance, coordinates
      */
     public function validateAddressForDelivery(string $address, string $zipCode = null): array
     {

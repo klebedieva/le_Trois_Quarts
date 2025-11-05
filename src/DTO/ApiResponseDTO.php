@@ -4,6 +4,24 @@ namespace App\DTO;
 
 use OpenApi\Attributes as OA;
 
+/**
+ * Standard API Response Data Transfer Object
+ *
+ * This DTO provides a unified response structure for all API endpoints.
+ * It ensures consistent response format across the application, making it easier
+ * for frontend clients to handle responses uniformly.
+ *
+ * The response can contain:
+ * - success: boolean indicating operation result
+ * - message: optional human-readable message (typically in French)
+ * - cart: CartResponseDTO when cart data is returned
+ * - order: OrderResponseDTO when order data is returned
+ * - count: integer count when applicable (e.g., item count)
+ * - data: generic array payload for other response types
+ * - errors: array of validation or processing error messages
+ *
+ * Only fields that are actually populated will be included in the serialized output.
+ */
 #[OA\Schema(
     schema: 'ApiResponse',
     description: 'Standard API response',
@@ -40,6 +58,14 @@ class ApiResponseDTO
         public ?array $errors = null
     ) {}
 
+    /**
+     * Convert DTO to array for JSON serialization
+     *
+     * Only includes fields that are not null, ensuring a clean response payload.
+     * Nested DTOs (cart, order) are recursively converted using their toArray() methods.
+     *
+     * @return array Array representation suitable for JSON response
+     */
     public function toArray(): array
     {
         $data = [

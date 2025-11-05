@@ -4,6 +4,21 @@ namespace App\DTO;
 
 use OpenApi\Attributes as OA;
 
+/**
+ * Cart Item Data Transfer Object
+ *
+ * Represents a single item in the shopping cart with all necessary information
+ * for display and calculations. This DTO is used when returning cart contents
+ * to the frontend API clients.
+ *
+ * Contains:
+ * - id: Menu item ID from database
+ * - name: Display name of the menu item
+ * - price: Unit price (float, e.g., 14.50)
+ * - quantity: Number of this item in cart
+ * - image: Path or URL to item image
+ * - category: Item category (e.g., 'plats', 'desserts', 'boissons')
+ */
 #[OA\Schema(
     schema: 'CartItem',
     description: 'Cart item representation',
@@ -31,6 +46,11 @@ class CartItemDTO
         public string $category
     ) {}
 
+    /**
+     * Convert DTO to array for JSON serialization
+     *
+     * @return array Array representation of cart item
+     */
     public function toArray(): array
     {
         return [

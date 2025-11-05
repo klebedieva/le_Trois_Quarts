@@ -3,9 +3,11 @@
 namespace App\Controller;
 
 use App\DTO\ApiResponseDTO;
+use App\DTO\OrderCreateRequest;
 use App\DTO\OrderItemDTO;
 use App\DTO\OrderResponseDTO;
 use App\Service\InputSanitizer;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use App\Service\OrderService;
@@ -32,7 +34,8 @@ class OrderController extends AbstractController
         private OrderService $orderService,
         private SymfonyEmailService $emailService,
         private LoggerInterface $logger,
-        private CacheInterface $cache
+        private CacheInterface $cache,
+        private ValidatorInterface $validator
     ) {}
 
     #[Route('/order', name: 'app_order')]
@@ -43,6 +46,11 @@ class OrderController extends AbstractController
 
     /**
      * Create a new order
+     *
+     * Validates JSON payload via Symfony Validator and the OrderCreateRequest DTO.
+     * Returns 422 with a list of errors for validation failures, 400 for invalid JSON.
+     * Supports idempotency using the Idempotency-Key header (10 minutes TTL) to prevent
+     * duplicate order creation on client retries.
      */
     #[Route('/api/order', name: 'api_order_create', methods: ['POST'])]
     #[OA\Post(
@@ -160,47 +168,60 @@ class OrderController extends AbstractController
 
             $data = json_decode($rawContent, true);
             
-            // Sanitize input data to prevent XSS
-            if (isset($data['deliveryAddress'])) {
-                $data['deliveryAddress'] = InputSanitizer::sanitize($data['deliveryAddress']);
+            if (!is_array($data)) {
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => 'JSON invalide'
+                ], 400);
             }
-            if (isset($data['deliveryZip'])) {
-                $data['deliveryZip'] = InputSanitizer::sanitize($data['deliveryZip']);
+
+            // Map payload to DTO and validate via Symfony Validator
+            $dto = new OrderCreateRequest();
+            $dto->deliveryMode = $data['deliveryMode'] ?? null;
+            $dto->deliveryAddress = isset($data['deliveryAddress']) ? InputSanitizer::sanitize($data['deliveryAddress']) : null;
+            $dto->deliveryZip = isset($data['deliveryZip']) ? InputSanitizer::sanitize($data['deliveryZip']) : null;
+            $dto->deliveryInstructions = isset($data['deliveryInstructions']) ? InputSanitizer::sanitize($data['deliveryInstructions']) : null;
+            $dto->deliveryFee = isset($data['deliveryFee']) ? (float)$data['deliveryFee'] : null;
+            $dto->paymentMode = $data['paymentMode'] ?? null;
+            $dto->clientFirstName = isset($data['clientFirstName']) ? InputSanitizer::sanitize($data['clientFirstName']) : null;
+            $dto->clientLastName = isset($data['clientLastName']) ? InputSanitizer::sanitize($data['clientLastName']) : null;
+            $dto->clientPhone = isset($data['clientPhone']) ? InputSanitizer::sanitize($data['clientPhone']) : null;
+            $dto->clientEmail = isset($data['clientEmail']) ? InputSanitizer::sanitize($data['clientEmail']) : null;
+            $dto->couponId = isset($data['couponId']) ? (int)$data['couponId'] : null;
+            $dto->discountAmount = isset($data['discountAmount']) ? (float)$data['discountAmount'] : null;
+
+            // Validate DTO
+            $violations = $this->validator->validate($dto);
+            if (count($violations) > 0) {
+                $errors = [];
+                foreach ($violations as $violation) {
+                    $errors[] = $violation->getMessage();
+                }
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => 'Erreur de validation',
+                    'errors' => $errors
+                ], 422);
             }
-            if (isset($data['deliveryInstructions'])) {
-                $data['deliveryInstructions'] = InputSanitizer::sanitize($data['deliveryInstructions']);
-            }
-            if (isset($data['clientFirstName'])) {
-                $data['clientFirstName'] = InputSanitizer::sanitize($data['clientFirstName']);
-            }
-            if (isset($data['clientLastName'])) {
-                $data['clientLastName'] = InputSanitizer::sanitize($data['clientLastName']);
-            }
-            if (isset($data['clientPhone'])) {
-                $data['clientPhone'] = InputSanitizer::sanitize($data['clientPhone']);
-            }
-            if (isset($data['clientEmail'])) {
-                $data['clientEmail'] = InputSanitizer::sanitize($data['clientEmail']);
-            }
-            
-            // Check for XSS attempts
+
+            // Check for XSS attempts after sanitization
             $xssErrors = [];
-            if (isset($data['deliveryAddress']) && InputSanitizer::containsXssAttempt($data['deliveryAddress'])) {
+            if ($dto->deliveryAddress && InputSanitizer::containsXssAttempt($dto->deliveryAddress)) {
                 $xssErrors[] = 'L\'adresse contient des éléments non autorisés';
             }
-            if (isset($data['deliveryInstructions']) && InputSanitizer::containsXssAttempt($data['deliveryInstructions'])) {
+            if ($dto->deliveryInstructions && InputSanitizer::containsXssAttempt($dto->deliveryInstructions)) {
                 $xssErrors[] = 'Les instructions de livraison contiennent des éléments non autorisés';
             }
-            if (isset($data['clientFirstName']) && InputSanitizer::containsXssAttempt($data['clientFirstName'])) {
+            if ($dto->clientFirstName && InputSanitizer::containsXssAttempt($dto->clientFirstName)) {
                 $xssErrors[] = 'Le prénom contient des éléments non autorisés';
             }
-            if (isset($data['clientLastName']) && InputSanitizer::containsXssAttempt($data['clientLastName'])) {
+            if ($dto->clientLastName && InputSanitizer::containsXssAttempt($dto->clientLastName)) {
                 $xssErrors[] = 'Le nom contient des éléments non autorisés';
             }
-            if (isset($data['clientPhone']) && InputSanitizer::containsXssAttempt($data['clientPhone'])) {
+            if ($dto->clientPhone && InputSanitizer::containsXssAttempt($dto->clientPhone)) {
                 $xssErrors[] = 'Le numéro de téléphone contient des éléments non autorisés';
             }
-            if (isset($data['clientEmail']) && InputSanitizer::containsXssAttempt($data['clientEmail'])) {
+            if ($dto->clientEmail && InputSanitizer::containsXssAttempt($dto->clientEmail)) {
                 $xssErrors[] = 'L\'email contient des éléments non autorisés';
             }
             
@@ -211,6 +232,22 @@ class OrderController extends AbstractController
                     'errors' => $xssErrors
                 ], 400);
             }
+
+            // Convert DTO back to array for OrderService
+            $data = [
+                'deliveryMode' => $dto->deliveryMode,
+                'deliveryAddress' => $dto->deliveryAddress,
+                'deliveryZip' => $dto->deliveryZip,
+                'deliveryInstructions' => $dto->deliveryInstructions,
+                'deliveryFee' => $dto->deliveryFee,
+                'paymentMode' => $dto->paymentMode,
+                'clientFirstName' => $dto->clientFirstName,
+                'clientLastName' => $dto->clientLastName,
+                'clientPhone' => $dto->clientPhone,
+                'clientEmail' => $dto->clientEmail,
+                'couponId' => $dto->couponId,
+                'discountAmount' => $dto->discountAmount,
+            ];
             
             // Create the order using domain service
             $order = $this->orderService->createOrder($data ?? []);

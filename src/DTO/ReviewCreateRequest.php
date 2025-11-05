@@ -4,6 +4,20 @@ namespace App\DTO;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Review Creation Request Data Transfer Object
+ *
+ * DTO for validating and accepting review submission data from API clients.
+ * Used with Symfony Validator to ensure data integrity before creating review entities.
+ *
+ * All validation messages are in French to match the application's language.
+ *
+ * Validation rules:
+ * - name: Required, minimum 2 characters
+ * - email: Optional, must be valid email format if provided
+ * - rating: Required, must be between 1 and 5 (inclusive)
+ * - comment: Required, minimum 10 characters
+ */
 class ReviewCreateRequest
 {
     #[Assert\NotBlank(message: 'Le nom est requis')]

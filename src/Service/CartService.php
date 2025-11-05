@@ -6,8 +6,23 @@ use App\Repository\MenuItemRepository;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
- * Service pour gérer le panier de commande.
- * Stocke les données dans la session utilisateur.
+ * Shopping Cart Service
+ *
+ * Manages the user's shopping cart state using Symfony session storage.
+ * Provides methods to add, remove, update quantities, and retrieve cart contents.
+ * All cart operations are session-based and do not persist to database
+ * until an order is created.
+ *
+ * Cart structure:
+ * - Stored in session under 'cart' key
+ * - Format: [menuItemId => ['id', 'name', 'price', 'image', 'category', 'quantity']]
+ * - Automatically calculates totals and item counts
+ *
+ * Features:
+ * - Automatic quantity increment when adding existing items
+ * - Image path resolution (handles relative/absolute paths)
+ * - Cart total and item count calculations
+ * - Session-based persistence (per-user cart)
  */
 class CartService
 {
@@ -19,24 +34,34 @@ class CartService
     ) {}
 
     /**
-     * Ajouter un article au panier
+     * Add item to cart or increase quantity if item already exists
+     *
+     * If the menu item ID already exists in the cart, its quantity is incremented.
+     * Otherwise, a new cart entry is created with the specified quantity.
+     * Fetches menu item details from database to populate cart entry.
+     *
+     * @param int $menuItemId Menu item ID from database
+     * @param int $quantity Quantity to add (default: 1)
+     * @return array Updated cart details with items, total, and itemCount
+     * @throws \InvalidArgumentException If menu item not found
      */
     public function add(int $menuItemId, int $quantity = 1): array
     {
         $session = $this->requestStack->getSession();
         $cart = $session->get(self::CART_SESSION_KEY, []);
 
-        // Si l'article existe déjà, augmenter la quantité
+        // If item already exists, increment quantity
         if (isset($cart[$menuItemId])) {
             $cart[$menuItemId]['quantity'] += $quantity;
         } else {
-            // Récupérer les détails du produit
+            // Fetch menu item details from database
             $menuItem = $this->menuItemRepository->find($menuItemId);
             
             if (!$menuItem) {
                 throw new \InvalidArgumentException("Menu item not found: $menuItemId");
             }
 
+            // Create new cart entry with item details
             $cart[$menuItemId] = [
                 'id' => $menuItem->getId(),
                 'name' => $menuItem->getName(),
@@ -47,13 +72,21 @@ class CartService
             ];
         }
 
+        // Persist updated cart to session
         $session->set(self::CART_SESSION_KEY, $cart);
         
         return $this->getCartDetails($cart);
     }
 
     /**
-     * Retirer un article du panier
+     * Remove item completely from cart
+     *
+     * Removes the item with the given menu item ID from the cart entirely.
+     * This is different from setting quantity to 0 (which also removes it).
+     *
+     * @param int $menuItemId Menu item ID to remove
+     * @return array Updated cart details after removal
+     * @throws \InvalidArgumentException If item not found in cart
      */
     public function remove(int $menuItemId): array
     {
@@ -71,7 +104,15 @@ class CartService
     }
 
     /**
-     * Mettre à jour la quantité d'un article
+     * Update item quantity in cart
+     *
+     * Updates the quantity of an existing cart item. If quantity is set to 0,
+     * the item is removed from the cart (equivalent to remove operation).
+     *
+     * @param int $menuItemId Menu item ID to update
+     * @param int $quantity New quantity (0 removes the item)
+     * @return array Updated cart details after quantity change
+     * @throws \InvalidArgumentException If item not found in cart
      */
     public function updateQuantity(int $menuItemId, int $quantity): array
     {
@@ -93,7 +134,12 @@ class CartService
     }
 
     /**
-     * Obtenir le contenu du panier avec les détails
+     * Get current cart contents with calculated totals
+     *
+     * Returns complete cart state including all items, total price,
+     * and total item count. Used by API endpoints to return cart data.
+     *
+     * @return array Cart details with items, total, and itemCount
      */
     public function getCart(): array
     {
@@ -104,7 +150,12 @@ class CartService
     }
 
     /**
-     * Vider le panier
+     * Clear entire cart (remove all items)
+     *
+     * Removes all items from the cart, effectively emptying it.
+     * Useful for order completion or user-initiated cart reset.
+     *
+     * @return array Empty cart structure with zero totals
      */
     public function clear(): array
     {
@@ -115,7 +166,12 @@ class CartService
     }
 
     /**
-     * Obtenir le nombre total d'articles dans le panier
+     * Get total item count in cart
+     *
+     * Returns the sum of all item quantities (not the number of unique items).
+     * For example, if cart has 2x Item A and 3x Item B, returns 5.
+     *
+     * @return int Total quantity of all items in cart
      */
     public function getItemCount(): int
     {
@@ -131,7 +187,12 @@ class CartService
     }
 
     /**
-     * Calculer le total du panier
+     * Calculate cart total price
+     *
+     * Sums up all item prices multiplied by their quantities.
+     * Result is rounded to 2 decimal places for currency precision.
+     *
+     * @return float Total cart price rounded to 2 decimals
      */
     public function getTotal(): float
     {
@@ -147,7 +208,13 @@ class CartService
     }
 
     /**
-     * Formater les détails du panier pour l'API
+     * Format cart details for API response
+     *
+     * Calculates totals and item count from cart array.
+     * Converts cart associative array to indexed array of items.
+     *
+     * @param array $cart Cart array from session
+     * @return array Formatted cart with items, total, and itemCount
      */
     private function getCartDetails(array $cart): array
     {
@@ -168,7 +235,17 @@ class CartService
     }
 
     /**
-     * Résoudre le chemin de l'image
+     * Resolve image path to absolute URL or relative path
+     *
+     * Handles various image path formats:
+     * - Absolute URLs (http/https) - returned as-is
+     * - Absolute paths starting with /uploads/ or /assets/ - returned as-is
+     * - Relative paths starting with assets/ - prepended with /
+     * - Other paths - prepended with /uploads/menu/
+     * - Null/empty - returns default placeholder image
+     *
+     * @param string|null $image Image path from database
+     * @return string Resolved image path for frontend use
      */
     private function resolveImagePath(?string $image): string
     {

@@ -4,6 +4,25 @@ namespace App\DTO;
 
 use OpenApi\Attributes as OA;
 
+/**
+ * Order Response Data Transfer Object
+ *
+ * Complete order representation for API responses. Contains all order details
+ * including customer information, delivery details, payment method, pricing
+ * breakdown, and order items. Used when returning order data after creation
+ * or when retrieving order details.
+ *
+ * This DTO preserves the order state at the time of creation, including prices
+ * and item details, which may differ from current menu prices.
+ *
+ * Contains:
+ * - Order identification: id, no (order number), status, createdAt
+ * - Delivery information: mode, address, zip, instructions, fee
+ * - Payment information: payment mode
+ * - Customer information: first name, last name, phone, email
+ * - Pricing: subtotal, tax amount, total (all calculated at order time)
+ * - Items: Array of OrderItemDTO representing all ordered items
+ */
 #[OA\Schema(
     schema: 'OrderResponse',
     description: 'Order response representation',
@@ -67,6 +86,14 @@ class OrderResponseDTO
         public array $items
     ) {}
 
+    /**
+     * Convert DTO to array for JSON serialization
+     *
+     * Recursively converts nested OrderItemDTO objects to arrays.
+     * Handles both DTO objects and plain arrays for flexibility.
+     *
+     * @return array Array representation of complete order with all details
+     */
     public function toArray(): array
     {
         return [
