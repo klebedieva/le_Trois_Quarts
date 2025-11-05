@@ -7,6 +7,10 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
+ * Drink repository.
+ *
+ * Extend with helpers for grouping/filtering drinks by type for the menu page.
+ *
  * @extends ServiceEntityRepository<Drink>
  */
 class DrinkRepository extends ServiceEntityRepository

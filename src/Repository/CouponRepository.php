@@ -7,6 +7,11 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
+ * Coupon repository.
+ *
+ * Suitable place for search and analytics on coupons (e.g., by code, activity,
+ * usage statistics).
+ *
  * @extends ServiceEntityRepository<Coupon>
  */
 class CouponRepository extends ServiceEntityRepository

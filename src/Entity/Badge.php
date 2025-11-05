@@ -5,6 +5,11 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Visual badge/label attached to menu items (e.g. "Chef's special").
+ *
+ * Many-to-many with MenuItem for UI badges on dishes.
+ */
 #[ORM\Entity]
 class Badge
 {

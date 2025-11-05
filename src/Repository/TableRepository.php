@@ -7,6 +7,10 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
+ * Table repository.
+ *
+ * Extend with layout/zone queries to support availability planning.
+ *
  * @extends ServiceEntityRepository<Table>
  */
 class TableRepository extends ServiceEntityRepository

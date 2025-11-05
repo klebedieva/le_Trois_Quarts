@@ -18,13 +18,22 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Psr\Log\LoggerInterface;
 use App\Service\TableAvailabilityService;
 
+/**
+ * Public site pages: home, menu, gallery, reservation, reviews.
+ *
+ * Notes:
+ * - Uses repositories/services only for read operations and simple form handling.
+ * - Security-sensitive endpoints (AJAX reservation) include CSRF checks and input sanitization.
+ */
 class HomeController extends AbstractController
 {
     public function __construct(
         private SymfonyEmailService $emailService,
-        private TableAvailabilityService $availability
+        private TableAvailabilityService $availability,
+        private LoggerInterface $logger
     ) {}
 
     #[Route('/', name: 'app_home')]
@@ -84,7 +93,7 @@ class HomeController extends AbstractController
                 $entityManager->flush();
                 $this->emailService->sendReservationNotificationToAdmin($reservation);
             } catch (\Throwable $e) {
-                error_log('Error sending reservation notification to admin: ' . $e->getMessage());
+                $this->logger->error('Error sending reservation notification to admin: {error}', ['error' => $e->getMessage()]);
             }
 
             $this->addFlash('success', 'Your reservation request has been accepted!');
@@ -103,10 +112,8 @@ class HomeController extends AbstractController
         $csrfToken = $request->request->get('_token') ?: $request->headers->get('X-CSRF-Token');
         
         if (!$csrfToken || !$csrfTokenManager->isTokenValid(new CsrfToken('submit', $csrfToken))) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Token CSRF invalide'
-            ], 403);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Token CSRF invalide');
+            return $this->json($response->toArray(), 403);
         }
         
         return $this->handleReservationAjax($request, $entityManager);
@@ -116,7 +123,8 @@ class HomeController extends AbstractController
     {
         // Check if it's an AJAX request
         if (!$request->isXmlHttpRequest()) {
-            return new JsonResponse(['success' => false, 'message' => 'Requête invalide'], 400);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Requête invalide');
+            return $this->json($response->toArray(), 400);
         }
         
         try {
@@ -200,11 +208,12 @@ class HomeController extends AbstractController
             }
             
             if (!empty($errors)) {
-                return new JsonResponse([
-                    'success' => false,
-                    'message' => 'Erreur de validation. Veuillez vérifier vos données.',
-                    'errors' => $errors
-                ], 400);
+                $response = new \App\DTO\ApiResponseDTO(
+                    success: false,
+                    message: 'Erreur de validation. Veuillez vérifier vos données.',
+                    errors: $errors
+                );
+                return $this->json($response->toArray(), 400);
             }
             
             // Variant B: do not block on availability in the public endpoint.
@@ -231,20 +240,22 @@ class HomeController extends AbstractController
                 $this->emailService->sendReservationNotificationToAdmin($reservation);
             } catch (\Exception $e) {
                 // Log error but don't prevent saving
-                error_log('Error sending reservation notification to admin: ' . $e->getMessage());
+                $this->logger->error('Error sending reservation notification to admin: {error}', ['error' => $e->getMessage()]);
             }
             
-            return new JsonResponse([
-                'success' => true,
-                'message' => 'Votre réservation a été enregistrée. Nous vous contacterons pour confirmation.'
-            ]);
+            $response = new \App\DTO\ApiResponseDTO(
+                success: true,
+                message: 'Votre réservation a été enregistrée. Nous vous contacterons pour confirmation.'
+            );
+            return $this->json($response->toArray());
             
         } catch (\Exception $e) {
             
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Une erreur est survenue lors de l\'enregistrement de votre réservation.'
-            ], 500);
+            $response = new \App\DTO\ApiResponseDTO(
+                success: false,
+                message: 'Une erreur est survenue lors de l\'enregistrement de votre réservation.'
+            );
+            return $this->json($response->toArray(), 500);
         }
     }
 

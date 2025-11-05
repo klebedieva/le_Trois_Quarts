@@ -7,6 +7,11 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
+ * Reservation repository.
+ *
+ * Intended for availability and workflow-related queries. Extend with methods
+ * such as findByStatusAndDate() or counts/by periods as needed.
+ *
  * @extends ServiceEntityRepository<Reservation>
  */
 class ReservationRepository extends ServiceEntityRepository

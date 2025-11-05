@@ -7,6 +7,10 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
+ * Gallery image repository.
+ *
+ * Provides helpers to fetch active images and filter by category for public API.
+ *
  * @extends ServiceEntityRepository<GalleryImage>
  */
 class GalleryImageRepository extends ServiceEntityRepository

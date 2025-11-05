@@ -7,6 +7,12 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Public gallery image metadata.
+ *
+ * Used to display curated photos (categories: terrasse/interieur/plats/ambiance)
+ * on the website. Only active images are exposed via the API.
+ */
 #[ORM\Entity(repositoryClass: GalleryImageRepository::class)]
 #[ORM\Table(name: 'gallery_images')]
 class GalleryImage

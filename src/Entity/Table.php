@@ -6,6 +6,11 @@ use App\Repository\TableRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Physical table in the restaurant floor plan.
+ *
+ * Used by reservation planning and availability checks (capacity, zone).
+ */
 #[ORM\Entity(repositoryClass: TableRepository::class)]
 #[ORM\Table(name: 'tables')]
 class Table

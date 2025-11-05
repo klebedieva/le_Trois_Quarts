@@ -8,6 +8,13 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Coupon code for applying discounts to orders.
+ *
+ * Supports percentage and fixed-amount discounts, optional min order amount,
+ * maximum discount, validity window, active flag, and usage limit.
+ * Usage count is tracked to enforce limits.
+ */
 #[ORM\Entity(repositoryClass: CouponRepository::class)]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'coupon')]

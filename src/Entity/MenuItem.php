@@ -8,6 +8,12 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Catalog menu item rendered on customer pages.
+ *
+ * Many-to-many relations with Tag/Badge/Allergen are used for filtering and UX labels.
+ * Nutrition facts are embedded. Monetary fields are DECIMAL/string for precision.
+ */
 #[ORM\Entity(repositoryClass: MenuItemRepository::class)]
 #[ORM\HasLifecycleCallbacks]
 class MenuItem

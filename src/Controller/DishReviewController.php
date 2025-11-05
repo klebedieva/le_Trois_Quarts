@@ -12,27 +12,35 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
- * Endpoints for dish-specific reviews (list and add).
- * These are lightweight JSON endpoints consumed by dish-detail.js on the dish page.
+ * Dish-Specific Review Controller
+ * 
+ * Handles reviews for individual menu items (dishes):
+ * - List approved reviews for a specific dish
+ * - Create new reviews for a dish (pending moderation)
+ * 
+ * These are lightweight JSON endpoints consumed by dish-detail.js on the dish detail page.
+ * Reviews are filtered by menuItem relation and must be approved to be displayed.
  */
 #[Route('/dish/{id}/reviews')]
 class DishReviewController extends AbstractController
 {
     /**
-     * Return approved reviews for the given MenuItem (dish).
+     * List approved reviews for a specific menu item (dish)
+     * 
+     * Returns only approved reviews that are associated with the given dish.
+     * Reviews are ordered by creation date (newest first) and limited to 100 results.
+     * 
+     * @param MenuItem $item Menu item entity (resolved from route parameter)
+     * @param ReviewRepository $repo Review repository for database queries
+     * @return JsonResponse List of approved dish reviews
      */
     #[Route('', name: 'dish_reviews_list', methods: ['GET'])]
     public function list(MenuItem $item, ReviewRepository $repo): JsonResponse
     {
-        $reviews = $repo->createQueryBuilder('r')
-            ->andWhere('r.menuItem = :id')
-            ->andWhere('r.isApproved = 1')
-            ->setParameter('id', $item->getId())
-            ->orderBy('r.createdAt', 'DESC')
-            ->setMaxResults(100)
-            ->getQuery()
-            ->getResult();
+        // Query approved reviews for this specific dish via repository
+        $reviews = $repo->findApprovedForDish((int) $item->getId(), 100, 0);
 
+        // Transform Review entities to array format for JSON response
         $data = array_map(static function (Review $r) {
             return [
                 'id' => $r->getId(),
@@ -43,16 +51,29 @@ class DishReviewController extends AbstractController
             ];
         }, $reviews);
 
-        return $this->json(['success' => true, 'reviews' => $data]);
+        $response = new \App\DTO\ApiResponseDTO(
+            success: true,
+            data: ['reviews' => $data]
+        );
+        return $this->json($response->toArray());
     }
 
     /**
-     * Create a new review for a dish; newly created reviews are pending moderation.
+     * Create a new review for a specific dish
+     * 
+     * Accepts review submission for a menu item. All new reviews are set to isApproved=false
+     * and require admin moderation before being displayed publicly.
+     * Supports both JSON and form-encoded request payloads.
+     * 
+     * @param MenuItem $item Menu item entity (resolved from route parameter)
+     * @param Request $request HTTP request containing review data
+     * @param EntityManagerInterface $em Entity manager for persisting the review
+     * @return JsonResponse Success/error response
      */
     #[Route('', name: 'dish_reviews_add', methods: ['POST'])]
     public function add(MenuItem $item, Request $request, EntityManagerInterface $em): JsonResponse
     {
-        // Accept both JSON and form-encoded payloads
+        // Accept both JSON and form-encoded payloads for flexibility
         $data = json_decode($request->getContent(), true);
         if (is_array($data)) {
             $name = trim((string) ($data['name'] ?? ''));
@@ -66,22 +87,28 @@ class DishReviewController extends AbstractController
             $comment = trim((string) $request->request->get('comment', ''));
         }
 
+        // Validate required fields (basic validation)
         if ($name === '' || $rating < 1 || $rating > 5 || mb_strlen($comment) < 10) {
-            return $this->json(['success' => false, 'message' => 'Invalid data'], 400);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Données invalides');
+            return $this->json($response->toArray(), 400);
         }
 
+        // Create new review entity associated with this dish
+        // All new reviews require moderation (isApproved=false) for consistency
         $review = (new Review())
             ->setName($name)
             ->setEmail($email !== '' ? $email : null)
             ->setRating($rating)
             ->setComment($comment)
-            ->setIsApproved(false) // keep moderation consistent with global reviews
-            ->setMenuItem($item);
+            ->setIsApproved(false) // Keep moderation consistent with global reviews
+            ->setMenuItem($item); // Associate review with the specific dish
 
+        // Persist to database
         $em->persist($review);
         $em->flush();
 
-        return $this->json(['success' => true, 'message' => 'Review submitted. Pending approval.']);
+        $response = new \App\DTO\ApiResponseDTO(success: true, message: 'Avis soumis. En attente de validation.');
+        return $this->json($response->toArray());
     }
 }
 

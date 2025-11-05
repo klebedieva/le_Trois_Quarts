@@ -7,6 +7,7 @@ use App\Form\ContactMessageType;
 use App\Service\InputSanitizer;
 use App\Service\SymfonyEmailService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,13 +16,34 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
+/**
+ * Contact Form Controller
+ * 
+ * Handles contact form submissions:
+ * - Display contact form (GET)
+ * - Process form submission (POST)
+ * - AJAX form submission endpoint
+ * 
+ * All user input is sanitized to prevent XSS attacks before saving to database.
+ * Email notifications are sent to admin (non-blocking - failures are logged).
+ */
 class ContactController extends AbstractController
 {
     public function __construct(
         private EntityManagerInterface $em,
-        private SymfonyEmailService $emailService
+        private SymfonyEmailService $emailService,
+        private LoggerInterface $logger
     ) {}
 
+    /**
+     * Display contact form and handle form submission
+     * 
+     * GET: Renders the contact form page.
+     * POST: Processes form data, sanitizes input, saves to database, and sends email notification.
+     * 
+     * @param Request $request HTTP request containing form data
+     * @return Response Rendered contact form or redirect after submission
+     */
     #[Route('/contact', name: 'app_contact', methods: ['GET', 'POST'])]
     public function contact(Request $request): Response
     {
@@ -29,8 +51,9 @@ class ContactController extends AbstractController
         $form = $this->createForm(ContactMessageType::class, $msg);
         $form->handleRequest($request);
 
+        // Process form submission if valid
         if ($form->isSubmitted() && $form->isValid()) {
-            // Sanitize data before saving
+            // Sanitize all user input to prevent XSS attacks before persisting
             $msg->setFirstName(InputSanitizer::sanitize($msg->getFirstName()));
             $msg->setLastName(InputSanitizer::sanitize($msg->getLastName()));
             $msg->setEmail(InputSanitizer::sanitize($msg->getEmail()));
@@ -39,10 +62,11 @@ class ContactController extends AbstractController
             }
             $msg->setMessage(InputSanitizer::sanitize($msg->getMessage()));
             
+            // Persist contact message to database
             $this->em->persist($msg);
             $this->em->flush();
 
-            // Send notification to admin
+            // Send email notification to admin (non-blocking - failures are logged but don't break the flow)
             try {
                 $this->emailService->sendNotificationToAdmin(
                     $msg->getEmail(),
@@ -51,10 +75,11 @@ class ContactController extends AbstractController
                     $msg->getMessage()
                 );
             } catch (\Exception $e) {
-                // Log error but don't prevent saving
-                error_log('Error sending notification to admin: ' . $e->getMessage());
+                // Log error but don't prevent saving - email failure shouldn't block message storage
+                $this->logger->error('Error sending contact notification: {error}', ['error' => $e->getMessage()]);
             }
 
+            // Show success message and redirect to prevent duplicate submissions
             $this->addFlash('success', 'Merci! Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.');
             return $this->redirectToRoute('app_contact');
         }
@@ -64,41 +89,60 @@ class ContactController extends AbstractController
         ]);
     }
 
+    /**
+     * AJAX endpoint for contact form submission
+     * 
+     * Handles contact form submissions via AJAX requests.
+     * Validates CSRF token before processing.
+     * 
+     * @param Request $request HTTP request containing form data
+     * @param CsrfTokenManagerInterface $csrfTokenManager CSRF token manager
+     * @return JsonResponse Success/error response
+     */
     #[Route('/contact-ajax', name: 'app_contact_ajax', methods: ['POST'])]
     public function contactAjax(Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
-        // CSRF Protection
+        // Validate CSRF token to prevent cross-site request forgery attacks
         $csrfToken = $request->request->get('_token') ?: $request->headers->get('X-CSRF-Token');
         if (!$csrfToken || !$csrfTokenManager->isTokenValid(new CsrfToken('submit', $csrfToken))) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Token CSRF invalide'
-            ], 403);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Token CSRF invalide');
+            return $this->json($response->toArray(), 403);
         }
         
         return $this->handleContactAjax($request);
     }
     
+    /**
+     * Process AJAX contact form submission
+     * 
+     * Validates input, sanitizes data, saves to database, and sends email notification.
+     * Includes XSS detection and comprehensive validation.
+     * 
+     * @param Request $request HTTP request containing form data
+     * @return JsonResponse Success/error response with validation errors if any
+     */
     private function handleContactAjax(Request $request): JsonResponse
     {
+        // Ensure this is an AJAX request
         if (!$request->isXmlHttpRequest()) {
-            return new JsonResponse(['success' => false, 'message' => 'Invalid request'], 400);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Requête invalide');
+            return $this->json($response->toArray(), 400);
         }
         
         try {
-            // Get form data from request and sanitize
+            // Extract and sanitize all form data from request
             $firstName = InputSanitizer::sanitize($request->request->get('firstName', ''));
             $lastName = InputSanitizer::sanitize($request->request->get('lastName', ''));
             $email = InputSanitizer::sanitize($request->request->get('email', ''));
             $phone = InputSanitizer::sanitize($request->request->get('phone', ''));
-            $subject = $request->request->get('subject', '');
+            $subject = $request->request->get('subject', ''); // Subject doesn't need sanitization as it's from predefined choices
             $message = InputSanitizer::sanitize($request->request->get('message', ''));
             $consent = $request->request->get('consent', false);
             
-            // Validate form data
+            // Validate all form fields
             $errors = [];
             
-            // XSS check
+            // XSS attack detection - check for malicious scripts in user input
             if (InputSanitizer::containsXssAttempt($firstName)) {
                 $errors[] = 'Le prénom contient des éléments non autorisés';
             }
@@ -144,11 +188,12 @@ class ContactController extends AbstractController
             }
             
             if (!empty($errors)) {
-                return new JsonResponse([
-                    'success' => false,
-                    'message' => 'Erreur de validation. Veuillez vérifier vos données.',
-                    'errors' => $errors
-                ], 400);
+                $response = new \App\DTO\ApiResponseDTO(
+                    success: false,
+                    message: 'Erreur de validation. Veuillez vérifier vos données.',
+                    errors: $errors
+                );
+                return $this->json($response->toArray(), 400);
             }
             
             // Create and save contact message
@@ -173,19 +218,15 @@ class ContactController extends AbstractController
                     $contactMessage->getMessage()
                 );
             } catch (\Exception $e) {
-                error_log('Error sending notification to admin: ' . $e->getMessage());
+                $this->logger->error('Error sending contact notification: {error}', ['error' => $e->getMessage()]);
             }
             
-            return new JsonResponse([
-                'success' => true,
-                'message' => 'Merci! Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.'
-            ]);
+            $response = new \App\DTO\ApiResponseDTO(success: true, message: 'Merci! Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.');
+            return $this->json($response->toArray());
             
         } catch (\Exception $e) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Une erreur est survenue lors de l\'envoi de votre message.'
-            ], 500);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Une erreur est survenue lors de l\'envoi de votre message.');
+            return $this->json($response->toArray(), 500);
         }
     }
 }

@@ -8,6 +8,12 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 use App\Entity\MenuItem;
 
+/**
+ * Customer review.
+ *
+ * If menuItem is NULL, the review targets the restaurant in general.
+ * Otherwise, it is a dish-specific review.
+ */
 #[ORM\Entity(repositoryClass: ReviewRepository::class)]
 #[ORM\Table(name: 'reviews')]
 class Review

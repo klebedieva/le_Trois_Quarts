@@ -7,6 +7,17 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Restaurant table reservation request.
+ *
+ * Represents a booking request from the website. Admins review and update its
+ * status in the back office (confirmation, cancellation, no-show tracking).
+ *
+ * Invariants/notes:
+ * - Status is a simple string workflow (pending|confirmed|cancelled|completed|no_show)
+ * - isConfirmed mirrors status=confirmed for UI convenience
+ * - Date and time are stored separately (time as HH:MM string)
+ */
 #[ORM\Entity(repositoryClass: ReservationRepository::class)]
 #[ORM\Table(name: 'reservations')]
 class Reservation

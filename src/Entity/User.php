@@ -10,6 +10,12 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Backoffice user account.
+ *
+ * Uses enum-based roles (UserRole). Email is the unique identifier.
+ * Password is stored as a hashed string by Symfony security.
+ */
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'users')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface

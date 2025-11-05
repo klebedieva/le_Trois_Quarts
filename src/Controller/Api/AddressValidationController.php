@@ -9,6 +9,16 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use OpenApi\Attributes as OA;
 
+/**
+ * Address Validation API Controller
+ * 
+ * Handles delivery address validation for order processing:
+ * - Validate zip codes for delivery eligibility
+ * - Validate full addresses for delivery
+ * 
+ * Uses AddressValidationService to check if addresses are within delivery radius
+ * and calculates distance from restaurant location.
+ */
 #[Route('/api', name: 'api_')]
 class AddressValidationController extends AbstractController
 {
@@ -17,7 +27,13 @@ class AddressValidationController extends AbstractController
     ) {}
 
     /**
-     * Validate zip code for delivery
+     * Validate zip code for delivery eligibility
+     * 
+     * Checks if a French zip code is within the restaurant's delivery radius.
+     * Returns validation result, distance, coordinates, and delivery availability status.
+     * 
+     * @param Request $request HTTP request containing zip code in JSON body
+     * @return JsonResponse Validation result with distance and coordinates
      */
     #[Route('/validate-zip-code', name: 'validate_zip_code', methods: ['POST'])]
     #[OA\Post(
@@ -40,62 +56,53 @@ class AddressValidationController extends AbstractController
         ),
         tags: ['Delivery']
     )]
-    #[OA\Response(
-        response: 200,
-        description: 'Validation result',
-        content: new OA\JsonContent(
-            properties: [
-                new OA\Property(property: 'valid', type: 'boolean', example: true),
-                new OA\Property(property: 'error', type: 'string', example: null),
-                new OA\Property(property: 'distance', type: 'number', example: 2.5),
-                new OA\Property(property: 'coordinates', type: 'object', description: 'Coordinates of the zip code'),
-                new OA\Property(property: 'deliveryAvailable', type: 'boolean', example: true)
-            ],
-            type: 'object'
-        )
-    )]
-    #[OA\Response(
-        response: 400,
-        description: 'Invalid request',
-        content: new OA\JsonContent(
-            properties: [
-                new OA\Property(property: 'error', type: 'string', example: 'Zip code is required')
-            ],
-            type: 'object'
-        )
-    )]
+    #[OA\Response(response: 200, description: 'Validation result', content: new OA\JsonContent(ref: '#/components/schemas/ApiResponse'))]
+    #[OA\Response(response: 400, description: 'Invalid request', content: new OA\JsonContent(ref: '#/components/schemas/ApiResponse'))]
     #[OA\Tag(name: 'Delivery')]
     public function validateZipCode(Request $request): JsonResponse
     {
         try {
+            // Parse JSON request body
             $data = json_decode($request->getContent(), true);
             $zipCode = $data['zipCode'] ?? null;
 
+            // Validate required zip code parameter
             if (!$zipCode) {
-                return $this->json(['error' => 'Zip code is required'], 400);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Code postal requis');
+                return $this->json($response->toArray(), 400);
             }
 
+            // Validate zip code using service (checks distance, coordinates, etc.)
             $result = $this->addressValidationService->validateZipCodeForDelivery($zipCode);
 
-            return $this->json([
-                'valid' => $result['valid'],
-                'error' => $result['error'],
-                'distance' => $result['distance'],
-                'coordinates' => $result['coordinates'] ?? null,
-                'deliveryAvailable' => $result['valid']
-            ]);
+            // Return validation result with all relevant information
+            $response = new \App\DTO\ApiResponseDTO(
+                success: true,
+                data: [
+                    'valid' => $result['valid'],
+                    'error' => $result['error'],
+                    'distance' => $result['distance'],
+                    'coordinates' => $result['coordinates'] ?? null,
+                    'deliveryAvailable' => $result['valid']
+                ]
+            );
+            return $this->json($response->toArray());
 
         } catch (\Exception $e) {
-            return $this->json([
-                'error' => 'Erreur lors de la validation du code postal',
-                'valid' => false,
-                'deliveryAvailable' => false
-            ], 500);
+            // Return error response if validation fails
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la validation du code postal');
+            return $this->json($response->toArray(), 500);
         }
     }
 
     /**
-     * Validate full address for delivery
+     * Validate full address for delivery eligibility
+     * 
+     * Checks if a complete address (with optional zip code) is within the restaurant's delivery radius.
+     * Uses geocoding to resolve address coordinates and calculates distance.
+     * 
+     * @param Request $request HTTP request containing address and optional zip code in JSON body
+     * @return JsonResponse Validation result with distance and coordinates
      */
     #[Route('/validate-address', name: 'validate_address', methods: ['POST'])]
     #[OA\Post(
@@ -124,58 +131,43 @@ class AddressValidationController extends AbstractController
         ),
         tags: ['Delivery']
     )]
-    #[OA\Response(
-        response: 200,
-        description: 'Validation result',
-        content: new OA\JsonContent(
-            properties: [
-                new OA\Property(property: 'valid', type: 'boolean', example: true),
-                new OA\Property(property: 'error', type: 'string', example: null),
-                new OA\Property(property: 'distance', type: 'number', example: 2.5),
-                new OA\Property(property: 'coordinates', type: 'object', description: 'Coordinates of the address'),
-                new OA\Property(property: 'deliveryAvailable', type: 'boolean', example: true)
-            ],
-            type: 'object'
-        )
-    )]
-    #[OA\Response(
-        response: 400,
-        description: 'Invalid request',
-        content: new OA\JsonContent(
-            properties: [
-                new OA\Property(property: 'error', type: 'string', example: 'Address is required')
-            ],
-            type: 'object'
-        )
-    )]
+    #[OA\Response(response: 200, description: 'Validation result', content: new OA\JsonContent(ref: '#/components/schemas/ApiResponse'))]
+    #[OA\Response(response: 400, description: 'Invalid request', content: new OA\JsonContent(ref: '#/components/schemas/ApiResponse'))]
     #[OA\Tag(name: 'Delivery')]
     public function validateAddress(Request $request): JsonResponse
     {
         try {
+            // Parse JSON request body
             $data = json_decode($request->getContent(), true);
             $address = $data['address'] ?? null;
-            $zipCode = $data['zipCode'] ?? null;
+            $zipCode = $data['zipCode'] ?? null; // Optional zip code for additional validation
 
+            // Validate required address parameter
             if (!$address) {
-                return $this->json(['error' => 'Address is required'], 400);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Adresse requise');
+                return $this->json($response->toArray(), 400);
             }
 
+            // Validate address using service (geocodes address and checks distance)
             $result = $this->addressValidationService->validateAddressForDelivery($address, $zipCode);
 
-            return $this->json([
-                'valid' => $result['valid'],
-                'error' => $result['error'],
-                'distance' => $result['distance'],
-                'coordinates' => $result['coordinates'] ?? null,
-                'deliveryAvailable' => $result['valid']
-            ]);
+            // Return validation result with all relevant information
+            $response = new \App\DTO\ApiResponseDTO(
+                success: true,
+                data: [
+                    'valid' => $result['valid'],
+                    'error' => $result['error'],
+                    'distance' => $result['distance'],
+                    'coordinates' => $result['coordinates'] ?? null,
+                    'deliveryAvailable' => $result['valid']
+                ]
+            );
+            return $this->json($response->toArray());
 
         } catch (\Exception $e) {
-            return $this->json([
-                'error' => 'Erreur lors de la validation de l\'adresse',
-                'valid' => false,
-                'deliveryAvailable' => false
-            ], 500);
+            // Return error response if validation fails
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la validation de l\'adresse');
+            return $this->json($response->toArray(), 500);
         }
     }
 }

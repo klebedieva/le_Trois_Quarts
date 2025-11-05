@@ -7,6 +7,14 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+ * Customer contact message.
+ *
+ * Stores messages sent via the public contact form, along with reply workflow
+ * metadata (reply status, reply message and operator).
+ *
+ * Validation annotations are applied to prevent spam/XSS and ensure data quality.
+ */
 #[ORM\Entity(repositoryClass: ContactMessageRepository::class)]
 class ContactMessage
 {

@@ -10,6 +10,15 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use OpenApi\Attributes as OA;
 
+/**
+ * Gallery API Controller
+ * 
+ * RESTful API endpoints for gallery image management:
+ * - List gallery images with optional filtering by category
+ * - Get single gallery image by ID
+ * 
+ * All endpoints return active images only and include full image URLs.
+ */
 #[Route('/api/gallery', name: 'api_gallery_')]
 class GalleryController extends AbstractController
 {
@@ -17,6 +26,15 @@ class GalleryController extends AbstractController
         private GalleryImageRepository $galleryRepository
     ) {}
 
+    /**
+     * List gallery images with optional filtering
+     * 
+     * Returns active gallery images with optional filtering by category.
+     * Supports pagination via limit parameter (1-100 images).
+     * 
+     * @param Request $request HTTP request containing optional query parameters (limit, category)
+     * @return JsonResponse List of gallery images with metadata
+     */
     #[Route('', name: 'list', methods: ['GET'])]
     #[OA\Get(
         path: '/api/gallery',
@@ -79,33 +97,30 @@ class GalleryController extends AbstractController
     public function list(Request $request): JsonResponse
     {
         try {
-            $limit = (int) $request->query->get('limit', 50);
-            $category = $request->query->get('category');
+            // Extract query parameters
+            $limit = (int) $request->query->get('limit', 50); // Default limit: 50 images
+            $category = $request->query->get('category'); // Optional category filter
 
-            // Validate limit
+            // Validate limit parameter (must be between 1 and 100)
             if ($limit < 1 || $limit > 100) {
-                return new JsonResponse([
-                    'success' => false,
-                    'message' => 'Limit must be between 1 and 100'
-                ], 400);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'La limite doit être comprise entre 1 et 100');
+                return $this->json($response->toArray(), 400);
             }
 
-            // Validate category if provided
+            // Validate category if provided (must be one of the allowed categories)
             if ($category && !in_array($category, ['terrasse', 'interieur', 'plats', 'ambiance'])) {
-                return new JsonResponse([
-                    'success' => false,
-                    'message' => 'Invalid category. Must be one of: terrasse, interieur, plats, ambiance'
-                ], 400);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Catégorie invalide. Doit être: terrasse, interieur, plats, ambiance');
+                return $this->json($response->toArray(), 400);
             }
 
-            // Get images from repository
+            // Fetch images from repository (filtered by category if provided)
             if ($category) {
                 $images = $this->galleryRepository->findByCategory($category);
             } else {
-                $images = $this->galleryRepository->findAllActive();
+                $images = $this->galleryRepository->findAllActive(); // All active images
             }
 
-            // Limit results
+            // Apply limit to results
             $images = array_slice($images, 0, $limit);
 
             // Format response data
@@ -122,17 +137,15 @@ class GalleryController extends AbstractController
                 ];
             }, $images);
 
-            return new JsonResponse([
-                'success' => true,
-                'data' => $data,
+            $response = new \App\DTO\ApiResponseDTO(success: true, data: [
+                'items' => $data,
                 'total' => count($data)
             ]);
+            return $this->json($response->toArray());
 
         } catch (\Exception $e) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'An error occurred while retrieving gallery images'
-            ], 500);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la récupération des images de la galerie');
+            return $this->json($response->toArray(), 500);
         }
     }
 
@@ -192,10 +205,8 @@ class GalleryController extends AbstractController
             $image = $this->galleryRepository->find($id);
 
             if (!$image || !$image->isIsActive()) {
-                return new JsonResponse([
-                    'success' => false,
-                    'message' => 'Gallery image not found'
-                ], 404);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Image de galerie introuvable');
+                return $this->json($response->toArray(), 404);
             }
 
             $data = [
@@ -210,16 +221,12 @@ class GalleryController extends AbstractController
                 'updatedAt' => $image->getUpdatedAt() ? $image->getUpdatedAt()->format('c') : null
             ];
 
-            return new JsonResponse([
-                'success' => true,
-                'data' => $data
-            ]);
+            $response = new \App\DTO\ApiResponseDTO(success: true, data: $data);
+            return $this->json($response->toArray());
 
         } catch (\Exception $e) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'An error occurred while retrieving the gallery image'
-            ], 500);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la récupération de l\'image de la galerie');
+            return $this->json($response->toArray(), 500);
         }
     }
 }

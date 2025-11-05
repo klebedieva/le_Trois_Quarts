@@ -6,6 +6,13 @@ use App\Entity\MenuItem;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Order line item.
+ *
+ * Denormalized fields (productId, productName, unitPrice, total) are kept intentionally
+ * to preserve historical data even if related catalog items change or are removed.
+ * Optional relation to MenuItem provides a live link when present.
+ */
 #[ORM\Entity]
 class OrderItem
 {

@@ -26,6 +26,18 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Assets;
 
+/**
+ * Admin Dashboard Controller
+ * 
+ * Main admin panel dashboard powered by EasyAdmin.
+ * Provides:
+ * - Dashboard overview with statistics (reviews, messages, reservations, orders)
+ * - CRUD menu configuration for all entities
+ * - Access control (ROLE_MODERATOR required)
+ * 
+ * Statistics are calculated in real-time from database queries.
+ * Some statistics (orders, revenue) are only visible to ROLE_ADMIN users.
+ */
 #[AdminDashboard(routePath: '/admin', routeName: 'admin')]
 class DashboardController extends AbstractDashboardController
 {
@@ -36,10 +48,21 @@ class DashboardController extends AbstractDashboardController
         $this->entityManager = $entityManager;
     }
 
+    /**
+     * Display admin dashboard with statistics
+     * 
+     * Calculates and displays various statistics:
+     * - Review statistics (total, approved, pending, average rating)
+     * - Contact message statistics (total, replied, pending)
+     * - Reservation statistics (total, confirmed, pending, cancelled)
+     * - Order statistics and revenue (admin only)
+     * 
+     * @return Response Rendered dashboard with statistics
+     */
     #[IsGranted('ROLE_MODERATOR')]
     public function index(): Response
     {
-        // Get reviews statistics for dashboard
+        // Get review statistics for dashboard display
         $reviewRepository = $this->entityManager->getRepository(Review::class);
         $contactRepository = $this->entityManager->getRepository(ContactMessage::class);
         $reservationRepository = $this->entityManager->getRepository(Reservation::class);
@@ -60,7 +83,8 @@ class DashboardController extends AbstractDashboardController
         $pendingReservations = $reservationRepository->count(['status' => 'pending']);
         $cancelledReservations = $reservationRepository->count(['status' => 'cancelled']);
         
-        // Get orders statistics (only for admins)
+        // Get order statistics (only visible to ROLE_ADMIN users)
+        // These sensitive financial metrics are restricted to admin access
         $totalOrders = 0;
         $pendingOrders = 0;
         $confirmedOrders = 0;
@@ -70,6 +94,7 @@ class DashboardController extends AbstractDashboardController
         $totalRevenue = 0;
         
         if ($this->isGranted('ROLE_ADMIN')) {
+            // Calculate order statistics and revenue only for admins
             $totalOrders = $orderRepository->count([]);
             $pendingOrders = $orderRepository->count(['status' => 'pending']);
             $confirmedOrders = $orderRepository->count(['status' => 'confirmed']);
@@ -77,7 +102,8 @@ class DashboardController extends AbstractDashboardController
             $deliveredOrders = $orderRepository->count(['status' => 'delivered']);
             $cancelledOrders = $orderRepository->count(['status' => 'cancelled']);
             
-            // Get total revenue
+            // Calculate total revenue from delivered orders only
+            // Revenue is calculated from completed (delivered) orders, not pending/cancelled
             $totalRevenue = $orderRepository->createQueryBuilder('o')
                 ->select('SUM(o.total)')
                 ->where('o.status IN (:deliveredStatuses)')
@@ -88,7 +114,7 @@ class DashboardController extends AbstractDashboardController
             $totalRevenue = $totalRevenue ? (float) $totalRevenue : 0;
         }
         
-        // Get average rating
+        // Calculate average rating from approved reviews only
         $avgRating = $reviewRepository->createQueryBuilder('r')
             ->select('AVG(r.rating)')
             ->where('r.isApproved = :approved')
@@ -98,7 +124,7 @@ class DashboardController extends AbstractDashboardController
         
         $avgRating = $avgRating ? round($avgRating, 1) : 0;
         
-        // Get recent reviews
+        // Get most recent approved reviews for dashboard preview (limit to 4)
         $recentReviews = $reviewRepository->findBy(
             ['isApproved' => true],
             ['createdAt' => 'DESC'],

@@ -4,6 +4,11 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Nutrition facts embedded value-object for menu items.
+ *
+ * Optional numeric fields; stored directly in the owning entity table.
+ */
 #[ORM\Embeddable]
 class NutritionFacts
 {

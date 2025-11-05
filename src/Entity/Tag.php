@@ -5,6 +5,11 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Technical tag used for filtering/categorization on menu items (e.g. vegan).
+ *
+ * Many-to-many with MenuItem for machine-usable filtering (code) and display (name).
+ */
 #[ORM\Entity]
 class Tag
 {

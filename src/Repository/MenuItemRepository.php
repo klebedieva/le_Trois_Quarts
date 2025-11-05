@@ -22,6 +22,9 @@ class MenuItemRepository extends ServiceEntityRepository
 	 * Return lightweight data for related dishes of the same category.
 	 * Only selects required fields to avoid hydrating full entities.
 	 *
+	 * @param string $category Category code used for filtering
+	 * @param int $excludeId Current dish id to exclude from the list
+	 * @param int $limit Max number of items to return
 	 * @return array<int, array{id:string,name:string,description:?string,price:float,image:?string}>
 	 */
 	public function findRelatedForCard(string $category, int $excludeId, int $limit = 3): array

@@ -7,6 +7,11 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Allergen dictionary entry (e.g. gluten, peanuts).
+ *
+ * Many-to-many with MenuItem to mark dishes that contain the allergen.
+ */
 #[ORM\Entity(repositoryClass: AllergenRepository::class)]
 class Allergen
 {

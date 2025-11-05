@@ -10,6 +10,20 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
+/**
+ * Coupon API Controller
+ * 
+ * Handles coupon code operations for order discounts:
+ * - Validate coupon codes and calculate discounts
+ * - Apply coupons to orders (increment usage count)
+ * - List active coupons (admin only)
+ * 
+ * All coupon validation includes checks for:
+ * - Active status
+ * - Expiration dates
+ * - Usage limits
+ * - Minimum order amounts
+ */
 #[Route('/api/coupon', name: 'api_coupon_')]
 class CouponController extends AbstractController
 {
@@ -20,79 +34,93 @@ class CouponController extends AbstractController
     }
 
     /**
-     * Validate and apply a coupon code
+     * Validate coupon code and calculate discount
      * 
-     * @param Request $request
-     * @return JsonResponse
+     * Checks if a coupon code is valid and can be applied to the given order amount.
+     * Validates coupon status, expiration, usage limits, and minimum order amount.
+     * Returns discount amount and new total after discount.
+     * 
+     * @param Request $request HTTP request containing coupon code and order amount
+     * @return JsonResponse Validation result with discount details or error message
      */
     #[Route('/validate', name: 'validate', methods: ['POST'])]
+    #[\OpenApi\Attributes\Post(
+        path: '/api/coupon/validate',
+        summary: 'Validate coupon code and compute discount',
+        tags: ['Coupon'],
+        requestBody: new \OpenApi\Attributes\RequestBody(required: true, content: new \OpenApi\Attributes\JsonContent(
+            type: 'object',
+            properties: [
+                new \OpenApi\Attributes\Property(property: 'code', type: 'string', example: 'WELCOME10'),
+                new \OpenApi\Attributes\Property(property: 'orderAmount', type: 'number', format: 'float', example: 42.50)
+            ]
+        )),
+        responses: [
+            new \OpenApi\Attributes\Response(response: 200, description: 'OK', content: new \OpenApi\Attributes\JsonContent(ref: '#/components/schemas/ApiResponse')),
+            new \OpenApi\Attributes\Response(response: 400, description: 'Bad request', content: new \OpenApi\Attributes\JsonContent(ref: '#/components/schemas/ApiResponse')),
+            new \OpenApi\Attributes\Response(response: 422, description: 'Validation error', content: new \OpenApi\Attributes\JsonContent(ref: '#/components/schemas/ApiResponse')),
+            new \OpenApi\Attributes\Response(response: 500, description: 'Server error', content: new \OpenApi\Attributes\JsonContent(ref: '#/components/schemas/ApiResponse'))
+        ]
+    )]
     public function validate(Request $request): JsonResponse
     {
         try {
+            // Parse JSON request body
             $data = json_decode($request->getContent(), true);
             
+            // Validate required coupon code parameter
             if (!isset($data['code'])) {
-                return $this->json([
-                    'success' => false,
-                    'message' => 'Code promo requis'
-                ], 400);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Code promo requis');
+                return $this->json($response->toArray(), 400);
             }
 
+            // Validate required order amount parameter
             if (!isset($data['orderAmount'])) {
-                return $this->json([
-                    'success' => false,
-                    'message' => 'Montant de commande requis'
-                ], 400);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Montant de commande requis');
+                return $this->json($response->toArray(), 400);
             }
 
+            // Normalize coupon code (uppercase, trimmed)
             $code = strtoupper(trim($data['code']));
             $orderAmount = (float) $data['orderAmount'];
 
-            // Find coupon by code
+            // Find coupon by code in database
             $coupon = $this->couponRepository->findOneBy(['code' => $code]);
 
             if (!$coupon) {
-                return $this->json([
-                    'success' => false,
-                    'message' => 'Code promo invalide'
-                ], 404);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Code promo invalide');
+                return $this->json($response->toArray(), 404);
             }
 
-            // Check if coupon is active
+            // Check if coupon is currently active (not disabled by admin)
             if (!$coupon->isActive()) {
-                return $this->json([
-                    'success' => false,
-                    'message' => 'Ce code promo n\'est plus actif'
-                ], 400);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Ce code promo n\'est plus actif');
+                return $this->json($response->toArray(), 400);
             }
 
-            // Check if coupon is valid (dates, usage limit)
+            // Check if coupon can be used (valid dates, not expired, usage limit not reached)
             if (!$coupon->canBeUsed()) {
-                return $this->json([
-                    'success' => false,
-                    'message' => 'Ce code promo n\'est plus disponible'
-                ], 400);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Ce code promo n\'est plus disponible');
+                return $this->json($response->toArray(), 400);
             }
 
-            // Check minimum order amount
+            // Check if order amount meets minimum requirement
             if (!$coupon->canBeAppliedToAmount($orderAmount)) {
                 $minAmount = $coupon->getMinOrderAmount();
-                return $this->json([
-                    'success' => false,
-                    'message' => sprintf(
-                        'Montant minimum de commande non atteint (minimum: %.2f€)',
-                        (float) $minAmount
-                    )
-                ], 400);
+                $response = new \App\DTO\ApiResponseDTO(
+                    success: false,
+                    message: sprintf('Montant minimum de commande non atteint (minimum: %.2f€)', (float) $minAmount)
+                );
+                return $this->json($response->toArray(), 400);
             }
 
-            // Calculate discount
+            // Calculate discount amount based on coupon type (percentage or fixed)
             $discountAmount = $coupon->calculateDiscount($orderAmount);
 
-            return $this->json([
-                'success' => true,
-                'message' => 'Code promo appliqué avec succès',
-                'data' => [
+            $response = new \App\DTO\ApiResponseDTO(
+                success: true,
+                message: 'Code promo appliqué avec succès',
+                data: [
                     'couponId' => $coupon->getId(),
                     'code' => $coupon->getCode(),
                     'discountType' => $coupon->getDiscountType(),
@@ -100,64 +128,68 @@ class CouponController extends AbstractController
                     'discountAmount' => number_format($discountAmount, 2, '.', ''),
                     'newTotal' => number_format($orderAmount - $discountAmount, 2, '.', '')
                 ]
-            ]);
+            );
+            return $this->json($response->toArray());
 
         } catch (\Exception $e) {
-            return $this->json([
-                'success' => false,
-                'message' => 'Erreur lors de la validation du code promo: ' . $e->getMessage()
-            ], 500);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la validation du code promo: ' . $e->getMessage());
+            return $this->json($response->toArray(), 500);
         }
     }
 
     /**
-     * Apply coupon to order (when order is placed)
-     * This method increments the usage count
+     * Apply coupon to order (increment usage count)
      * 
-     * @param int $couponId
-     * @return JsonResponse
+     * Called when an order is successfully placed with a coupon.
+     * Increments the coupon's usage count to track how many times it has been used.
+     * Should only be called after order creation is confirmed.
+     * 
+     * @param int $couponId Coupon ID from route parameter
+     * @return JsonResponse Success/error response
      */
     #[Route('/apply/{couponId}', name: 'apply', methods: ['POST'])]
     public function apply(int $couponId): JsonResponse
     {
         try {
+            // Find coupon by ID
             $coupon = $this->couponRepository->find($couponId);
 
             if (!$coupon) {
-                return $this->json([
-                    'success' => false,
-                    'message' => 'Code promo non trouvé'
-                ], 404);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Code promo non trouvé');
+                return $this->json($response->toArray(), 404);
             }
 
+            // Final check before applying (in case coupon became invalid between validation and application)
             if (!$coupon->canBeUsed()) {
-                return $this->json([
-                    'success' => false,
-                    'message' => 'Ce code promo n\'est plus disponible'
-                ], 400);
+                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Ce code promo n\'est plus disponible');
+                return $this->json($response->toArray(), 400);
             }
 
-            // Increment usage count
+            // Increment usage count to track coupon usage
             $coupon->incrementUsage();
             $this->entityManager->flush();
 
-            return $this->json([
-                'success' => true,
-                'message' => 'Code promo appliqué'
-            ]);
+            $response = new \App\DTO\ApiResponseDTO(success: true, message: 'Code promo appliqué');
+            return $this->json($response->toArray());
 
         } catch (\Exception $e) {
-            return $this->json([
-                'success' => false,
-                'message' => 'Erreur lors de l\'application du code promo: ' . $e->getMessage()
-            ], 500);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de l\'application du code promo: ' . $e->getMessage());
+            return $this->json($response->toArray(), 500);
         }
     }
 
     /**
-     * Get active coupons (admin only)
+     * List all active coupons
      * 
-     * @return JsonResponse
+     * Returns all active coupons with their details including:
+     * - Discount type and value
+     * - Usage limits and current usage count
+     * - Validity dates
+     * - Minimum order amounts
+     * 
+     * Note: This endpoint may be restricted to admin users in production.
+     * 
+     * @return JsonResponse List of active coupons with full details
      */
     #[Route('/list', name: 'list', methods: ['GET'])]
     public function list(): JsonResponse
@@ -186,16 +218,12 @@ class CouponController extends AbstractController
                 ];
             }, $coupons);
 
-            return $this->json([
-                'success' => true,
-                'data' => $data
-            ]);
+            $response = new \App\DTO\ApiResponseDTO(success: true, data: $data);
+            return $this->json($response->toArray());
 
         } catch (\Exception $e) {
-            return $this->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des codes promo: ' . $e->getMessage()
-            ], 500);
+            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la récupération des codes promo: ' . $e->getMessage());
+            return $this->json($response->toArray(), 500);
         }
     }
 }

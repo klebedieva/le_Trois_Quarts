@@ -6,6 +6,11 @@ use App\Repository\DrinkRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Drink item (beverage) displayed alongside the menu.
+ *
+ * Simple catalog entity used to render grouped drinks (type field) with price.
+ */
 #[ORM\Entity(repositoryClass: DrinkRepository::class)]
 class Drink
 {

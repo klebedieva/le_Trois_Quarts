@@ -7,7 +7,13 @@ use OpenApi\Attributes as OA;
 #[OA\Schema(
     schema: 'ApiResponse',
     description: 'Standard API response',
-    type: 'object'
+    type: 'object',
+    example: [
+        'success' => true,
+        'message' => 'Opération réussie',
+        'data' => ['items' => ['sample' => 'value']],
+        'count' => 1,
+    ]
 )]
 class ApiResponseDTO
 {
@@ -25,7 +31,13 @@ class ApiResponseDTO
         public ?OrderResponseDTO $order = null,
 
         #[OA\Property(property: 'count', type: 'integer', example: 3, description: 'Item count (when applicable)')]
-        public ?int $count = null
+        public ?int $count = null,
+
+        #[OA\Property(property: 'data', type: 'object', description: 'Generic payload container for non-cart/order responses', example: ['key' => 'value'])]
+        public ?array $data = null,
+
+        #[OA\Property(property: 'errors', type: 'array', items: new OA\Items(type: 'string'), description: 'Validation or processing errors', example: ['Le nom est requis'])]
+        public ?array $errors = null
     ) {}
 
     public function toArray(): array
@@ -48,6 +60,14 @@ class ApiResponseDTO
 
         if ($this->count !== null) {
             $data['count'] = $this->count;
+        }
+
+        if ($this->data !== null) {
+            $data['data'] = $this->data;
+        }
+
+        if ($this->errors !== null) {
+            $data['errors'] = $this->errors;
         }
 
         return $data;

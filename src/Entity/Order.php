@@ -11,6 +11,14 @@ use App\Enum\DeliveryMode;
 use App\Enum\PaymentMode;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Order aggregate root.
+ *
+ * - Monetary fields stored as DECIMAL/string to avoid floating precision issues;
+ *   formatting is handled in services/UI.
+ * - Status/DeliveryMode/PaymentMode are PHP enums; DB stores string values.
+ * - Relation to Coupon is nullable (SET NULL) to preserve historical orders when coupons are deleted.
+ */
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
 #[ORM\Table(name: '`order`')]
 class Order

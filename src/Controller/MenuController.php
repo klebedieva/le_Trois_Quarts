@@ -10,6 +10,14 @@ use App\Repository\ReviewRepository;
 use App\Repository\DrinkRepository;
 use App\Entity\MenuItem;
 
+/**
+ * Public menu and dish detail pages.
+ *
+ * Notes:
+ * - index() serializes MenuItem entities into lightweight arrays for the frontend JS.
+ * - show() prepares dish detail data and uses lightweight queries for related items
+ *   plus aggregate ratings to avoid heavy hydration.
+ */
 final class MenuController extends AbstractController
 {
     #[Route('/menu', name: 'app_menu')]
