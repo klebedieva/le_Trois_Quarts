@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Service\InputSanitizer;
 use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionProperty;
@@ -255,5 +256,99 @@ class ValidationHelper
         }
         
         return (bool)$value;
+    }
+
+    /**
+     * Validate XSS attempts in DTO fields
+     *
+     * Checks multiple DTO properties for XSS attack patterns using InputSanitizer.
+     * Returns array of error messages for fields that contain XSS attempts.
+     * This centralizes XSS validation logic and eliminates code duplication across controllers.
+     *
+     * @param object $dto DTO object with public properties to check
+     * @param array<string> $fieldNames Array of property names to validate (e.g., ['firstName', 'lastName', 'email'])
+     * @return array<string> Array of error messages for fields with XSS attempts (empty if none found)
+     *
+     * @example
+     * $errors = $helper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
+     * if (!empty($errors)) {
+     *     // Return validation error with XSS errors
+     * }
+     */
+    public function validateXssAttempts(object $dto, array $fieldNames): array
+    {
+        $errors = [];
+        
+        foreach ($fieldNames as $fieldName) {
+            // Use reflection to safely get property value
+            $reflection = new ReflectionClass($dto);
+            
+            // Skip if property doesn't exist
+            if (!$reflection->hasProperty($fieldName)) {
+                continue;
+            }
+            
+            $property = $reflection->getProperty($fieldName);
+            
+            // Skip if property is not accessible
+            if (!$property->isPublic()) {
+                continue;
+            }
+            
+            $value = $property->getValue($dto);
+            
+            // Skip null or empty values
+            if ($value === null || $value === '') {
+                continue;
+            }
+            
+            // Check for XSS attempt
+            if (InputSanitizer::containsXssAttempt($value)) {
+                // Generate user-friendly error message based on field name
+                $fieldLabel = $this->getFieldLabel($fieldName);
+                $errors[] = $fieldLabel . ' contient des éléments non autorisés';
+            }
+        }
+        
+        return $errors;
+    }
+
+    /**
+     * Get user-friendly French label for field name
+     *
+     * Converts camelCase or snake_case field names to French labels for error messages.
+     *
+     * @param string $fieldName Field name (e.g., 'firstName', 'client_email')
+     * @return string French label (e.g., 'Le prénom', 'L\'email du client')
+     */
+    private function getFieldLabel(string $fieldName): string
+    {
+        // Map common field names to French labels
+        $labels = [
+            'firstName' => 'Le prénom',
+            'lastName' => 'Le nom',
+            'email' => 'L\'email',
+            'phone' => 'Le numéro de téléphone',
+            'message' => 'Le message',
+            'subject' => 'Le sujet',
+            'clientFirstName' => 'Le prénom du client',
+            'clientLastName' => 'Le nom du client',
+            'clientEmail' => 'L\'email du client',
+            'clientPhone' => 'Le numéro de téléphone du client',
+            'deliveryAddress' => 'L\'adresse de livraison',
+            'deliveryInstructions' => 'Les instructions de livraison',
+            'address' => 'L\'adresse',
+            'zipCode' => 'Le code postal',
+        ];
+        
+        // Return mapped label or generate from field name
+        if (isset($labels[$fieldName])) {
+            return $labels[$fieldName];
+        }
+        
+        // Fallback: convert camelCase to readable French
+        $converted = preg_replace('/([A-Z])/', ' $1', $fieldName);
+        $converted = strtolower($converted);
+        return 'Le champ ' . trim($converted);
     }
 }

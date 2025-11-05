@@ -154,29 +154,18 @@ class ContactController extends AbstractController
             $dto->message = $message;
             $dto->consent = $consent;
 
-            // Validate DTO
+            // Validate DTO using Symfony Validator
+            // This checks all validation constraints defined in ContactCreateRequest DTO
             $violations = $this->validator->validate($dto);
             if (count($violations) > 0) {
+                // Extract validation error messages from violations
                 $errors = $this->validationHelper->extractViolationMessages($violations);
                 
                 // Also check for XSS attempts (additional security layer)
-                $xssErrors = [];
-                if (InputSanitizer::containsXssAttempt($dto->firstName)) {
-                    $xssErrors[] = 'Le prénom contient des éléments non autorisés';
-                }
-                if (InputSanitizer::containsXssAttempt($dto->lastName)) {
-                    $xssErrors[] = 'Le nom contient des éléments non autorisés';
-                }
-                if (InputSanitizer::containsXssAttempt($dto->email)) {
-                    $xssErrors[] = 'L\'email contient des éléments non autorisés';
-                }
-                if ($dto->phone && InputSanitizer::containsXssAttempt($dto->phone)) {
-                    $xssErrors[] = 'Le numéro de téléphone contient des éléments non autorisés';
-                }
-                if (InputSanitizer::containsXssAttempt($dto->message)) {
-                    $xssErrors[] = 'Le message contient des éléments non autorisés';
-                }
+                // This provides defense in depth - even if basic validation passes, we check for malicious content
+                $xssErrors = $this->validationHelper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
                 
+                // Merge validation errors and XSS errors into single array
                 $allErrors = array_merge($errors, $xssErrors);
                 $response = new \App\DTO\ApiResponseDTO(
                     success: false,
@@ -187,24 +176,12 @@ class ContactController extends AbstractController
             }
 
             // Additional XSS check after validation (defense in depth)
-            $xssErrors = [];
-            if (InputSanitizer::containsXssAttempt($dto->firstName)) {
-                $xssErrors[] = 'Le prénom contient des éléments non autorisés';
-            }
-            if (InputSanitizer::containsXssAttempt($dto->lastName)) {
-                $xssErrors[] = 'Le nom contient des éléments non autorisés';
-            }
-            if (InputSanitizer::containsXssAttempt($dto->email)) {
-                $xssErrors[] = 'L\'email contient des éléments non autorisés';
-            }
-            if ($dto->phone && InputSanitizer::containsXssAttempt($dto->phone)) {
-                $xssErrors[] = 'Le numéro de téléphone contient des éléments non autorisés';
-            }
-            if (InputSanitizer::containsXssAttempt($dto->message)) {
-                $xssErrors[] = 'Le message contient des éléments non autorisés';
-            }
+            // Perform XSS validation again after DTO validation passes to ensure no malicious content
+            // This double-check prevents XSS attacks that might bypass initial validation
+            $xssErrors = $this->validationHelper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
             
             if (!empty($xssErrors)) {
+                // Return 400 Bad Request for security violations (not 422, as this is a security issue)
                 $response = new \App\DTO\ApiResponseDTO(
                     success: false,
                     message: 'Données invalides détectées',
@@ -241,8 +218,30 @@ class ContactController extends AbstractController
             $response = new \App\DTO\ApiResponseDTO(success: true, message: 'Merci! Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.');
             return $this->json($response->toArray());
             
+        } catch (\InvalidArgumentException $e) {
+            // Handle validation/business logic errors
+            // This should not happen after DTO validation, but serves as defense in depth
+            // InvalidArgumentException is thrown by business logic when data is invalid
+            $response = new \App\DTO\ApiResponseDTO(
+                success: false,
+                message: 'Erreur de validation: ' . $e->getMessage()
+            );
+            return $this->json($response->toArray(), 422);
         } catch (\Exception $e) {
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Une erreur est survenue lors de l\'envoi de votre message.');
+            // Log unexpected errors for debugging and monitoring
+            // This catches any unexpected exceptions that might occur during processing
+            // We log full error details for developers, but only return generic message to user
+            $this->logger->error('Unexpected error in contact form submission', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return generic error message to user (don't expose internal errors for security)
+            // Exposing internal error details could help attackers understand system internals
+            $response = new \App\DTO\ApiResponseDTO(
+                success: false,
+                message: 'Une erreur est survenue lors de l\'envoi de votre message.'
+            );
             return $this->json($response->toArray(), 500);
         }
     }

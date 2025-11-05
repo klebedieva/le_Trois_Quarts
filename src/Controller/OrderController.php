@@ -204,28 +204,17 @@ class OrderController extends AbstractController
                 ], 422);
             }
 
-            // Check for XSS attempts after sanitization
-            $xssErrors = [];
-            if ($dto->deliveryAddress && InputSanitizer::containsXssAttempt($dto->deliveryAddress)) {
-                $xssErrors[] = 'L\'adresse contient des éléments non autorisés';
-            }
-            if ($dto->deliveryInstructions && InputSanitizer::containsXssAttempt($dto->deliveryInstructions)) {
-                $xssErrors[] = 'Les instructions de livraison contiennent des éléments non autorisés';
-            }
-            if ($dto->clientFirstName && InputSanitizer::containsXssAttempt($dto->clientFirstName)) {
-                $xssErrors[] = 'Le prénom contient des éléments non autorisés';
-            }
-            if ($dto->clientLastName && InputSanitizer::containsXssAttempt($dto->clientLastName)) {
-                $xssErrors[] = 'Le nom contient des éléments non autorisés';
-            }
-            if ($dto->clientPhone && InputSanitizer::containsXssAttempt($dto->clientPhone)) {
-                $xssErrors[] = 'Le numéro de téléphone contient des éléments non autorisés';
-            }
-            if ($dto->clientEmail && InputSanitizer::containsXssAttempt($dto->clientEmail)) {
-                $xssErrors[] = 'L\'email contient des éléments non autorisés';
-            }
+            // Check for XSS attempts after sanitization (defense in depth)
+            // Even though InputSanitizer was used during mapping, we perform additional XSS validation
+            // This ensures no malicious content passes through, providing multiple layers of security
+            $xssErrors = $this->validationHelper->validateXssAttempts(
+                $dto,
+                ['deliveryAddress', 'deliveryInstructions', 'clientFirstName', 'clientLastName', 'clientPhone', 'clientEmail']
+            );
             
             if (!empty($xssErrors)) {
+                // Return 400 Bad Request for security violations (not 422, as this is a security issue)
+                // XSS attempts are treated as security violations, not validation errors
                 return new JsonResponse([
                     'success' => false,
                     'message' => 'Données invalides détectées',
@@ -317,16 +306,41 @@ class OrderController extends AbstractController
             return $this->json($responseArray, 201);
 
         } catch (\InvalidArgumentException $e) {
+            // Handle validation/business logic errors (expected from OrderService)
+            // OrderService throws InvalidArgumentException for business rule violations
+            // (e.g., empty cart, invalid address, invalid coupon)
             $response = new ApiResponseDTO(
                 success: false,
                 message: $e->getMessage()
             );
             return $this->json($response->toArray(), 422);
-        } catch (\Exception $e) {
-            $this->logger->error('Order creation failed', ['exception' => $e]);
+        } catch (\TypeError | \ValueError $e) {
+            // Handle type errors (should not happen after DTO validation, but defense in depth)
+            // These errors indicate type mismatches that should have been caught by DTO validation
+            // Log as warning since this indicates a potential bug in validation logic
+            $this->logger->warning('Type error in order creation', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             $response = new ApiResponseDTO(
                 success: false,
-                message: 'Erreur lors de la création de la commande: ' . $e->getMessage()
+                message: 'Erreur de validation des données'
+            );
+            return $this->json($response->toArray(), 422);
+        } catch (\Exception $e) {
+            // Log unexpected errors for debugging and monitoring
+            // This catches any unexpected exceptions that might occur during order processing
+            // We log full error details for developers, but only return generic message to user
+            $this->logger->error('Unexpected error in order creation', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return generic error message to user (don't expose internal errors for security)
+            // Exposing internal error details could help attackers understand system internals
+            $response = new ApiResponseDTO(
+                success: false,
+                message: 'Erreur lors de la création de la commande'
             );
             return $this->json($response->toArray(), 500);
         }
@@ -407,10 +421,29 @@ class OrderController extends AbstractController
 
             return $this->json($response->toArray());
 
-        } catch (\Exception $e) {
+        } catch (\InvalidArgumentException $e) {
+            // Handle validation errors (e.g., invalid order ID format)
+            // InvalidArgumentException is thrown when order ID is invalid or order not found
             $response = new ApiResponseDTO(
                 success: false,
-                message: 'Erreur lors de la récupération de la commande: ' . $e->getMessage()
+                message: $e->getMessage()
+            );
+            return $this->json($response->toArray(), 422);
+        } catch (\Exception $e) {
+            // Log unexpected errors for debugging and monitoring
+            // This catches any unexpected exceptions that might occur during order retrieval
+            // We log full error details including order ID for developers
+            $this->logger->error('Unexpected error retrieving order', [
+                'orderId' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return generic error message to user (don't expose internal errors for security)
+            // Exposing internal error details could help attackers understand system internals
+            $response = new ApiResponseDTO(
+                success: false,
+                message: 'Erreur lors de la récupération de la commande'
             );
             return $this->json($response->toArray(), 500);
         }

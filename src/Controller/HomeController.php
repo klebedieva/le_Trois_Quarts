@@ -154,29 +154,18 @@ class HomeController extends AbstractController
             $dto->guests = !empty($guests) ? (int)$guests : null;
             $dto->message = $message ?: null;
 
-            // Validate DTO
+            // Validate DTO using Symfony Validator
+            // This checks all validation constraints defined in ReservationCreateRequest DTO
             $violations = $this->validator->validate($dto);
             if (count($violations) > 0) {
+                // Extract validation error messages from violations
                 $errors = $this->validationHelper->extractViolationMessages($violations);
                 
                 // Also check for XSS attempts (additional security layer)
-                $xssErrors = [];
-                if (InputSanitizer::containsXssAttempt($dto->firstName)) {
-                    $xssErrors[] = 'Le prénom contient des éléments non autorisés';
-                }
-                if (InputSanitizer::containsXssAttempt($dto->lastName)) {
-                    $xssErrors[] = 'Le nom contient des éléments non autorisés';
-                }
-                if (InputSanitizer::containsXssAttempt($dto->email)) {
-                    $xssErrors[] = 'L\'email contient des éléments non autorisés';
-                }
-                if (InputSanitizer::containsXssAttempt($dto->phone)) {
-                    $xssErrors[] = 'Le numéro de téléphone contient des éléments non autorisés';
-                }
-                if ($dto->message && InputSanitizer::containsXssAttempt($dto->message)) {
-                    $xssErrors[] = 'Le message contient des éléments non autorisés';
-                }
+                // This provides defense in depth - even if basic validation passes, we check for malicious content
+                $xssErrors = $this->validationHelper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
                 
+                // Merge validation errors and XSS errors into single array
                 $allErrors = array_merge($errors, $xssErrors);
                 $response = new \App\DTO\ApiResponseDTO(
                     success: false,
@@ -187,17 +176,21 @@ class HomeController extends AbstractController
             }
 
             // Additional validation: check if date/time are not in the past
+            // This business logic validation cannot be easily expressed in DTO constraints,
+            // so we perform it here after DTO validation
             $validationErrors = [];
             if (!empty($dto->date)) {
                 $selectedDate = new \DateTime($dto->date);
                 $today = new \DateTime();
-                $today->setTime(0, 0, 0);
+                $today->setTime(0, 0, 0); // Set to midnight for date comparison
                 
+                // Check if selected date is in the past
                 if ($selectedDate < $today) {
                     $validationErrors[] = 'La date ne peut pas être dans le passé';
                 }
                 
-                // Check if time is not in the past for today
+                // Check if time is not in the past for today's date
+                // If reservation is for today, the time must be in the future
                 if (!empty($dto->time) && $selectedDate->format('Y-m-d') === $today->format('Y-m-d')) {
                     $selectedDateTime = new \DateTime($dto->date . ' ' . $dto->time);
                     if ($selectedDateTime <= new \DateTime()) {
@@ -207,25 +200,14 @@ class HomeController extends AbstractController
             }
 
             // Additional XSS check after validation (defense in depth)
-            $xssErrors = [];
-            if (InputSanitizer::containsXssAttempt($dto->firstName)) {
-                $xssErrors[] = 'Le prénom contient des éléments non autorisés';
-            }
-            if (InputSanitizer::containsXssAttempt($dto->lastName)) {
-                $xssErrors[] = 'Le nom contient des éléments non autorisés';
-            }
-            if (InputSanitizer::containsXssAttempt($dto->email)) {
-                $xssErrors[] = 'L\'email contient des éléments non autorisés';
-            }
-            if (InputSanitizer::containsXssAttempt($dto->phone)) {
-                $xssErrors[] = 'Le numéro de téléphone contient des éléments non autorisés';
-            }
-            if ($dto->message && InputSanitizer::containsXssAttempt($dto->message)) {
-                $xssErrors[] = 'Le message contient des éléments non autorisés';
-            }
+            // Perform XSS validation again after DTO validation passes to ensure no malicious content
+            // This double-check prevents XSS attacks that might bypass initial validation
+            $xssErrors = $this->validationHelper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
             
+            // Merge date/time validation errors and XSS errors
             $allErrors = array_merge($validationErrors, $xssErrors);
             if (!empty($allErrors)) {
+                // Return 422 for validation errors, 400 for security violations (XSS)
                 $response = new \App\DTO\ApiResponseDTO(
                     success: false,
                     message: !empty($validationErrors) ? 'Erreur de validation' : 'Données invalides détectées',
@@ -267,8 +249,26 @@ class HomeController extends AbstractController
             );
             return $this->json($response->toArray());
             
+        } catch (\InvalidArgumentException $e) {
+            // Handle validation/business logic errors
+            // This should not happen after DTO validation, but serves as defense in depth
+            // InvalidArgumentException is thrown by business logic when data is invalid
+            $response = new \App\DTO\ApiResponseDTO(
+                success: false,
+                message: 'Erreur de validation: ' . $e->getMessage()
+            );
+            return $this->json($response->toArray(), 422);
         } catch (\Exception $e) {
+            // Log unexpected errors for debugging and monitoring
+            // This catches any unexpected exceptions that might occur during processing
+            // We log full error details for developers, but only return generic message to user
+            $this->logger->error('Unexpected error in reservation submission', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             
+            // Return generic error message to user (don't expose internal errors for security)
+            // Exposing internal error details could help attackers understand system internals
             $response = new \App\DTO\ApiResponseDTO(
                 success: false,
                 message: 'Une erreur est survenue lors de l\'enregistrement de votre réservation.'
