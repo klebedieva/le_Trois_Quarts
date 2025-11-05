@@ -346,10 +346,6 @@ window.orderAPI = {
      * Response format: { success: boolean, message?: string, order: OrderResponse }
      */
     async createOrder(payload) {
-        /**
-         * Make API request using global apiRequest helper
-         * Includes credentials for session-based authentication
-         */
         const res = await window.apiRequest('/api/order', {
             method: 'POST',
             credentials: 'include',
@@ -1683,6 +1679,18 @@ function getOrderAmountForCoupon() {
 
 // Build payload and call the backend to create the order
 async function confirmOrder() {
+    // Prevent double submission
+    if (window.isSubmittingOrder) {
+        return;
+    }
+    window.isSubmittingOrder = true;
+    // Disable confirm button if present
+    const confirmBtn = document.querySelector('#step4 .btn.btn-success');
+    const oldText = confirmBtn ? confirmBtn.innerHTML : null;
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Traitement...';
+    }
     const accept = getElement('acceptTerms')?.checked;
     if (!accept) { 
         showOrderNotification('Veuillez accepter les conditions générales', 'error'); 
@@ -1717,6 +1725,13 @@ async function confirmOrder() {
         showOrderConfirmation(created.no, created.id, created.total);
     } catch (e) {
         showOrderNotification(e.message || 'Erreur lors de la création de la commande', 'error');
+    } finally {
+        // Re-enable button only if confirmation screen not rendered
+        if (confirmBtn && document.body.contains(confirmBtn)) {
+            confirmBtn.disabled = false;
+            if (oldText !== null) confirmBtn.innerHTML = oldText;
+        }
+        window.isSubmittingOrder = false;
     }
 }
 

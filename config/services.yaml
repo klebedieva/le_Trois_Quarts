@@ -19,6 +19,21 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
+    # Register delivery strategies and tag them for factory injection
+    App\Strategy\Delivery\Strategy\:
+        resource: '../src/Strategy/Delivery/Strategy/*'
+        tags: ['app.delivery_strategy']
+
+    App\Strategy\Delivery\DeliveryStrategyFactory:
+        arguments:
+            - !tagged_iterator 'app.delivery_strategy'
+
+    # Pricing strategy setup (single default strategy)
+    App\Strategy\Pricing\Strategy\DefaultPricingStrategy: ~
+    App\Strategy\Pricing\PricingStrategyFactory:
+        arguments:
+            - '@App\Strategy\Pricing\Strategy\DefaultPricingStrategy'
+
     # Dedicated monolog logger alias for security audit events
     securityAuditLogger:
         alias: monolog.logger.security_audit

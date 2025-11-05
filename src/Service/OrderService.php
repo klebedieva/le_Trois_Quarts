@@ -12,6 +12,8 @@ use App\Repository\OrderRepository;
 use App\Repository\CouponRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use App\Strategy\Delivery\DeliveryStrategyFactory;
+use App\Strategy\Pricing\PricingStrategyFactory;
 
 /**
  * Service to manage orders.
@@ -27,7 +29,9 @@ class OrderService
         private RequestStack $requestStack,
         private RestaurantSettingsService $restaurantSettings,
         private AddressValidationService $addressValidationService,
-        private CouponRepository $couponRepository
+        private CouponRepository $couponRepository,
+        private DeliveryStrategyFactory $deliveryStrategies,
+        private PricingStrategyFactory $pricingStrategies
     ) {}
 
     /**
@@ -54,26 +58,9 @@ class OrderService
             : DeliveryMode::DELIVERY;
         $order->setDeliveryMode($deliveryMode);
 
-        // Set delivery address if mode is delivery
-        if ($deliveryMode === DeliveryMode::DELIVERY) {
-            if (empty($orderData['deliveryAddress'])) {
-                throw new \InvalidArgumentException("L'adresse de livraison est requise");
-            }
-            
-            // Validate full address for delivery
-            $deliveryZip = $orderData['deliveryZip'] ?? null;
-            $addressValidation = $this->addressValidationService->validateAddressForDelivery($orderData['deliveryAddress'], $deliveryZip);
-            if (!$addressValidation['valid']) {
-                throw new \InvalidArgumentException($addressValidation['error'] ?? 'Livraison non disponible pour cette adresse');
-            }
-            
-            $order->setDeliveryAddress($orderData['deliveryAddress']);
-            $order->setDeliveryZip($deliveryZip);
-            $order->setDeliveryInstructions($orderData['deliveryInstructions'] ?? null);
-            $order->setDeliveryFee($orderData['deliveryFee'] ?? number_format($this->restaurantSettings->getDeliveryFee(), 2, '.', ''));
-        } else {
-            $order->setDeliveryFee('0.00');
-        }
+        // Apply delivery strategy (validates and populates order delivery fields)
+        $deliveryStrategy = $this->deliveryStrategies->forMode($deliveryMode);
+        $deliveryStrategy->validateAndPopulate($order, $orderData);
 
         // Set payment mode
         $paymentMode = isset($orderData['paymentMode']) 
@@ -99,36 +86,30 @@ class OrderService
             $order->setClientName($order->getClientFirstName() . ' ' . $order->getClientLastName());
         }
 
-        // Calculate amounts
-        // Cart prices already include taxes (TTC)
+        // Calculate amounts via pricing strategy (preserves existing behavior)
         $subtotalWithTax = $cart['total'];
-        $taxRate = $this->restaurantSettings->getVatRate();
-        $subtotalWithoutTax = $subtotalWithTax / (1 + $taxRate);
-        $taxAmount = $subtotalWithTax - $subtotalWithoutTax;
-        $deliveryFee = (float) $order->getDeliveryFee();
-        $total = $subtotalWithTax + $deliveryFee;
+        $this->pricingStrategies->default()->computeAndSetTotals($order, (float) $subtotalWithTax);
 
         // Handle coupon if provided
         $discount = 0;
         if (isset($orderData['couponId'])) {
             $coupon = $this->couponRepository->find($orderData['couponId']);
             
-            if ($coupon && $coupon->canBeAppliedToAmount($total)) {
-                $discount = $coupon->calculateDiscount($total);
+            if ($coupon && $coupon->canBeAppliedToAmount((float) $order->getTotal())) {
+                $discount = $coupon->calculateDiscount((float) $order->getTotal());
                 $order->setCoupon($coupon);
                 $order->setDiscountAmount(number_format($discount, 2, '.', ''));
-                $total = $total - $discount;
+                $newTotal = (float) $order->getTotal() - $discount;
+                $order->setTotal(number_format($newTotal, 2, '.', ''));
             } elseif (isset($orderData['discountAmount'])) {
                 // Fallback to discount amount if coupon is not valid
                 $discount = (float) $orderData['discountAmount'];
                 $order->setDiscountAmount(number_format($discount, 2, '.', ''));
-                $total = $total - $discount;
+                $newTotal = (float) $order->getTotal() - $discount;
+                $order->setTotal(number_format($newTotal, 2, '.', ''));
             }
         }
 
-        $order->setSubtotal(number_format($subtotalWithoutTax, 2, '.', ''));
-        $order->setTaxAmount(number_format($taxAmount, 2, '.', ''));
-        $order->setTotal(number_format($total, 2, '.', ''));
 
         // Add order items
         foreach ($cart['items'] as $cartItem) {

@@ -52,15 +52,15 @@
     margin-right: 0;
     font-size: 0.9rem;
     padding: 0.5rem 1rem;
-    background: #ffd400 !important; /* vivid yellow */
-    color: #ffffff !important;
-    border: none;
+    background: #fff2b3 !important; /* softer yellow */
+    color: #7a3e00 !important; /* darker text for contrast */
+    border: 1px solid #ffcc33;
     border-radius: 10px;
     font-weight: 700;
     letter-spacing: .2px;
-    box-shadow: 0 2px 8px rgba(255, 187, 0, 0.35);
+    box-shadow: 0 2px 6px rgba(255, 204, 51, 0.2);
 }
-.allergen-badges .badge:hover { background: #ffbf00 !important; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255, 191, 0, 0.4); }
+.allergen-badges .badge:hover { background: #ffe08a !important; border-color: #ffbf1a; transform: translateY(-1px); box-shadow: 0 6px 14px rgba(255, 191, 26, 0.28); }
 
 .dish-actions { background: var(--light-color); padding: 2rem; border-radius: 15px; margin-bottom: 2rem; }
 .dish-actions .menu-card-actions { margin-left: -2rem; padding-left: 0; }
