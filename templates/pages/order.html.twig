@@ -247,7 +247,20 @@
 {% block javascripts %}
     {{ parent() }}
     <script src="{{ asset('assets/js/main.js') }}"></script>
-    <script src="{{ asset('assets/js/order.js') }}?v=23"></script>
+    {# Order modules - load in dependency order #}
+    <script src="{{ asset('assets/js/order/order-constants.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/order/order-utils.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/order/order-api.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/order/order-validation.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/order/order-steps.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/order/order-coupon.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/order/order-submission.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/order/order-cart.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/order/order-delivery.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/order/order-address.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/order/order-field-validation.js') }}?v=1"></script>
+    {# Main order.js - must be loaded last #}
+    <script src="{{ asset('assets/js/order.js') }}?v=24"></script>
 {% endblock %}
 
 
