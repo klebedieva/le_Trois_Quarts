@@ -191,8 +191,19 @@ class ReviewController extends AbstractController
     )]
     public function create(Request $request, EntityManagerInterface $em): JsonResponse
     {
-        // Parse JSON request body
-        $data = json_decode($request->getContent(), true);
+        // Get JSON data from request
+        // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available
+        // This ensures only authorized fields reach the controller (mass assignment protection)
+        // The subscriber filters out unauthorized fields before the request reaches here
+        // Priority 2: Fallback to parsing raw content if subscriber didn't process it
+        // (This should rarely happen for API endpoints, but provides backward compatibility)
+        $data = $request->attributes->get('filtered_json_data');
+        if ($data === null) {
+            // Fallback: parse raw content if filtered data not available
+            // This can happen if request bypassed the subscriber or for non-API endpoints
+            $data = json_decode($request->getContent(), true);
+        }
+        
         if (!is_array($data)) {
             $response = new \App\DTO\ApiResponseDTO(success: false, message: 'JSON invalide');
             return $this->json($response->toArray(), 400);
@@ -201,6 +212,8 @@ class ReviewController extends AbstractController
         // Map JSON payload to DTO using helper service
         // The ValidationHelper automatically handles type conversion (e.g., string '5' -> int 5)
         // This eliminates repetitive manual mapping code like: isset($data['name']) ? trim((string)$data['name']) : null
+        // Note: Data is already filtered by JsonFieldWhitelistSubscriber, so only authorized fields are present
+        // This provides defense in depth: subscriber filters at request level, DTO validates at domain level
         $dto = $this->validationHelper->mapArrayToDto($data, \App\DTO\ReviewCreateRequest::class);
         
         // No manual trimming: ValidationHelper::mapArrayToDto() already normalizes

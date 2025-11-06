@@ -181,7 +181,18 @@ class OrderController extends AbstractController
                 }
             }
 
-            $data = json_decode($rawContent, true);
+            // Get JSON data from request
+            // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available
+            // This ensures only authorized fields reach the controller (mass assignment protection)
+            // The subscriber filters out unauthorized fields before the request reaches here
+            // Priority 2: Fallback to parsing raw content if subscriber didn't process it
+            // (This should rarely happen for API endpoints, but provides backward compatibility)
+            $data = $request->attributes->get('filtered_json_data');
+            if ($data === null) {
+                // Fallback: parse raw content if filtered data not available
+                // This can happen if request bypassed the subscriber or for non-API endpoints
+                $data = json_decode($rawContent, true);
+            }
             
             if (!is_array($data)) {
                 return new JsonResponse([
@@ -191,6 +202,8 @@ class OrderController extends AbstractController
             }
 
             // Map payload to DTO using ValidationHelper and validate via Symfony Validator
+            // Note: Data is already filtered by JsonFieldWhitelistSubscriber, so only authorized fields are present
+            // This provides defense in depth: subscriber filters at request level, DTO validates at domain level
             $dto = $this->validationHelper->mapArrayToDto($data, OrderCreateRequest::class);
 
             // Validate DTO

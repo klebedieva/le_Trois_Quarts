@@ -10,20 +10,54 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Enforce JSON field whitelist for API endpoints
- * Prevents mass assignment attacks by filtering out unauthorized fields
- * Also enforces JSON depth limit to prevent stack overflow attacks
+ * JSON Field Whitelist Event Subscriber
+ *
+ * WHAT IT DOES:
+ * This subscriber validates and filters JSON request data BEFORE it reaches controllers.
+ * It prevents security attacks by:
+ * 1. Filtering out unauthorized fields (mass assignment protection)
+ * 2. Limiting JSON depth to prevent stack overflow attacks
+ * 3. Limiting field count to prevent DoS attacks
+ * 4. Limiting field name length to prevent DoS attacks
+ *
+ * WHEN IT TRIGGERS:
+ * - Automatically on EVERY API request (KernelEvents::REQUEST event)
+ * - Runs BEFORE the controller is called
+ * - Only processes POST/PUT/PATCH requests with JSON content
+ * - Only processes requests to /api/* endpoints
+ *
+ * HOW IT WORKS:
+ * 1. Checks if request is JSON and to API endpoint
+ * 2. Validates JSON structure (must be object, not array)
+ * 3. Checks depth, field count, and field name length
+ * 4. Filters out unauthorized fields using JsonFieldWhitelistService
+ * 5. Stores filtered data in request attributes for controllers
+ *
+ * WHY IT'S HIDDEN:
+ * - Runs automatically, so controllers don't need to worry about it
+ * - But it's essential for security - prevents malicious data from reaching controllers
+ *
+ * HOW TO USE IN CONTROLLERS:
+ * - Access filtered data: $request->attributes->get('filtered_json_data')
+ * - Original data (if needed): $request->attributes->get('original_json_data')
+ *
+ * HOW TO DEBUG:
+ * - If request is rejected, you'll get a 400 error with details
+ * - Check which fields were rejected in the error response
  */
 class JsonFieldWhitelistSubscriber implements EventSubscriberInterface
 {
     // Maximum JSON nesting depth (prevents stack overflow attacks)
     // PHP default is 512, but we limit to 64 for security
+    // Example: {"a": {"b": {"c": ...}}} - max 64 levels deep
     private const MAX_JSON_DEPTH = 64;
     
     // Maximum number of fields in JSON object (prevents DoS via excessive fields)
+    // Example: {"field1": 1, "field2": 2, ...} - max 100 fields
     private const MAX_FIELD_COUNT = 100;
     
     // Maximum field name length (prevents DoS via very long field names)
+    // Example: {"very_long_field_name_that_could_be_used_for_attack": 1} - max 255 chars
     private const MAX_FIELD_NAME_LENGTH = 255;
 
     public function __construct(
@@ -31,13 +65,31 @@ class JsonFieldWhitelistSubscriber implements EventSubscriberInterface
     ) {
     }
 
+    /**
+     * Tell Symfony which events this subscriber listens to
+     *
+     * Priority 10 means this runs AFTER ApiRateLimitSubscriber (priority 9),
+     * so payload size is checked first, then field validation happens.
+     *
+     * @return array Event name => [method to call, priority]
+     */
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::REQUEST => ['onKernelRequest', 10], // Priority 10 to run after payload size check
+            // When Symfony receives a request, call onKernelRequest()
+            // Priority 10: runs after payload size check (priority 9)
+            KernelEvents::REQUEST => ['onKernelRequest', 10],
         ];
     }
 
+    /**
+     * Called automatically when Symfony receives a request
+     *
+     * This method validates and filters JSON data before it reaches controllers.
+     * If validation fails, it returns a 400 error response immediately.
+     *
+     * @param RequestEvent $event Contains the request that will be processed
+     */
     public function onKernelRequest(RequestEvent $event): void
     {
         if (!$event->isMainRequest()) {

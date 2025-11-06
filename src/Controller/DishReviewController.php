@@ -74,8 +74,19 @@ class DishReviewController extends AbstractController
     public function add(MenuItem $item, Request $request, \App\Service\ReviewService $reviewService, \App\Service\ValidationHelper $validationHelper, \Symfony\Component\Validator\Validator\ValidatorInterface $validator): JsonResponse
     {
         // Build a normalized array supporting both JSON and form-encoded payloads
-        $data = json_decode($request->getContent(), true);
+        // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available (for API requests)
+        // Priority 2: Parse JSON content if available
+        // Priority 3: Fallback to form-encoded data
+        // Note: This endpoint is not under /api/*, so JsonFieldWhitelistSubscriber won't process it
+        // But we use the same pattern for consistency and future-proofing
+        $data = $request->attributes->get('filtered_json_data');
+        if ($data === null) {
+            // Try to parse JSON content
+            $data = json_decode($request->getContent(), true);
+        }
+        
         if (!is_array($data)) {
+            // Fallback to form-encoded data if JSON parsing failed
             $data = [
                 'name' => $request->request->get('name'),
                 'email' => $request->request->get('email'),
@@ -85,6 +96,8 @@ class DishReviewController extends AbstractController
         }
 
         // Map to DTO and validate
+        // Note: If data came from JsonFieldWhitelistSubscriber, it's already filtered
+        // Otherwise, DTO validation will handle any unauthorized fields
         $dto = $validationHelper->mapArrayToDto($data, \App\DTO\ReviewCreateRequest::class);
         $violations = $validator->validate($dto);
         if (count($violations) > 0) {
