@@ -62,12 +62,15 @@ class ValidationHelper
      *    - Null handling for optional fields
      *    - Boolean conversion
      *
-     * Note: String trimming and custom sanitization must be done manually after mapping,
-     * as this method doesn't perform these transformations.
+     * Normalization:
+     * Optionally trims all public string properties to remove leading/trailing whitespace
+     * (disabled only if you pass trimStrings=false). This centralizes a common
+     * post-processing step and removes duplication in controllers.
      *
      * @template T of object
      * @param array<string, mixed> $data Source data array (from JSON request body or form data)
      * @param class-string<T> $dtoClass DTO class name to instantiate (must be a fully qualified class name)
+     * @param bool $trimStrings Whether to trim all public string properties (default true)
      * @return T DTO instance with populated properties matching the input data structure
      *
      * @example
@@ -75,7 +78,7 @@ class ValidationHelper
      * $dto = $helper->mapArrayToDto($data, ReviewCreateRequest::class);
      * // Result: $dto->name = 'John', $dto->rating = 5 (int), $dto->itemId = 123 (int)
      */
-    public function mapArrayToDto(array $data, string $dtoClass): object
+    public function mapArrayToDto(array $data, string $dtoClass, bool $trimStrings = true): object
     {
         // Step 1: Use Symfony Serializer to deserialize array to DTO
         // This handles basic mapping and structure conversion
@@ -123,6 +126,22 @@ class ValidationHelper
                 // Only set if conversion actually changed the value
                 if ($convertedValue !== $currentValue) {
                     $property->setValue($dto, $convertedValue);
+                }
+            }
+        }
+        
+        // Step 3 (optional): Normalize string properties (trim)
+        if ($trimStrings) {
+            foreach ($properties as $property) {
+                if (!$property->isPublic()) {
+                    continue;
+                }
+                $value = $property->getValue($dto);
+                if (is_string($value)) {
+                    $trimmed = trim($value);
+                    if ($trimmed !== $value) {
+                        $property->setValue($dto, $trimmed);
+                    }
                 }
             }
         }

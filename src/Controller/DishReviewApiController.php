@@ -200,19 +200,8 @@ class DishReviewApiController extends AbstractController
         // This eliminates repetitive manual mapping code like: isset($data['name']) ? trim((string)$data['name']) : null
         $dto = $this->validationHelper->mapArrayToDto($data, \App\DTO\ReviewCreateRequest::class);
         
-        // Post-processing: Trim whitespace from string fields
-        // Symfony Serializer handles type conversion but doesn't trim strings automatically.
-        // We trim here to ensure clean data (removes leading/trailing spaces from user input).
-        // This is necessary because users might accidentally include spaces when copying/pasting.
-        if ($dto->name !== null) {
-            $dto->name = trim($dto->name);
-        }
-        if ($dto->email !== null) {
-            $dto->email = trim($dto->email);
-        }
-        if ($dto->comment !== null) {
-            $dto->comment = trim($dto->comment);
-        }
+        // No manual trimming: ValidationHelper::mapArrayToDto() already normalizes
+        // all public string properties (trims whitespace) to avoid duplication.
 
         $violations = $this->validator->validate($dto);
         if (count($violations) > 0) {

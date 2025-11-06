@@ -87,7 +87,8 @@ class CouponController extends AbstractController
                     properties: [
                         new \OpenApi\Attributes\Property(property: 'success', type: 'boolean', example: false),
                         new \OpenApi\Attributes\Property(property: 'message', type: 'string', example: 'Requête invalide')
-                    ]
+                    ],
+                    example: ['success' => false, 'message' => 'JSON invalide']
                 )
             ),
             new \OpenApi\Attributes\Response(
@@ -97,8 +98,10 @@ class CouponController extends AbstractController
                     type: 'object',
                     properties: [
                         new \OpenApi\Attributes\Property(property: 'success', type: 'boolean', example: false),
+                        new \OpenApi\Attributes\Property(property: 'message', type: 'string', example: 'Erreur de validation'),
                         new \OpenApi\Attributes\Property(property: 'errors', type: 'array', items: new \OpenApi\Attributes\Items(type: 'string'))
-                    ]
+                    ],
+                    example: ['success' => false, 'message' => 'Erreur de validation', 'errors' => ['Le code est requis']]
                 )
             ),
             new \OpenApi\Attributes\Response(

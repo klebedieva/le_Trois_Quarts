@@ -90,7 +90,8 @@ class AddressValidationController extends AbstractController
             properties: [
                 new OA\Property(property: 'success', type: 'boolean', example: false),
                 new OA\Property(property: 'message', type: 'string', example: 'JSON invalide')
-            ]
+            ],
+            example: ['success' => false, 'message' => 'JSON invalide']
         )
     )]
     #[OA\Response(
@@ -102,7 +103,8 @@ class AddressValidationController extends AbstractController
                 new OA\Property(property: 'success', type: 'boolean', example: false),
                 new OA\Property(property: 'message', type: 'string', example: 'Erreur de validation'),
                 new OA\Property(property: 'errors', type: 'array', items: new OA\Items(type: 'string'))
-            ]
+            ],
+            example: ['success' => false, 'message' => 'Erreur de validation', 'errors' => ['Le code postal est invalide']]
         )
     )]
     #[OA\Tag(name: 'Delivery')]
@@ -122,13 +124,7 @@ class AddressValidationController extends AbstractController
             // This eliminates repetitive manual mapping code like: isset($data['zipCode']) ? trim((string)$data['zipCode']) : null
             $dto = $this->validationHelper->mapArrayToDto($data, AddressValidationRequest::class);
             
-            // Post-processing: Trim whitespace from zip code
-            // Symfony Serializer handles type conversion but doesn't trim strings automatically.
-            // We trim here to ensure clean zip codes (removes leading/trailing spaces from user input).
-            // This is important for zip code validation as " 75001 " should be treated as "75001".
-            if ($dto->zipCode !== null) {
-                $dto->zipCode = trim($dto->zipCode);
-            }
+            // No manual trimming required: ValidationHelper::mapArrayToDto() already trims strings
 
             // Validate DTO
             $violations = $this->validator->validate($dto);
@@ -229,7 +225,8 @@ class AddressValidationController extends AbstractController
             properties: [
                 new OA\Property(property: 'success', type: 'boolean', example: false),
                 new OA\Property(property: 'message', type: 'string', example: 'JSON invalide')
-            ]
+            ],
+            example: ['success' => false, 'message' => 'JSON invalide']
         )
     )]
     #[OA\Response(
@@ -241,7 +238,8 @@ class AddressValidationController extends AbstractController
                 new OA\Property(property: 'success', type: 'boolean', example: false),
                 new OA\Property(property: 'message', type: 'string', example: 'Erreur de validation'),
                 new OA\Property(property: 'errors', type: 'array', items: new OA\Items(type: 'string'))
-            ]
+            ],
+            example: ['success' => false, 'message' => 'Erreur de validation', 'errors' => ['L\'adresse est requise']]
         )
     )]
     #[OA\Tag(name: 'Delivery')]
@@ -261,16 +259,7 @@ class AddressValidationController extends AbstractController
             // This eliminates repetitive manual mapping code for both address and zipCode fields
             $dto = $this->validationHelper->mapArrayToDto($data, AddressFullValidationRequest::class);
             
-            // Post-processing: Trim whitespace from string fields
-            // Symfony Serializer handles type conversion but doesn't trim strings automatically.
-            // We trim here to ensure clean address data (removes leading/trailing spaces from user input).
-            // This is important for address validation as geocoding requires properly formatted addresses.
-            if ($dto->address !== null) {
-                $dto->address = trim($dto->address);
-            }
-            if ($dto->zipCode !== null) {
-                $dto->zipCode = trim($dto->zipCode);
-            }
+            // No manual trimming required: ValidationHelper::mapArrayToDto() already trims strings
 
             // Validate DTO
             $violations = $this->validator->validate($dto);

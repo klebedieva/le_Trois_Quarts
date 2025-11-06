@@ -153,10 +153,57 @@ class CartController extends AbstractController
         ),
         tags: ['Cart']
     )]
-    #[OA\Response(response: 200, description: 'Item added successfully', content: new OA\JsonContent(type: 'object', properties: [new OA\Property(property: 'success', type: 'boolean'), new OA\Property(property: 'message', type: 'string', nullable: true), new OA\Property(property: 'cart', type: 'object', nullable: true)]))]
-    #[OA\Response(response: 400, description: 'Invalid JSON', content: new OA\JsonContent(type: 'object', properties: [new OA\Property(property: 'success', type: 'boolean'), new OA\Property(property: 'message', type: 'string')]))]
-    #[OA\Response(response: 422, description: 'Validation error', content: new OA\JsonContent(type: 'object', properties: [new OA\Property(property: 'success', type: 'boolean'), new OA\Property(property: 'message', type: 'string'), new OA\Property(property: 'errors', type: 'array', items: new OA\Items(type: 'string'))]))]
-    #[OA\Response(response: 404, description: 'Item not found', content: new OA\JsonContent(type: 'object', properties: [new OA\Property(property: 'success', type: 'boolean'), new OA\Property(property: 'message', type: 'string')]))]
+    #[OA\Response(
+        response: 200,
+        description: 'Item added successfully',
+        content: new OA\JsonContent(
+            type: 'object',
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean'),
+                new OA\Property(property: 'message', type: 'string', nullable: true),
+                new OA\Property(property: 'cart', type: 'object', nullable: true)
+            ],
+            example: ['success' => true, 'message' => 'Article ajouté au panier']
+        )
+    )]
+    #[OA\Response(
+        response: 400,
+        description: 'Invalid JSON',
+        content: new OA\JsonContent(
+            type: 'object',
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean'),
+                new OA\Property(property: 'message', type: 'string')
+            ],
+            example: ['success' => false, 'message' => 'JSON invalide']
+        )
+    )]
+    #[OA\Response(
+        response: 422,
+        description: 'Validation error',
+        content: new OA\JsonContent(
+            type: 'object',
+            properties: [
+                new OA\Property(property: 'success', type: 'boolean'),
+                new OA\Property(property: 'message', type: 'string'),
+                new OA\Property(property: 'errors', type: 'array', items: new OA\Items(type: 'string'))
+            ],
+            example: [
+                'success' => false,
+                'message' => 'Erreur de validation',
+                'errors' => ['itemId est requis', 'quantity doit être >= 1']
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 404,
+        description: 'Item not found',
+        content: new OA\JsonContent(
+            type: 'object',
+            properties: [new OA\Property(property: 'success', type: 'boolean'), new OA\Property(property: 'message', type: 'string')],
+            example: ['success' => false, 'message' => 'Article introuvable']
+        )
+    )]
     public function addToCart(Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
         // CSRF protection is enforced in production environment only
