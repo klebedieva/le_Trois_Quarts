@@ -178,20 +178,8 @@ class OrderController extends AbstractController
                 ], 400);
             }
 
-            // Map payload to DTO and validate via Symfony Validator
-            $dto = new OrderCreateRequest();
-            $dto->deliveryMode = $data['deliveryMode'] ?? null;
-            $dto->deliveryAddress = isset($data['deliveryAddress']) ? InputSanitizer::sanitize($data['deliveryAddress']) : null;
-            $dto->deliveryZip = isset($data['deliveryZip']) ? InputSanitizer::sanitize($data['deliveryZip']) : null;
-            $dto->deliveryInstructions = isset($data['deliveryInstructions']) ? InputSanitizer::sanitize($data['deliveryInstructions']) : null;
-            $dto->deliveryFee = isset($data['deliveryFee']) ? (float)$data['deliveryFee'] : null;
-            $dto->paymentMode = $data['paymentMode'] ?? null;
-            $dto->clientFirstName = isset($data['clientFirstName']) ? InputSanitizer::sanitize($data['clientFirstName']) : null;
-            $dto->clientLastName = isset($data['clientLastName']) ? InputSanitizer::sanitize($data['clientLastName']) : null;
-            $dto->clientPhone = isset($data['clientPhone']) ? InputSanitizer::sanitize($data['clientPhone']) : null;
-            $dto->clientEmail = isset($data['clientEmail']) ? InputSanitizer::sanitize($data['clientEmail']) : null;
-            $dto->couponId = isset($data['couponId']) ? (int)$data['couponId'] : null;
-            $dto->discountAmount = isset($data['discountAmount']) ? (float)$data['discountAmount'] : null;
+            // Map payload to DTO using ValidationHelper and validate via Symfony Validator
+            $dto = $this->validationHelper->mapArrayToDto($data, OrderCreateRequest::class);
 
             // Validate DTO
             $violations = $this->validator->validate($dto);
@@ -222,24 +210,8 @@ class OrderController extends AbstractController
                 ], 400);
             }
 
-            // Convert DTO back to array for OrderService
-            $data = [
-                'deliveryMode' => $dto->deliveryMode,
-                'deliveryAddress' => $dto->deliveryAddress,
-                'deliveryZip' => $dto->deliveryZip,
-                'deliveryInstructions' => $dto->deliveryInstructions,
-                'deliveryFee' => $dto->deliveryFee,
-                'paymentMode' => $dto->paymentMode,
-                'clientFirstName' => $dto->clientFirstName,
-                'clientLastName' => $dto->clientLastName,
-                'clientPhone' => $dto->clientPhone,
-                'clientEmail' => $dto->clientEmail,
-                'couponId' => $dto->couponId,
-                'discountAmount' => $dto->discountAmount,
-            ];
-            
-            // Create the order using domain service
-            $order = $this->orderService->createOrder($data ?? []);
+            // Create the order using domain service with DTO
+            $order = $this->orderService->createOrder($dto);
 
             // Notify admin about new order (non-blocking)
             try {

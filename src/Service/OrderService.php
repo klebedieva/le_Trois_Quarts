@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\Order;
 use App\Entity\OrderItem;
 use App\Entity\Coupon;
+use App\DTO\OrderCreateRequest;
 use App\Enum\DeliveryMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMode;
@@ -56,11 +57,11 @@ class OrderService
      * pricing strategy, handles coupon application if provided, creates order items
      * from cart, and persists to database. Clears cart after successful creation.
      *
-     * @param array $orderData Order data including delivery mode, address, client info, optional coupon
+     * @param OrderCreateRequest $dto Validated order creation DTO
      * @return Order Created and persisted Order entity
      * @throws \InvalidArgumentException If cart is empty or validation fails
      */
-    public function createOrder(array $orderData): Order
+    public function createOrder(OrderCreateRequest $dto): Order
     {
         // Validate cart is not empty
         $cart = $this->cartService->getCart();
@@ -76,33 +77,40 @@ class OrderService
         $order->setCreatedAt(new \DateTimeImmutable());
 
         // Set delivery mode (default to DELIVERY if not specified)
-        $deliveryMode = isset($orderData['deliveryMode']) 
-            ? DeliveryMode::from($orderData['deliveryMode'])
+        $deliveryMode = isset($dto->deliveryMode) 
+            ? DeliveryMode::from($dto->deliveryMode)
             : DeliveryMode::DELIVERY;
         $order->setDeliveryMode($deliveryMode);
 
         // Apply delivery strategy (validates address and populates delivery fields)
         $deliveryStrategy = $this->deliveryStrategies->forMode($deliveryMode);
-        $deliveryStrategy->validateAndPopulate($order, $orderData);
+        // Build a simple associative array from DTO for strategy compatibility
+        $deliveryData = [
+            'deliveryAddress' => $dto->deliveryAddress,
+            'deliveryZip' => $dto->deliveryZip,
+            'deliveryInstructions' => $dto->deliveryInstructions,
+            'deliveryFee' => $dto->deliveryFee,
+        ];
+        $deliveryStrategy->validateAndPopulate($order, $deliveryData);
 
         // Set payment mode (default to CARD if not specified)
-        $paymentMode = isset($orderData['paymentMode']) 
-            ? PaymentMode::from($orderData['paymentMode'])
+        $paymentMode = isset($dto->paymentMode) 
+            ? PaymentMode::from($dto->paymentMode)
             : PaymentMode::CARD;
         $order->setPaymentMode($paymentMode);
 
         // Set client information
-        $order->setClientFirstName($orderData['clientFirstName'] ?? null);
-        $order->setClientLastName($orderData['clientLastName'] ?? null);
+        $order->setClientFirstName($dto->clientFirstName ?? null);
+        $order->setClientLastName($dto->clientLastName ?? null);
         
         // Validate French phone number format if provided
-        $clientPhone = $orderData['clientPhone'] ?? null;
+        $clientPhone = $dto->clientPhone ?? null;
         if ($clientPhone && !$this->validateFrenchPhoneNumber($clientPhone)) {
             throw new \InvalidArgumentException("Numéro de téléphone invalide");
         }
         $order->setClientPhone($clientPhone);
         
-        $order->setClientEmail($orderData['clientEmail'] ?? null);
+        $order->setClientEmail($dto->clientEmail ?? null);
         
         // Generate full name automatically if both first and last name are provided
         if ($order->getClientFirstName() && $order->getClientLastName()) {
@@ -115,8 +123,8 @@ class OrderService
 
         // Handle coupon application if provided
         $discount = 0;
-        if (isset($orderData['couponId'])) {
-            $coupon = $this->couponRepository->find($orderData['couponId']);
+        if (isset($dto->couponId)) {
+            $coupon = $this->couponRepository->find($dto->couponId);
             
             // Apply coupon if valid and applicable to order amount
             if ($coupon && $coupon->canBeAppliedToAmount((float) $order->getTotal())) {
@@ -125,9 +133,9 @@ class OrderService
                 $order->setDiscountAmount(number_format($discount, 2, '.', ''));
                 $newTotal = (float) $order->getTotal() - $discount;
                 $order->setTotal(number_format($newTotal, 2, '.', ''));
-            } elseif (isset($orderData['discountAmount'])) {
+            } elseif (isset($dto->discountAmount)) {
                 // Fallback to direct discount amount if coupon is not valid
-                $discount = (float) $orderData['discountAmount'];
+                $discount = (float) $dto->discountAmount;
                 $order->setDiscountAmount(number_format($discount, 2, '.', ''));
                 $newTotal = (float) $order->getTotal() - $discount;
                 $order->setTotal(number_format($newTotal, 2, '.', ''));

@@ -56,6 +56,7 @@ class HomeController extends AbstractController
      * @param ValidatorInterface $validator Symfony validator for DTO validation
      * @param ValidationHelper $validationHelper Helper for validation operations
      * @param \App\Service\ReservationService $reservationService Service for creating reservations
+     * @param \App\Service\ReviewService $reviewService Service for handling reviews
      */
     public function __construct(
         private SymfonyEmailService $emailService,
@@ -63,7 +64,8 @@ class HomeController extends AbstractController
         private LoggerInterface $logger,
         private ValidatorInterface $validator,
         private ValidationHelper $validationHelper,
-        private \App\Service\ReservationService $reservationService
+        private \App\Service\ReservationService $reservationService,
+        private \App\Service\ReviewService $reviewService
     ) {}
 
     #[Route('/', name: 'app_home')]
@@ -120,9 +122,9 @@ class HomeController extends AbstractController
             // Variant B: always accept the request on the public side.
             // Availability will be validated by an admin later when confirming the reservation.
 
-            $entityManager->persist($reservation);
             try {
-                $entityManager->flush();
+                // Delegate persistence to service to keep controller thin
+                $this->reservationService->createReservationFromEntity($reservation);
                 $this->emailService->sendReservationNotificationToAdmin($reservation);
             } catch (\Throwable $e) {
                 $this->logger->error('Error sending reservation notification to admin: {error}', ['error' => $e->getMessage()]);
@@ -309,9 +311,9 @@ class HomeController extends AbstractController
         if ($reviewForm->isSubmitted() && $reviewForm->isValid()) {
             // By default review is not approved (requires moderation)
             $review->setIsApproved(false);
-            
-            $entityManager->persist($review);
-            $entityManager->flush();
+
+            // Delegate persistence to service to keep controller thin
+            $this->reviewService->createReviewFromEntity($review);
             
             $this->addFlash('success', 'Merci pour votre avis ! Il sera publié après modération.');
             

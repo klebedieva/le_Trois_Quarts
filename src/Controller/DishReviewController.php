@@ -71,7 +71,7 @@ class DishReviewController extends AbstractController
      * @return JsonResponse Success/error response
      */
     #[Route('', name: 'dish_reviews_add', methods: ['POST'])]
-    public function add(MenuItem $item, Request $request, EntityManagerInterface $em): JsonResponse
+    public function add(MenuItem $item, Request $request, \App\Service\ReviewService $reviewService): JsonResponse
     {
         // Accept both JSON and form-encoded payloads for flexibility
         $data = json_decode($request->getContent(), true);
@@ -103,9 +103,8 @@ class DishReviewController extends AbstractController
             ->setIsApproved(false) // Keep moderation consistent with global reviews
             ->setMenuItem($item); // Associate review with the specific dish
 
-        // Persist to database
-        $em->persist($review);
-        $em->flush();
+        // Delegate persistence to service to keep controller thin
+        $reviewService->createReviewFromEntity($review);
 
         $response = new \App\DTO\ApiResponseDTO(success: true, message: 'Avis soumis. En attente de validation.');
         return $this->json($response->toArray());

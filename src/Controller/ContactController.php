@@ -91,9 +91,8 @@ class ContactController extends AbstractController
             }
             $msg->setMessage(InputSanitizer::sanitize($msg->getMessage()));
             
-            // Persist contact message to database
-            $this->em->persist($msg);
-            $this->em->flush();
+            // Delegate persistence to service to keep controller thin
+            $this->contactService->createContactMessageFromEntity($msg);
 
             // Send email notification to admin (non-blocking - failures are logged but don't break the flow)
             try {

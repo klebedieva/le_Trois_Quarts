@@ -39,4 +39,15 @@ class ContactService
 
         return $message;
     }
+
+    /**
+     * Persist a ContactMessage entity coming from legacy form handling.
+     */
+    public function createContactMessageFromEntity(ContactMessage $message): ContactMessage
+    {
+        $this->entityManager->persist($message);
+        $this->entityManager->flush();
+
+        return $message;
+    }
 }

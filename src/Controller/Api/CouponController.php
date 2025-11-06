@@ -4,9 +4,8 @@ namespace App\Controller\Api;
 
 use App\DTO\CouponValidateRequest;
 use App\Entity\Coupon;
-use App\Repository\CouponRepository;
+use App\Service\CouponService;
 use App\Service\ValidationHelper;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,8 +30,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 class CouponController extends AbstractController
 {
     public function __construct(
-        private CouponRepository $couponRepository,
-        private EntityManagerInterface $entityManager,
+        private CouponService $couponService,
         private ValidatorInterface $validator,
         private ValidationHelper $validationHelper
     ) {
@@ -149,60 +147,20 @@ class CouponController extends AbstractController
                 return $this->json($response->toArray(), 422);
             }
 
-            // Normalize coupon code (uppercase, trimmed)
-            $code = strtoupper(trim($dto->code));
-            $orderAmount = (float) $dto->orderAmount;
-
-            // Find coupon by code in database
-            $coupon = $this->couponRepository->findOneBy(['code' => $code]);
-
-            if (!$coupon) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Code promo invalide');
-                return $this->json($response->toArray(), 404);
-            }
-
-            // Check if coupon is currently active (not disabled by admin)
-            if (!$coupon->isActive()) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Ce code promo n\'est plus actif');
-                return $this->json($response->toArray(), 400);
-            }
-
-            // Check if coupon can be used (valid dates, not expired, usage limit not reached)
-            if (!$coupon->canBeUsed()) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Ce code promo n\'est plus disponible');
-                return $this->json($response->toArray(), 400);
-            }
-
-            // Check if order amount meets minimum requirement
-            if (!$coupon->canBeAppliedToAmount($orderAmount)) {
-                $minAmount = $coupon->getMinOrderAmount();
-                $response = new \App\DTO\ApiResponseDTO(
-                    success: false,
-                    message: sprintf('Montant minimum de commande non atteint (minimum: %.2f€)', (float) $minAmount)
-                );
-                return $this->json($response->toArray(), 400);
-            }
-
-            // Calculate discount amount based on coupon type (percentage or fixed)
-            $discountAmount = $coupon->calculateDiscount($orderAmount);
+            // Delegate to service
+            $data = $this->couponService->validateCoupon($dto);
 
             $response = new \App\DTO\ApiResponseDTO(
                 success: true,
                 message: 'Code promo appliqué avec succès',
-                data: [
-                    'couponId' => $coupon->getId(),
-                    'code' => $coupon->getCode(),
-                    'discountType' => $coupon->getDiscountType(),
-                    'discountValue' => $coupon->getDiscountValue(),
-                    'discountAmount' => number_format($discountAmount, 2, '.', ''),
-                    'newTotal' => number_format($orderAmount - $discountAmount, 2, '.', '')
-                ]
+                data: $data
             );
             return $this->json($response->toArray());
 
         } catch (\Exception $e) {
+            $status = $e instanceof \InvalidArgumentException ? 400 : 500;
             $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la validation du code promo: ' . $e->getMessage());
-            return $this->json($response->toArray(), 500);
+            return $this->json($response->toArray(), $status);
         }
     }
 
@@ -220,30 +178,16 @@ class CouponController extends AbstractController
     public function apply(int $couponId): JsonResponse
     {
         try {
-            // Find coupon by ID
-            $coupon = $this->couponRepository->find($couponId);
-
-            if (!$coupon) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Code promo non trouvé');
-                return $this->json($response->toArray(), 404);
-            }
-
-            // Final check before applying (in case coupon became invalid between validation and application)
-            if (!$coupon->canBeUsed()) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Ce code promo n\'est plus disponible');
-                return $this->json($response->toArray(), 400);
-            }
-
-            // Increment usage count to track coupon usage
-            $coupon->incrementUsage();
-            $this->entityManager->flush();
+            // Delegate to service
+            $this->couponService->applyCoupon($couponId);
 
             $response = new \App\DTO\ApiResponseDTO(success: true, message: 'Code promo appliqué');
             return $this->json($response->toArray());
 
         } catch (\Exception $e) {
+            $status = $e instanceof \InvalidArgumentException ? 400 : 500;
             $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de l\'application du code promo: ' . $e->getMessage());
-            return $this->json($response->toArray(), 500);
+            return $this->json($response->toArray(), $status);
         }
     }
 
@@ -264,28 +208,7 @@ class CouponController extends AbstractController
     public function list(): JsonResponse
     {
         try {
-            $coupons = $this->couponRepository->findBy(
-                ['isActive' => true],
-                ['createdAt' => 'DESC']
-            );
-
-            $data = array_map(function (Coupon $coupon) {
-                return [
-                    'id' => $coupon->getId(),
-                    'code' => $coupon->getCode(),
-                    'description' => $coupon->getDescription(),
-                    'discountType' => $coupon->getDiscountType(),
-                    'discountValue' => $coupon->getDiscountValue(),
-                    'minOrderAmount' => $coupon->getMinOrderAmount(),
-                    'maxDiscount' => $coupon->getMaxDiscount(),
-                    'usageLimit' => $coupon->getUsageLimit(),
-                    'usageCount' => $coupon->getUsageCount(),
-                    'validFrom' => $coupon->getValidFrom()?->format('Y-m-d H:i:s'),
-                    'validUntil' => $coupon->getValidUntil()?->format('Y-m-d H:i:s'),
-                    'isValid' => $coupon->isValid(),
-                    'canBeUsed' => $coupon->canBeUsed()
-                ];
-            }, $coupons);
+            $data = $this->couponService->listActiveCoupons();
 
             $response = new \App\DTO\ApiResponseDTO(success: true, data: $data);
             return $this->json($response->toArray());

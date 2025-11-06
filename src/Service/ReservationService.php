@@ -50,6 +50,25 @@ class ReservationService
     }
 
     /**
+     * Persist a Reservation entity coming from a legacy form.
+     * Ensures initial domain invariants are set when absent.
+     */
+    public function createReservationFromEntity(Reservation $reservation): Reservation
+    {
+        if ($reservation->getStatus() === null) {
+            $reservation->setStatus(ReservationStatus::PENDING);
+        }
+        if ($reservation->getIsConfirmed() === null) {
+            $reservation->setIsConfirmed(false);
+        }
+
+        $this->entityManager->persist($reservation);
+        $this->entityManager->flush();
+
+        return $reservation;
+    }
+
+    /**
      * Change reservation status and synchronize auxiliary fields.
      *
      * Automatically sets confirmation timestamp/message when moving to CONFIRMED.

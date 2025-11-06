@@ -49,6 +49,21 @@ class ReviewService
 
         return $review;
     }
+
+    /**
+     * Persist a Review entity coming from legacy forms, ensuring moderation flag default.
+     */
+    public function createReviewFromEntity(Review $review): Review
+    {
+        if ($review->getIsApproved() === null) {
+            $review->setIsApproved(false);
+        }
+
+        $this->entityManager->persist($review);
+        $this->entityManager->flush();
+
+        return $review;
+    }
 }
 
 
