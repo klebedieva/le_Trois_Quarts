@@ -13,32 +13,56 @@ use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use App\Service\OrderService;
 use App\Service\SymfonyEmailService;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use OpenApi\Attributes as OA;
 
 /**
  * Order API and page controller.
  *
- * - index(): renders the multi-step checkout page.
- * - createOrder(): validates input, delegates order creation to service, returns DTO.
- * - getOrder(): returns order data by id for clients needing confirmation/details.
+ * This controller handles order-related operations:
+ * - index(): renders the multi-step checkout page (non-API route)
+ * - createOrder(): validates input, delegates order creation to service, returns DTO
+ * - getOrder(): returns order data by id for clients needing confirmation/details
+ *
+ * Architecture:
+ * - Extends AbstractApiController for common API functionality (JSON parsing, DTO validation, CSRF, responses)
+ * - Uses OrderService for business logic (order creation, retrieval)
+ * - Implements idempotency to prevent duplicate orders
+ * - Includes XSS validation for security
  */
-class OrderController extends AbstractController
+class OrderController extends AbstractApiController
 {
+    /**
+     * Constructor
+     *
+     * Injects dependencies required for order operations:
+     * - OrderService: Handles order creation and retrieval (business logic)
+     * - SymfonyEmailService: Sends email notifications to admin
+     * - LoggerInterface: Logs errors and warnings
+     * - CacheInterface: Stores idempotent responses
+     * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
+     *
+     * @param OrderService $orderService Service for order operations
+     * @param SymfonyEmailService $emailService Email service for notifications
+     * @param LoggerInterface $logger Logger for error tracking
+     * @param CacheInterface $cache Cache for idempotency
+     * @param ValidatorInterface $validator Symfony validator for DTO validation
+     * @param ValidationHelper $validationHelper Helper for validation operations
+     */
     public function __construct(
         private OrderService $orderService,
         private SymfonyEmailService $emailService,
         private LoggerInterface $logger,
         private CacheInterface $cache,
-        private ValidatorInterface $validator,
-        private ValidationHelper $validationHelper
-    ) {}
+        ValidatorInterface $validator,
+        ValidationHelper $validationHelper
+    ) {
+        parent::__construct($validator, $validationHelper);
+    }
 
     #[Route('/order', name: 'app_order')]
     public function index(): Response
@@ -147,6 +171,7 @@ class OrderController extends AbstractController
             }
 
             // Step 2: Validate CSRF token (protect against CSRF attacks)
+            // Uses base class method from AbstractApiController
             $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
             if ($csrfError !== null) {
                 return $csrfError;
@@ -160,17 +185,19 @@ class OrderController extends AbstractController
             }
 
             // Step 4: Get and validate JSON data
-            $data = $this->getJsonDataFromRequest($request);
-            if (!is_array($data)) {
-                return new JsonResponse([
-                    'success' => false,
-                    'message' => 'JSON invalide'
-                ], 400);
+            // Uses base class method from AbstractApiController
+            // Returns array or JsonResponse (error if JSON invalid)
+            $jsonResult = $this->getJsonDataFromRequest($request);
+            if ($jsonResult instanceof JsonResponse) {
+                // JSON parsing failed, return error response
+                return $jsonResult;
             }
+            $data = $jsonResult;
 
-            // Step 5: Map to DTO and validate (DTO validation + XSS check)
-            // This method returns the validated DTO if validation passes, or an error response if it fails
-            $validationResult = $this->validateOrderData($data);
+            // Step 5: Map to DTO and validate (DTO validation)
+            // Uses base class method from AbstractApiController
+            // Returns DTO or JsonResponse (error if validation fails)
+            $validationResult = $this->validateDto($data, OrderCreateRequest::class);
             if ($validationResult instanceof JsonResponse) {
                 // Validation failed, return error response
                 return $validationResult;
@@ -178,6 +205,20 @@ class OrderController extends AbstractController
             
             // Validation passed, get the validated DTO
             $dto = $validationResult;
+            
+            // Step 5b: Additional XSS check (defense in depth)
+            // Even though DTO validation passed, we perform additional XSS validation
+            // This ensures no malicious content passes through, providing multiple layers of security
+            // Uses base class method from AbstractApiController
+            $xssError = $this->validateXss(
+                $dto,
+                ['deliveryAddress', 'deliveryInstructions', 'clientFirstName', 'clientLastName', 'clientPhone', 'clientEmail']
+            );
+            
+            if ($xssError !== null) {
+                // XSS detected, return error response
+                return $xssError;
+            }
 
             // Step 6: Create the order using domain service
             $order = $this->orderService->createOrder($dto);
@@ -191,17 +232,17 @@ class OrderController extends AbstractController
             // Step 9: Store idempotent response if key provided (for duplicate request prevention)
             $this->storeIdempotentResponse($idempotencyKey, $responseArray);
 
+            // Return success response using base class method
+            // Note: We return the array directly here because buildOrderResponse() already creates ApiResponseDTO
+            // and converts it to array. We could refactor this to use successResponse() in the future.
             return $this->json($responseArray, 201);
 
         } catch (\InvalidArgumentException $e) {
             // Handle validation/business logic errors (expected from OrderService)
             // OrderService throws InvalidArgumentException for business rule violations
             // (e.g., empty cart, invalid address, invalid coupon)
-            $response = new ApiResponseDTO(
-                success: false,
-                message: $e->getMessage()
-            );
-            return $this->json($response->toArray(), 422);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse($e->getMessage(), 422);
         } catch (\TypeError | \ValueError $e) {
             // Handle type errors (should not happen after DTO validation, but defense in depth)
             // These errors indicate type mismatches that should have been caught by DTO validation
@@ -210,11 +251,8 @@ class OrderController extends AbstractController
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            $response = new ApiResponseDTO(
-                success: false,
-                message: 'Erreur de validation des données'
-            );
-            return $this->json($response->toArray(), 422);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur de validation des données', 422);
         } catch (\Exception $e) {
             // Log unexpected errors for debugging and monitoring
             // This catches any unexpected exceptions that might occur during order processing
@@ -226,11 +264,8 @@ class OrderController extends AbstractController
             
             // Return generic error message to user (don't expose internal errors for security)
             // Exposing internal error details could help attackers understand system internals
-            $response = new ApiResponseDTO(
-                success: false,
-                message: 'Erreur lors de la création de la commande'
-            );
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de la création de la commande', 500);
         }
     }
 
@@ -269,34 +304,14 @@ class OrderController extends AbstractController
     }
 
     /**
-     * Validate CSRF token
-     *
-     * This method validates the CSRF token from request headers.
-     * CSRF protection prevents cross-site request forgery attacks.
-     *
-     * @param Request $request HTTP request containing CSRF token
-     * @param CsrfTokenManagerInterface $csrfTokenManager CSRF token manager
-     * @return JsonResponse|null Error response if token is invalid, null if valid
-     */
-    private function validateCsrfToken(Request $request, CsrfTokenManagerInterface $csrfTokenManager): ?JsonResponse
-    {
-        $csrfToken = $request->headers->get('X-CSRF-Token');
-        if (!$csrfToken || !$csrfTokenManager->isTokenValid(new CsrfToken('submit', $csrfToken))) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Token CSRF invalide'
-            ], 403);
-        }
-
-        return null;
-    }
-
-    /**
      * Check idempotency and return cached response if request was already processed
      *
      * Idempotency ensures that the same client action does not create duplicate orders.
      * If a request with the same Idempotency-Key was already processed, we return
      * the cached response instead of processing the request again.
+     *
+     * Note: CSRF validation is handled by base class method validateCsrfToken().
+     * This method is specific to OrderController and handles order-specific idempotency.
      *
      * @param string $idempotencyKey Idempotency key from request header (empty string if not provided)
      * @return JsonResponse|null Cached response if request was already processed, null if new request
@@ -320,85 +335,6 @@ class OrderController extends AbstractController
         return null;
     }
 
-    /**
-     * Get JSON data from request
-     *
-     * This method retrieves JSON data from the request, prioritizing filtered data
-     * from JsonFieldWhitelistSubscriber if available. This ensures mass assignment
-     * protection works effectively.
-     *
-     * @param Request $request HTTP request containing JSON data
-     * @return array|null Parsed JSON data as array, or null if parsing failed
-     */
-    private function getJsonDataFromRequest(Request $request): ?array
-    {
-        // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available
-        // This ensures only authorized fields reach the controller (mass assignment protection)
-        // The subscriber filters out unauthorized fields before the request reaches here
-        $data = $request->attributes->get('filtered_json_data');
-        
-        if ($data !== null) {
-            return $data;
-        }
-
-        // Priority 2: Fallback to parsing raw content if subscriber didn't process it
-        // (This should rarely happen for API endpoints, but provides backward compatibility)
-        $rawContent = $request->getContent();
-        $data = json_decode($rawContent, true);
-        
-        return is_array($data) ? $data : null;
-    }
-
-    /**
-     * Validate order data (DTO validation + XSS check)
-     *
-     * This method performs comprehensive validation of order data:
-     * 1. Maps array data to OrderCreateRequest DTO
-     * 2. Validates DTO using Symfony Validator
-     * 3. Checks for XSS attempts in user input fields
-     *
-     * @param array $data Raw order data from request
-     * @return OrderCreateRequest|JsonResponse Validated DTO if validation passes, error response if validation fails
-     */
-    private function validateOrderData(array $data): OrderCreateRequest|JsonResponse
-    {
-        // Map payload to DTO using ValidationHelper
-        // Note: Data is already filtered by JsonFieldWhitelistSubscriber, so only authorized fields are present
-        // This provides defense in depth: subscriber filters at request level, DTO validates at domain level
-        $dto = $this->validationHelper->mapArrayToDto($data, OrderCreateRequest::class);
-
-        // Validate DTO using Symfony Validator
-        $violations = $this->validator->validate($dto);
-        if (count($violations) > 0) {
-            $errors = $this->validationHelper->extractViolationMessages($violations);
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Erreur de validation',
-                'errors' => $errors
-            ], 422);
-        }
-
-        // Check for XSS attempts after sanitization (defense in depth)
-        // Even though InputSanitizer was used during mapping, we perform additional XSS validation
-        // This ensures no malicious content passes through, providing multiple layers of security
-        $xssErrors = $this->validationHelper->validateXssAttempts(
-            $dto,
-            ['deliveryAddress', 'deliveryInstructions', 'clientFirstName', 'clientLastName', 'clientPhone', 'clientEmail']
-        );
-        
-        if (!empty($xssErrors)) {
-            // Return 400 Bad Request for security violations (not 422, as this is a security issue)
-            // XSS attempts are treated as security violations, not validation errors
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Données invalides détectées',
-                'errors' => $xssErrors
-            ], 400);
-        }
-
-        // Validation passed, return the validated DTO
-        return $dto;
-    }
 
     /**
      * Notify admin about new order (non-blocking)
@@ -542,11 +478,8 @@ class OrderController extends AbstractController
             $order = $this->orderService->getOrder($id);
             
             if (!$order) {
-                $response = new ApiResponseDTO(
-                    success: false,
-                    message: 'Commande introuvable'
-                );
-                return $this->json($response->toArray(), 404);
+                // Uses base class method from AbstractApiController
+                return $this->errorResponse('Commande introuvable', 404);
             }
 
             // Convert items to response DTOs
@@ -583,21 +516,14 @@ class OrderController extends AbstractController
                 items: $orderItems
             );
 
-            $response = new ApiResponseDTO(
-                success: true,
-                order: $orderResponse
-            );
-
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse(['order' => $orderResponse], null, 200);
 
         } catch (\InvalidArgumentException $e) {
             // Handle validation errors (e.g., invalid order ID format)
             // InvalidArgumentException is thrown when order ID is invalid or order not found
-            $response = new ApiResponseDTO(
-                success: false,
-                message: $e->getMessage()
-            );
-            return $this->json($response->toArray(), 422);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse($e->getMessage(), 422);
         } catch (\Exception $e) {
             // Log unexpected errors for debugging and monitoring
             // This catches any unexpected exceptions that might occur during order retrieval
@@ -610,11 +536,8 @@ class OrderController extends AbstractController
             
             // Return generic error message to user (don't expose internal errors for security)
             // Exposing internal error details could help attackers understand system internals
-            $response = new ApiResponseDTO(
-                success: false,
-                message: 'Erreur lors de la récupération de la commande'
-            );
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de la récupération de la commande', 500);
         }
     }
 }

@@ -10,12 +10,10 @@ use App\Service\SymfonyEmailService;
 use App\Service\ValidationHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -28,14 +26,17 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * - AJAX form submission endpoint
  * 
  * Architecture:
- * - Controller is thin: only handles request/response, validation, and delegates to services
- * - Business logic (entity creation, persistence) is encapsulated in ContactService
+ * - Extends AbstractApiController for common API functionality (CSRF validation, responses)
+ * - Uses ContactService for business logic (contact message creation, persistence)
  * - This follows Single Responsibility Principle: controllers don't call persist()/flush() directly
+ * 
+ * Note: This controller handles both legacy forms (form-encoded) and AJAX endpoints.
+ * For AJAX endpoints, it uses base class methods for CSRF validation and response formatting.
  * 
  * All user input is sanitized to prevent XSS attacks before saving to database.
  * Email notifications are sent to admin (non-blocking - failures are logged).
  */
-class ContactController extends AbstractController
+class ContactController extends AbstractApiController
 {
     /**
      * Constructor for ContactController
@@ -44,8 +45,7 @@ class ContactController extends AbstractController
      * - EntityManagerInterface: Used only for legacy form handling (not in AJAX endpoint)
      * - SymfonyEmailService: Sends email notifications to admin
      * - LoggerInterface: Logs errors for debugging
-     * - ValidatorInterface: Validates DTO data using Symfony Validator
-     * - ValidationHelper: Centralizes validation message extraction and DTO mapping
+     * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
      * - ContactService: Encapsulates contact message creation and persistence (business logic)
      *
      * @param EntityManagerInterface $em Entity manager (legacy form support)
@@ -59,10 +59,12 @@ class ContactController extends AbstractController
         private EntityManagerInterface $em,
         private SymfonyEmailService $emailService,
         private LoggerInterface $logger,
-        private ValidatorInterface $validator,
-        private ValidationHelper $validationHelper,
+        ValidatorInterface $validator,
+        ValidationHelper $validationHelper,
         private \App\Service\ContactService $contactService
-    ) {}
+    ) {
+        parent::__construct($validator, $validationHelper);
+    }
 
     /**
      * Display contact form and handle form submission
@@ -131,10 +133,10 @@ class ContactController extends AbstractController
     public function contactAjax(Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
         // Validate CSRF token to prevent cross-site request forgery attacks
-        $csrfToken = $request->request->get('_token') ?: $request->headers->get('X-CSRF-Token');
-        if (!$csrfToken || !$csrfTokenManager->isTokenValid(new CsrfToken('submit', $csrfToken))) {
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Token CSRF invalide');
-            return $this->json($response->toArray(), 403);
+        // Uses base class method from AbstractApiController
+        $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
+        if ($csrfError !== null) {
+            return $csrfError;
         }
         
         return $this->handleContactAjax($request);
@@ -153,8 +155,8 @@ class ContactController extends AbstractController
     {
         // Ensure this is an AJAX request
         if (!$request->isXmlHttpRequest()) {
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Requête invalide');
-            return $this->json($response->toArray(), 400);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Requête invalide', 400);
         }
         
         try {
@@ -186,31 +188,24 @@ class ContactController extends AbstractController
                 
                 // Also check for XSS attempts (additional security layer)
                 // This provides defense in depth - even if basic validation passes, we check for malicious content
+                // Uses base class method from AbstractApiController
                 $xssErrors = $this->validationHelper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
                 
                 // Merge validation errors and XSS errors into single array
                 $allErrors = array_merge($errors, $xssErrors);
-                $response = new \App\DTO\ApiResponseDTO(
-                    success: false,
-                    message: 'Erreur de validation. Veuillez vérifier vos données.',
-                    errors: $allErrors
-                );
-                return $this->json($response->toArray(), 422);
+                // Uses base class method from AbstractApiController
+                return $this->errorResponse('Erreur de validation. Veuillez vérifier vos données.', 422, $allErrors);
             }
 
             // Additional XSS check after validation (defense in depth)
             // Perform XSS validation again after DTO validation passes to ensure no malicious content
             // This double-check prevents XSS attacks that might bypass initial validation
-            $xssErrors = $this->validationHelper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
+            // Uses base class method from AbstractApiController
+            $xssError = $this->validateXss($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
             
-            if (!empty($xssErrors)) {
-                // Return 400 Bad Request for security violations (not 422, as this is a security issue)
-                $response = new \App\DTO\ApiResponseDTO(
-                    success: false,
-                    message: 'Données invalides détectées',
-                    errors: $xssErrors
-                );
-                return $this->json($response->toArray(), 400);
+            if ($xssError !== null) {
+                // XSS detected, return error response
+                return $xssError;
             }
             
             // Delegate business logic to ContactService (no direct persist/flush in controller)
@@ -231,18 +226,15 @@ class ContactController extends AbstractController
                 $this->logger->error('Error sending contact notification: {error}', ['error' => $e->getMessage()]);
             }
             
-            $response = new \App\DTO\ApiResponseDTO(success: true, message: 'Merci! Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.');
-            return $this->json($response->toArray(), 201);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse(null, 'Merci! Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.', 201);
             
         } catch (\InvalidArgumentException $e) {
             // Handle validation/business logic errors
             // This should not happen after DTO validation, but serves as defense in depth
             // InvalidArgumentException is thrown by business logic when data is invalid
-            $response = new \App\DTO\ApiResponseDTO(
-                success: false,
-                message: 'Erreur de validation: ' . $e->getMessage()
-            );
-            return $this->json($response->toArray(), 422);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur de validation: ' . $e->getMessage(), 422);
         } catch (\Exception $e) {
             // Log unexpected errors for debugging and monitoring
             // This catches any unexpected exceptions that might occur during processing
@@ -254,11 +246,8 @@ class ContactController extends AbstractController
             
             // Return generic error message to user (don't expose internal errors for security)
             // Exposing internal error details could help attackers understand system internals
-            $response = new \App\DTO\ApiResponseDTO(
-                success: false,
-                message: 'Une erreur est survenue lors de l\'envoi de votre message.'
-            );
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Une erreur est survenue lors de l\'envoi de votre message.', 500);
         }
     }
 }

@@ -2,11 +2,11 @@
 
 namespace App\Controller\Api;
 
+use App\Controller\AbstractApiController;
 use App\DTO\CouponValidateRequest;
 use App\Entity\Coupon;
 use App\Service\CouponService;
 use App\Service\ValidationHelper;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -20,6 +20,10 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * - Apply coupons to orders (increment usage count)
  * - List active coupons (admin only)
  * 
+ * Architecture:
+ * - Extends AbstractApiController for common API functionality (JSON parsing, DTO validation, responses)
+ * - Uses CouponService for business logic (coupon validation, application, listing)
+ * 
  * All coupon validation includes checks for:
  * - Active status
  * - Expiration dates
@@ -27,13 +31,25 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * - Minimum order amounts
  */
 #[Route('/api/coupon', name: 'api_coupon_')]
-class CouponController extends AbstractController
+class CouponController extends AbstractApiController
 {
+    /**
+     * Constructor
+     *
+     * Injects dependencies required for coupon operations:
+     * - CouponService: Handles coupon business logic (validation, application, listing)
+     * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
+     *
+     * @param CouponService $couponService Service for coupon operations
+     * @param ValidatorInterface $validator Symfony validator for DTO validation
+     * @param ValidationHelper $validationHelper Helper for validation operations
+     */
     public function __construct(
         private CouponService $couponService,
-        private ValidatorInterface $validator,
-        private ValidationHelper $validationHelper
+        ValidatorInterface $validator,
+        ValidationHelper $validationHelper
     ) {
+        parent::__construct($validator, $validationHelper);
     }
 
     /**
@@ -119,29 +135,24 @@ class CouponController extends AbstractController
     {
         try {
             // Get JSON data from request
-            // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available
-            // This ensures only authorized fields reach the controller (mass assignment protection)
-            // The subscriber filters out unauthorized fields before the request reaches here
-            // Priority 2: Fallback to parsing raw content if subscriber didn't process it
-            // (This should rarely happen for API endpoints, but provides backward compatibility)
-            $data = $request->attributes->get('filtered_json_data');
-            if ($data === null) {
-                // Fallback: parse raw content if filtered data not available
-                // This can happen if request bypassed the subscriber or for non-API endpoints
-                $data = json_decode($request->getContent(), true);
+            // Uses base class method from AbstractApiController
+            // Returns array or JsonResponse (error if JSON invalid)
+            $jsonResult = $this->getJsonDataFromRequest($request);
+            if ($jsonResult instanceof JsonResponse) {
+                // JSON parsing failed, return error response
+                return $jsonResult;
             }
-            
-            if (!is_array($data)) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'JSON invalide');
-                return $this->json($response->toArray(), 400);
-            }
+            $data = $jsonResult;
 
-            // Map JSON payload to DTO using helper service
-            // The ValidationHelper automatically handles type conversion (e.g., string '10.5' -> float 10.5)
-            // This eliminates repetitive manual mapping code like: isset($data['code']) ? trim((string)$data['code']) : null
-            // Note: Data is already filtered by JsonFieldWhitelistSubscriber, so only authorized fields are present
-            // This provides defense in depth: subscriber filters at request level, DTO validates at domain level
-            $dto = $this->validationHelper->mapArrayToDto($data, CouponValidateRequest::class);
+            // Map JSON payload to DTO and validate
+            // Uses base class method from AbstractApiController
+            // Returns DTO or JsonResponse (error if validation fails)
+            $validationResult = $this->validateDto($data, CouponValidateRequest::class);
+            if ($validationResult instanceof JsonResponse) {
+                // Validation failed, return error response
+                return $validationResult;
+            }
+            $dto = $validationResult;
             
             // Post-processing: Trim whitespace from coupon code
             // Symfony Serializer handles type conversion but doesn't trim strings automatically.
@@ -151,28 +162,16 @@ class CouponController extends AbstractController
                 $dto->code = trim($dto->code);
             }
 
-            // Validate DTO
-            $violations = $this->validator->validate($dto);
-            if (count($violations) > 0) {
-                $errors = $this->validationHelper->extractViolationMessages($violations);
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
-                return $this->json($response->toArray(), 422);
-            }
-
             // Delegate to service
             $data = $this->couponService->validateCoupon($dto);
 
-            $response = new \App\DTO\ApiResponseDTO(
-                success: true,
-                message: 'Code promo appliqué avec succès',
-                data: $data
-            );
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse($data, 'Code promo appliqué avec succès', 200);
 
         } catch (\Exception $e) {
             $status = $e instanceof \InvalidArgumentException ? 400 : 500;
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la validation du code promo: ' . $e->getMessage());
-            return $this->json($response->toArray(), $status);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de la validation du code promo: ' . $e->getMessage(), $status);
         }
     }
 
@@ -193,13 +192,13 @@ class CouponController extends AbstractController
             // Delegate to service
             $this->couponService->applyCoupon($couponId);
 
-            $response = new \App\DTO\ApiResponseDTO(success: true, message: 'Code promo appliqué');
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse(null, 'Code promo appliqué', 200);
 
         } catch (\Exception $e) {
             $status = $e instanceof \InvalidArgumentException ? 400 : 500;
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de l\'application du code promo: ' . $e->getMessage());
-            return $this->json($response->toArray(), $status);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de l\'application du code promo: ' . $e->getMessage(), $status);
         }
     }
 
@@ -222,12 +221,12 @@ class CouponController extends AbstractController
         try {
             $data = $this->couponService->listActiveCoupons();
 
-            $response = new \App\DTO\ApiResponseDTO(success: true, data: $data);
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse($data, null, 200);
 
         } catch (\Exception $e) {
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la récupération des codes promo: ' . $e->getMessage());
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de la récupération des codes promo: ' . $e->getMessage(), 500);
         }
     }
 }

@@ -2,11 +2,11 @@
 
 namespace App\Controller\Api;
 
+use App\Controller\AbstractApiController;
 use App\DTO\AddressFullValidationRequest;
 use App\DTO\AddressValidationRequest;
 use App\Service\AddressValidationService;
 use App\Service\ValidationHelper;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -20,17 +20,32 @@ use OpenApi\Attributes as OA;
  * - Validate zip codes for delivery eligibility
  * - Validate full addresses for delivery
  * 
- * Uses AddressValidationService to check if addresses are within delivery radius
- * and calculates distance from restaurant location.
+ * Architecture:
+ * - Extends AbstractApiController for common API functionality (JSON parsing, DTO validation, responses)
+ * - Uses AddressValidationService to check if addresses are within delivery radius
+ * - Calculates distance from restaurant location
  */
 #[Route('/api', name: 'api_')]
-class AddressValidationController extends AbstractController
+class AddressValidationController extends AbstractApiController
 {
+    /**
+     * Constructor
+     *
+     * Injects dependencies required for address validation:
+     * - AddressValidationService: Handles address validation logic (geocoding, distance calculation)
+     * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
+     *
+     * @param AddressValidationService $addressValidationService Service for address validation
+     * @param ValidatorInterface $validator Symfony validator for DTO validation
+     * @param ValidationHelper $validationHelper Helper for validation operations
+     */
     public function __construct(
         private AddressValidationService $addressValidationService,
-        private ValidatorInterface $validator,
-        private ValidationHelper $validationHelper
-    ) {}
+        ValidatorInterface $validator,
+        ValidationHelper $validationHelper
+    ) {
+        parent::__construct($validator, $validationHelper);
+    }
 
     /**
      * Validate zip code for delivery eligibility
@@ -112,39 +127,24 @@ class AddressValidationController extends AbstractController
     {
         try {
             // Get JSON data from request
-            // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available
-            // This ensures only authorized fields reach the controller (mass assignment protection)
-            // The subscriber filters out unauthorized fields before the request reaches here
-            // Priority 2: Fallback to parsing raw content if subscriber didn't process it
-            // (This should rarely happen for API endpoints, but provides backward compatibility)
-            $data = $request->attributes->get('filtered_json_data');
-            if ($data === null) {
-                // Fallback: parse raw content if filtered data not available
-                // This can happen if request bypassed the subscriber or for non-API endpoints
-                $data = json_decode($request->getContent(), true);
+            // Uses base class method from AbstractApiController
+            // Returns array or JsonResponse (error if JSON invalid)
+            $jsonResult = $this->getJsonDataFromRequest($request);
+            if ($jsonResult instanceof JsonResponse) {
+                // JSON parsing failed, return error response
+                return $jsonResult;
             }
-            
-            if (!is_array($data)) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'JSON invalide');
-                return $this->json($response->toArray(), 400);
-            }
+            $data = $jsonResult;
 
-            // Map JSON payload to DTO using helper service
-            // The ValidationHelper automatically handles type conversion based on DTO property types
-            // This eliminates repetitive manual mapping code like: isset($data['zipCode']) ? trim((string)$data['zipCode']) : null
-            // Note: Data is already filtered by JsonFieldWhitelistSubscriber, so only authorized fields are present
-            // This provides defense in depth: subscriber filters at request level, DTO validates at domain level
-            $dto = $this->validationHelper->mapArrayToDto($data, AddressValidationRequest::class);
-            
-            // No manual trimming required: ValidationHelper::mapArrayToDto() already trims strings
-
-            // Validate DTO
-            $violations = $this->validator->validate($dto);
-            if (count($violations) > 0) {
-                $errors = $this->validationHelper->extractViolationMessages($violations);
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
-                return $this->json($response->toArray(), 422);
+            // Map JSON payload to DTO and validate
+            // Uses base class method from AbstractApiController
+            // Returns DTO or JsonResponse (error if validation fails)
+            $validationResult = $this->validateDto($data, AddressValidationRequest::class);
+            if ($validationResult instanceof JsonResponse) {
+                // Validation failed, return error response
+                return $validationResult;
             }
+            $dto = $validationResult;
 
             $zipCode = $dto->zipCode;
 
@@ -152,22 +152,19 @@ class AddressValidationController extends AbstractController
             $result = $this->addressValidationService->validateZipCodeForDelivery($zipCode);
 
             // Return validation result with all relevant information
-            $response = new \App\DTO\ApiResponseDTO(
-                success: true,
-                data: [
-                    'valid' => $result['valid'],
-                    'error' => $result['error'],
-                    'distance' => $result['distance'],
-                    'coordinates' => $result['coordinates'] ?? null,
-                    'deliveryAvailable' => $result['valid']
-                ]
-            );
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse([
+                'valid' => $result['valid'],
+                'error' => $result['error'],
+                'distance' => $result['distance'],
+                'coordinates' => $result['coordinates'] ?? null,
+                'deliveryAvailable' => $result['valid']
+            ], null, 200);
 
         } catch (\Exception $e) {
             // Return error response if validation fails
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la validation du code postal');
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de la validation du code postal', 500);
         }
     }
 
@@ -259,39 +256,24 @@ class AddressValidationController extends AbstractController
     {
         try {
             // Get JSON data from request
-            // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available
-            // This ensures only authorized fields reach the controller (mass assignment protection)
-            // The subscriber filters out unauthorized fields before the request reaches here
-            // Priority 2: Fallback to parsing raw content if subscriber didn't process it
-            // (This should rarely happen for API endpoints, but provides backward compatibility)
-            $data = $request->attributes->get('filtered_json_data');
-            if ($data === null) {
-                // Fallback: parse raw content if filtered data not available
-                // This can happen if request bypassed the subscriber or for non-API endpoints
-                $data = json_decode($request->getContent(), true);
+            // Uses base class method from AbstractApiController
+            // Returns array or JsonResponse (error if JSON invalid)
+            $jsonResult = $this->getJsonDataFromRequest($request);
+            if ($jsonResult instanceof JsonResponse) {
+                // JSON parsing failed, return error response
+                return $jsonResult;
             }
-            
-            if (!is_array($data)) {
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'JSON invalide');
-                return $this->json($response->toArray(), 400);
-            }
+            $data = $jsonResult;
 
-            // Map JSON payload to DTO using helper service
-            // The ValidationHelper automatically handles type conversion based on DTO property types
-            // This eliminates repetitive manual mapping code for both address and zipCode fields
-            // Note: Data is already filtered by JsonFieldWhitelistSubscriber, so only authorized fields are present
-            // This provides defense in depth: subscriber filters at request level, DTO validates at domain level
-            $dto = $this->validationHelper->mapArrayToDto($data, AddressFullValidationRequest::class);
-            
-            // No manual trimming required: ValidationHelper::mapArrayToDto() already trims strings
-
-            // Validate DTO
-            $violations = $this->validator->validate($dto);
-            if (count($violations) > 0) {
-                $errors = $this->validationHelper->extractViolationMessages($violations);
-                $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
-                return $this->json($response->toArray(), 422);
+            // Map JSON payload to DTO and validate
+            // Uses base class method from AbstractApiController
+            // Returns DTO or JsonResponse (error if validation fails)
+            $validationResult = $this->validateDto($data, AddressFullValidationRequest::class);
+            if ($validationResult instanceof JsonResponse) {
+                // Validation failed, return error response
+                return $validationResult;
             }
+            $dto = $validationResult;
 
             $address = $dto->address;
             $zipCode = $dto->zipCode;
@@ -300,22 +282,19 @@ class AddressValidationController extends AbstractController
             $result = $this->addressValidationService->validateAddressForDelivery($address, $zipCode);
 
             // Return validation result with all relevant information
-            $response = new \App\DTO\ApiResponseDTO(
-                success: true,
-                data: [
-                    'valid' => $result['valid'],
-                    'error' => $result['error'],
-                    'distance' => $result['distance'],
-                    'coordinates' => $result['coordinates'] ?? null,
-                    'deliveryAvailable' => $result['valid']
-                ]
-            );
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse([
+                'valid' => $result['valid'],
+                'error' => $result['error'],
+                'distance' => $result['distance'],
+                'coordinates' => $result['coordinates'] ?? null,
+                'deliveryAvailable' => $result['valid']
+            ], null, 200);
 
         } catch (\Exception $e) {
             // Return error response if validation fails
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur lors de la validation de l\'adresse');
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de la validation de l\'adresse', 500);
         }
     }
 }

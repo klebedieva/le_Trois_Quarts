@@ -6,7 +6,6 @@ use App\Entity\Review;
 use App\Service\ValidationHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,8 +20,8 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * - Create new reviews (pending moderation)
  * 
  * Architecture:
- * - Controller is thin: only handles request/response, validation, and delegates to services
- * - Business logic (entity creation, persistence) is encapsulated in ReviewService
+ * - Extends AbstractApiController for common API functionality (JSON parsing, DTO validation, responses)
+ * - Uses ReviewService for business logic (review creation, persistence)
  * - This follows Single Responsibility Principle: controllers don't call persist()/flush() directly
  * 
  * Note: Only returns approved reviews for general listing.
@@ -30,14 +29,13 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 #[Route('/api')]
 #[OA\Tag(name: 'Reviews')]
-class ReviewController extends AbstractController
+class ReviewController extends AbstractApiController
 {
     /**
      * Constructor for ReviewController
      *
      * Injects dependencies required for review API operations:
-     * - ValidatorInterface: Validates DTO data using Symfony Validator
-     * - ValidationHelper: Centralizes validation message extraction and DTO mapping
+     * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
      * - ReviewService: Encapsulates review creation and persistence (business logic)
      *
      * @param ValidatorInterface $validator Symfony validator for DTO validation
@@ -45,10 +43,12 @@ class ReviewController extends AbstractController
      * @param \App\Service\ReviewService $reviewService Service for creating reviews
      */
     public function __construct(
-        private ValidatorInterface $validator,
-        private ValidationHelper $validationHelper,
+        ValidatorInterface $validator,
+        ValidationHelper $validationHelper,
         private \App\Service\ReviewService $reviewService
-    ) {}
+    ) {
+        parent::__construct($validator, $validationHelper);
+    }
     /**
      * List approved reviews with pagination support
      * 
@@ -98,20 +98,16 @@ class ReviewController extends AbstractController
             ];
         }, $reviews);
 
-        $response = new \App\DTO\ApiResponseDTO(
-            success: true,
-            data: [
-                'reviews' => $data,
-                'pagination' => [
-                    'current_page' => $page,
-                    'total_count' => (int) $totalCount,
-                    'per_page' => $limit,
-                    'has_more' => $hasMore
-                ]
+        // Uses base class method from AbstractApiController
+        return $this->successResponse([
+            'reviews' => $data,
+            'pagination' => [
+                'current_page' => $page,
+                'total_count' => (int) $totalCount,
+                'per_page' => $limit,
+                'has_more' => $hasMore
             ]
-        );
-
-        return $this->json($response->toArray(), 200);
+        ], null, 200);
     }
 
     /**
@@ -192,39 +188,24 @@ class ReviewController extends AbstractController
     public function create(Request $request, EntityManagerInterface $em): JsonResponse
     {
         // Get JSON data from request
-        // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available
-        // This ensures only authorized fields reach the controller (mass assignment protection)
-        // The subscriber filters out unauthorized fields before the request reaches here
-        // Priority 2: Fallback to parsing raw content if subscriber didn't process it
-        // (This should rarely happen for API endpoints, but provides backward compatibility)
-        $data = $request->attributes->get('filtered_json_data');
-        if ($data === null) {
-            // Fallback: parse raw content if filtered data not available
-            // This can happen if request bypassed the subscriber or for non-API endpoints
-            $data = json_decode($request->getContent(), true);
+        // Uses base class method from AbstractApiController
+        // Returns array or JsonResponse (error if JSON invalid)
+        $jsonResult = $this->getJsonDataFromRequest($request);
+        if ($jsonResult instanceof JsonResponse) {
+            // JSON parsing failed, return error response
+            return $jsonResult;
         }
-        
-        if (!is_array($data)) {
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'JSON invalide');
-            return $this->json($response->toArray(), 400);
-        }
+        $data = $jsonResult;
 
-        // Map JSON payload to DTO using helper service
-        // The ValidationHelper automatically handles type conversion (e.g., string '5' -> int 5)
-        // This eliminates repetitive manual mapping code like: isset($data['name']) ? trim((string)$data['name']) : null
-        // Note: Data is already filtered by JsonFieldWhitelistSubscriber, so only authorized fields are present
-        // This provides defense in depth: subscriber filters at request level, DTO validates at domain level
-        $dto = $this->validationHelper->mapArrayToDto($data, \App\DTO\ReviewCreateRequest::class);
-        
-        // No manual trimming: ValidationHelper::mapArrayToDto() already normalizes
-        // all public string properties (trims whitespace) to avoid duplication.
-
-        $violations = $this->validator->validate($dto);
-        if (count($violations) > 0) {
-            $errors = $this->validationHelper->extractViolationMessages($violations);
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
-            return $this->json($response->toArray(), 422);
+        // Map JSON payload to DTO and validate
+        // Uses base class method from AbstractApiController
+        // Returns DTO or JsonResponse (error if validation fails)
+        $validationResult = $this->validateDto($data, \App\DTO\ReviewCreateRequest::class);
+        if ($validationResult instanceof JsonResponse) {
+            // Validation failed, return error response
+            return $validationResult;
         }
+        $dto = $validationResult;
 
         // Delegate creation to ReviewService (no direct persist/flush in controller)
         // This follows Single Responsibility Principle: controller handles HTTP, service handles domain logic
@@ -233,8 +214,8 @@ class ReviewController extends AbstractController
         // Pass null as menuItem since this is a general restaurant review (not dish-specific)
         $review = $this->reviewService->createReview($dto, null);
 
-        $response = new \App\DTO\ApiResponseDTO(success: true, message: 'Avis soumis. En attente de validation.');
-        return $this->json($response->toArray(), 201);
+        // Uses base class method from AbstractApiController
+        return $this->successResponse(null, 'Avis soumis. En attente de validation.', 201);
     }
 }
 

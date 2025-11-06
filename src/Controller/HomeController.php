@@ -16,12 +16,10 @@ use App\Service\TableAvailabilityService;
 use App\Service\ValidationHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -29,15 +27,17 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * Public site pages: home, menu, gallery, reservation, reviews.
  *
  * Architecture:
- * - Controller is thin: handles request/response, validation, and delegates to services
- * - Business logic (entity creation, persistence) is encapsulated in ReservationService
+ * - Extends AbstractApiController for common API functionality (CSRF validation, responses)
+ * - Uses ReservationService and ReviewService for business logic (entity creation, persistence)
  * - This follows Single Responsibility Principle: controllers don't call persist()/flush() directly
  *
  * Notes:
  * - Uses repositories/services only for read operations and simple form handling.
  * - Security-sensitive endpoints (AJAX reservation) include CSRF checks and input sanitization.
+ * - This controller handles both legacy forms (form-encoded) and AJAX endpoints.
+ * - For AJAX endpoints, it uses base class methods for CSRF validation and response formatting.
  */
-class HomeController extends AbstractController
+class HomeController extends AbstractApiController
 {
     /**
      * Constructor for HomeController
@@ -46,9 +46,9 @@ class HomeController extends AbstractController
      * - SymfonyEmailService: Sends email notifications for reservations
      * - TableAvailabilityService: Checks table availability for reservations
      * - LoggerInterface: Logs errors for debugging
-     * - ValidatorInterface: Validates DTO data using Symfony Validator
-     * - ValidationHelper: Centralizes validation message extraction and DTO mapping
+     * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
      * - ReservationService: Encapsulates reservation creation and persistence (business logic)
+     * - ReviewService: Encapsulates review creation and persistence (business logic)
      *
      * @param SymfonyEmailService $emailService Email service for notifications
      * @param TableAvailabilityService $availability Service for checking table availability
@@ -62,11 +62,13 @@ class HomeController extends AbstractController
         private SymfonyEmailService $emailService,
         private TableAvailabilityService $availability,
         private LoggerInterface $logger,
-        private ValidatorInterface $validator,
-        private ValidationHelper $validationHelper,
+        ValidatorInterface $validator,
+        ValidationHelper $validationHelper,
         private \App\Service\ReservationService $reservationService,
         private \App\Service\ReviewService $reviewService
-    ) {}
+    ) {
+        parent::__construct($validator, $validationHelper);
+    }
 
     #[Route('/', name: 'app_home')]
     public function index(ReviewRepository $reviewRepository, GalleryImageRepository $galleryRepository): Response
@@ -143,11 +145,10 @@ class HomeController extends AbstractController
     public function reservationAjax(Request $request, EntityManagerInterface $entityManager, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
         // CSRF Protection
-        $csrfToken = $request->request->get('_token') ?: $request->headers->get('X-CSRF-Token');
-        
-        if (!$csrfToken || !$csrfTokenManager->isTokenValid(new CsrfToken('submit', $csrfToken))) {
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Token CSRF invalide');
-            return $this->json($response->toArray(), 403);
+        // Uses base class method from AbstractApiController
+        $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
+        if ($csrfError !== null) {
+            return $csrfError;
         }
         
         return $this->handleReservationAjax($request, $entityManager);
@@ -157,8 +158,8 @@ class HomeController extends AbstractController
     {
         // Check if it's an AJAX request
         if (!$request->isXmlHttpRequest()) {
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Requête invalide');
-            return $this->json($response->toArray(), 400);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Requête invalide', 400);
         }
         
         try {
@@ -192,16 +193,13 @@ class HomeController extends AbstractController
                 
                 // Also check for XSS attempts (additional security layer)
                 // This provides defense in depth - even if basic validation passes, we check for malicious content
+                // Uses base class method from AbstractApiController
                 $xssErrors = $this->validationHelper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
                 
                 // Merge validation errors and XSS errors into single array
                 $allErrors = array_merge($errors, $xssErrors);
-                $response = new \App\DTO\ApiResponseDTO(
-                    success: false,
-                    message: 'Erreur de validation. Veuillez vérifier vos données.',
-                    errors: $allErrors
-                );
-                return $this->json($response->toArray(), 422);
+                // Uses base class method from AbstractApiController
+                return $this->errorResponse('Erreur de validation. Veuillez vérifier vos données.', 422, $allErrors);
             }
 
             // Additional validation: check if date/time are not in the past
@@ -231,18 +229,26 @@ class HomeController extends AbstractController
             // Additional XSS check after validation (defense in depth)
             // Perform XSS validation again after DTO validation passes to ensure no malicious content
             // This double-check prevents XSS attacks that might bypass initial validation
-            $xssErrors = $this->validationHelper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
+            // Uses base class method from AbstractApiController
+            $xssError = $this->validateXss($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
             
-            // Merge date/time validation errors and XSS errors
-            $allErrors = array_merge($validationErrors, $xssErrors);
-            if (!empty($allErrors)) {
-                // Return 422 for validation errors, 400 for security violations (XSS)
-                $response = new \App\DTO\ApiResponseDTO(
-                    success: false,
-                    message: !empty($validationErrors) ? 'Erreur de validation' : 'Données invalides détectées',
-                    errors: $allErrors
-                );
-                return $this->json($response->toArray(), !empty($validationErrors) ? 422 : 400);
+            if ($xssError !== null) {
+                // XSS detected
+                // If we also have date/time validation errors, merge them and return 422 (validation error)
+                // Otherwise, return XSS error as security violation (400)
+                if (!empty($validationErrors)) {
+                    // Get XSS errors array to merge with validation errors
+                    $xssErrors = $this->validationHelper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
+                    $allErrors = array_merge($validationErrors, $xssErrors);
+                    return $this->errorResponse('Erreur de validation', 422, $allErrors);
+                }
+                // Only XSS errors, return security violation (400)
+                return $xssError;
+            }
+            
+            // Check if there are date/time validation errors (but no XSS)
+            if (!empty($validationErrors)) {
+                return $this->errorResponse('Erreur de validation', 422, $validationErrors);
             }
             
             // Variant B: do not block on availability in the public endpoint.
@@ -262,21 +268,15 @@ class HomeController extends AbstractController
                 $this->logger->error('Error sending reservation notification to admin: {error}', ['error' => $e->getMessage()]);
             }
             
-            $response = new \App\DTO\ApiResponseDTO(
-                success: true,
-                message: 'Votre réservation a été enregistrée. Nous vous contacterons pour confirmation.'
-            );
-            return $this->json($response->toArray(), 201);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse(null, 'Votre réservation a été enregistrée. Nous vous contacterons pour confirmation.', 201);
             
         } catch (\InvalidArgumentException $e) {
             // Handle validation/business logic errors
             // This should not happen after DTO validation, but serves as defense in depth
             // InvalidArgumentException is thrown by business logic when data is invalid
-            $response = new \App\DTO\ApiResponseDTO(
-                success: false,
-                message: 'Erreur de validation: ' . $e->getMessage()
-            );
-            return $this->json($response->toArray(), 422);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur de validation: ' . $e->getMessage(), 422);
         } catch (\Exception $e) {
             // Log unexpected errors for debugging and monitoring
             // This catches any unexpected exceptions that might occur during processing
@@ -288,11 +288,8 @@ class HomeController extends AbstractController
             
             // Return generic error message to user (don't expose internal errors for security)
             // Exposing internal error details could help attackers understand system internals
-            $response = new \App\DTO\ApiResponseDTO(
-                success: false,
-                message: 'Une erreur est survenue lors de l\'enregistrement de votre réservation.'
-            );
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Une erreur est survenue lors de l\'enregistrement de votre réservation.', 500);
         }
     }
 

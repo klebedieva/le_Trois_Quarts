@@ -2,18 +2,15 @@
 
 namespace App\Controller;
 
-use App\DTO\ApiResponseDTO;
 use App\DTO\CartAddRequest;
 use App\DTO\CartItemDTO;
 use App\DTO\CartResponseDTO;
 use App\Service\CartService;
 use App\Service\ValidationHelper;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use OpenApi\Attributes as OA;
 
@@ -27,39 +24,34 @@ use OpenApi\Attributes as OA;
  * - Update item quantities
  * - Clear entire cart
  * 
+ * Architecture:
+ * - Extends AbstractApiController for common API functionality (JSON parsing, DTO validation, CSRF, responses)
+ * - Uses CartService for business logic (cart operations)
+ * - CSRF protection is enforced in production environment
+ * 
  * All operations use CartService for business logic and return DTOs for consistent API responses.
- * CSRF protection is enforced in production environment.
  */
 #[Route('/api/cart')]
 #[OA\Tag(name: 'Cart')]
-class CartController extends AbstractController
+class CartController extends AbstractApiController
 {
+    /**
+     * Constructor
+     *
+     * Injects dependencies required for cart operations:
+     * - CartService: Handles cart business logic (add, remove, update, clear)
+     * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
+     *
+     * @param CartService $cartService Service for cart operations
+     * @param ValidatorInterface $validator Symfony validator for DTO validation
+     * @param ValidationHelper $validationHelper Helper for validation operations
+     */
     public function __construct(
         private CartService $cartService,
-        private ValidatorInterface $validator,
-        private ValidationHelper $validationHelper
-    ) {}
-
-    /**
-     * Validate CSRF token from request headers
-     * 
-     * Used to protect state-changing operations (add, remove, update, clear)
-     * from Cross-Site Request Forgery attacks.
-     * 
-     * @param Request $request HTTP request containing CSRF token
-     * @param CsrfTokenManagerInterface $csrfTokenManager CSRF token manager
-     * @return JsonResponse|null Error response if token is invalid, null if valid
-     */
-    private function validateCsrfToken(Request $request, CsrfTokenManagerInterface $csrfTokenManager): ?JsonResponse
-    {
-        $csrfToken = $request->headers->get('X-CSRF-Token');
-        if (!$csrfToken || !$csrfTokenManager->isTokenValid(new CsrfToken('submit', $csrfToken))) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Token CSRF invalide'
-            ], 403);
-        }
-        return null;
+        ValidatorInterface $validator,
+        ValidationHelper $validationHelper
+    ) {
+        parent::__construct($validator, $validationHelper);
     }
 
     /**
@@ -103,20 +95,12 @@ class CartController extends AbstractController
                 itemCount: $cart['itemCount']
             );
 
-            // Wrap in standard API response format
-            $response = new ApiResponseDTO(
-                success: true,
-                cart: $cartResponse
-            );
-            
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse(['cart' => $cartResponse], null, 200);
         } catch (\Exception $e) {
             // Return error response if cart retrieval fails
-            $response = new ApiResponseDTO(
-                success: false,
-                message: 'Erreur lors de la récupération du panier: ' . $e->getMessage()
-            );
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de la récupération du panier: ' . $e->getMessage(), 500);
         }
     }
 
@@ -209,6 +193,7 @@ class CartController extends AbstractController
         // CSRF protection is enforced in production environment only
         // (disabled in dev for easier testing via security.yaml configuration)
         if ($this->getParameter('kernel.environment') === 'prod') {
+            // Uses base class method from AbstractApiController
             $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
             if ($csrfError) {
                 return $csrfError;
@@ -217,43 +202,30 @@ class CartController extends AbstractController
 
         try {
             // Get JSON data from request
-            // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available
-            // This ensures only authorized fields reach the controller (mass assignment protection)
-            // The subscriber filters out unauthorized fields before the request reaches here
-            // Priority 2: Fallback to parsing raw content if subscriber didn't process it
-            // (This should rarely happen for API endpoints, but provides backward compatibility)
-            $data = $request->attributes->get('filtered_json_data');
-            if ($data === null) {
-                // Fallback: parse raw content if filtered data not available
-                // This can happen if request bypassed the subscriber or for non-API endpoints
-                $data = json_decode($request->getContent(), true);
+            // Uses base class method from AbstractApiController
+            // Returns array or JsonResponse (error if JSON invalid)
+            $jsonResult = $this->getJsonDataFromRequest($request);
+            if ($jsonResult instanceof JsonResponse) {
+                // JSON parsing failed, return error response
+                return $jsonResult;
             }
-            
-            if (!is_array($data)) {
-                $response = new ApiResponseDTO(success: false, message: 'JSON invalide');
-                return $this->json($response->toArray(), 400);
-            }
+            $data = $jsonResult;
 
-            // Map JSON payload to DTO using helper service
-            // The ValidationHelper automatically handles type conversion (e.g., string '5' -> int 5)
-            // This eliminates repetitive manual mapping code like: isset($data['itemId']) ? (int)$data['itemId'] : null
-            // Note: Data is already filtered by JsonFieldWhitelistSubscriber, so only authorized fields are present
-            // This provides defense in depth: subscriber filters at request level, DTO validates at domain level
-            $dto = $this->validationHelper->mapArrayToDto($data, CartAddRequest::class);
+            // Map JSON payload to DTO and validate
+            // Uses base class method from AbstractApiController
+            // Returns DTO or JsonResponse (error if validation fails)
+            $validationResult = $this->validateDto($data, CartAddRequest::class);
+            if ($validationResult instanceof JsonResponse) {
+                // Validation failed, return error response
+                return $validationResult;
+            }
+            $dto = $validationResult;
             
             // Post-processing: Set default quantity if not provided
             // If the client doesn't send a quantity, we default to 1 (add one item to cart).
             // This provides a better user experience - users can add items without specifying quantity.
             if ($dto->quantity === null) {
                 $dto->quantity = 1;
-            }
-
-            // Validate DTO
-            $violations = $this->validator->validate($dto);
-            if (count($violations) > 0) {
-                $errors = $this->validationHelper->extractViolationMessages($violations);
-                $response = new ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
-                return $this->json($response->toArray(), 422);
             }
 
             // Extract validated values
@@ -281,26 +253,15 @@ class CartController extends AbstractController
                 itemCount: $cart['itemCount']
             );
 
-            $response = new ApiResponseDTO(
-                success: true,
-                message: 'Article ajouté au panier',
-                cart: $cartResponse
-            );
-
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse(['cart' => $cartResponse], 'Article ajouté au panier', 200);
 
         } catch (\InvalidArgumentException $e) {
-            $response = new ApiResponseDTO(
-                success: false,
-                message: $e->getMessage()
-            );
-            return $this->json($response->toArray(), 404);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse($e->getMessage(), 404);
         } catch (\Exception $e) {
-            $response = new ApiResponseDTO(
-                success: false,
-                message: 'Erreur lors de l\'ajout au panier: ' . $e->getMessage()
-            );
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de l\'ajout au panier: ' . $e->getMessage(), 500);
         }
     }
 
@@ -363,25 +324,14 @@ class CartController extends AbstractController
                 itemCount: $cart['itemCount']
             );
 
-            $response = new ApiResponseDTO(
-                success: true,
-                message: 'Article retiré du panier',
-                cart: $cartResponse
-            );
-
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse(['cart' => $cartResponse], 'Article retiré du panier', 200);
         } catch (\InvalidArgumentException $e) {
-            $response = new ApiResponseDTO(
-                success: false,
-                message: $e->getMessage()
-            );
-            return $this->json($response->toArray(), 404);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse($e->getMessage(), 404);
         } catch (\Exception $e) {
-            $response = new ApiResponseDTO(
-                success: false,
-                message: 'Erreur lors de la suppression: ' . $e->getMessage()
-            );
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de la suppression: ' . $e->getMessage(), 500);
         }
     }
 
@@ -428,6 +378,7 @@ class CartController extends AbstractController
     {
         // CSRF Protection (disabled in dev environment via security.yaml)
         if ($this->getParameter('kernel.environment') === 'prod') {
+            // Uses base class method from AbstractApiController
             $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
             if ($csrfError) {
                 return $csrfError;
@@ -436,33 +387,24 @@ class CartController extends AbstractController
 
         try {
             // Get JSON data from request
-            // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available
-            // This ensures only authorized fields reach the controller (mass assignment protection)
-            // The subscriber filters out unauthorized fields before the request reaches here
-            // Priority 2: Fallback to parsing raw content if subscriber didn't process it
-            // (This should rarely happen for API endpoints, but provides backward compatibility)
-            $data = $request->attributes->get('filtered_json_data');
-            if ($data === null) {
-                // Fallback: parse raw content if filtered data not available
-                // This can happen if request bypassed the subscriber or for non-API endpoints
-                $data = json_decode($request->getContent(), true);
+            // Uses base class method from AbstractApiController
+            // Returns array or JsonResponse (error if JSON invalid)
+            $jsonResult = $this->getJsonDataFromRequest($request);
+            if ($jsonResult instanceof JsonResponse) {
+                // JSON parsing failed, return error response
+                return $jsonResult;
             }
-            
-            if (!is_array($data)) {
-                $response = new ApiResponseDTO(success: false, message: 'JSON invalide');
-                return $this->json($response->toArray(), 400);
-            }
+            $data = $jsonResult;
 
             // Map JSON payload to DTO and validate
-            // Note: Data is already filtered by JsonFieldWhitelistSubscriber, so only authorized fields are present
-            // This provides defense in depth: subscriber filters at request level, DTO validates at domain level
-            $dto = $this->validationHelper->mapArrayToDto($data, \App\DTO\CartUpdateQuantityRequest::class);
-            $violations = $this->validator->validate($dto);
-            if (count($violations) > 0) {
-                $errors = $this->validationHelper->extractViolationMessages($violations);
-                $response = new ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
-                return $this->json($response->toArray(), 422);
+            // Uses base class method from AbstractApiController
+            // Returns DTO or JsonResponse (error if validation fails)
+            $validationResult = $this->validateDto($data, \App\DTO\CartUpdateQuantityRequest::class);
+            if ($validationResult instanceof JsonResponse) {
+                // Validation failed, return error response
+                return $validationResult;
             }
+            $dto = $validationResult;
 
             $quantity = (int) $dto->quantity;
             $cart = $this->cartService->updateQuantity($id, $quantity);
@@ -485,25 +427,14 @@ class CartController extends AbstractController
                 itemCount: $cart['itemCount']
             );
 
-            $response = new ApiResponseDTO(
-                success: true,
-                message: 'Quantité mise à jour',
-                cart: $cartResponse
-            );
-
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse(['cart' => $cartResponse], 'Quantité mise à jour', 200);
         } catch (\InvalidArgumentException $e) {
-            $response = new ApiResponseDTO(
-                success: false,
-                message: $e->getMessage()
-            );
-            return $this->json($response->toArray(), 404);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse($e->getMessage(), 404);
         } catch (\Exception $e) {
-            $response = new ApiResponseDTO(
-                success: false,
-                message: 'Erreur lors de la mise à jour: ' . $e->getMessage()
-            );
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors de la mise à jour: ' . $e->getMessage(), 500);
         }
     }
 
@@ -530,6 +461,7 @@ class CartController extends AbstractController
     {
         // CSRF Protection (disabled in dev environment via security.yaml)
         if ($this->getParameter('kernel.environment') === 'prod') {
+            // Uses base class method from AbstractApiController
             $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
             if ($csrfError) {
                 return $csrfError;
@@ -557,19 +489,11 @@ class CartController extends AbstractController
                 itemCount: $cart['itemCount']
             );
 
-            $response = new ApiResponseDTO(
-                success: true,
-                message: 'Panier vidé',
-                cart: $cartResponse
-            );
-
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse(['cart' => $cartResponse], 'Panier vidé', 200);
         } catch (\Exception $e) {
-            $response = new ApiResponseDTO(
-                success: false,
-                message: 'Erreur lors du vidage du panier: ' . $e->getMessage()
-            );
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur lors du vidage du panier: ' . $e->getMessage(), 500);
         }
     }
 
@@ -594,18 +518,11 @@ class CartController extends AbstractController
         try {
             $count = $this->cartService->getItemCount();
 
-            $response = new ApiResponseDTO(
-                success: true,
-                count: $count
-            );
-
-            return $this->json($response->toArray(), 200);
+            // Uses base class method from AbstractApiController
+            return $this->successResponse(['count' => $count], null, 200);
         } catch (\Exception $e) {
-            $response = new ApiResponseDTO(
-                success: false,
-                message: 'Erreur: ' . $e->getMessage()
-            );
-            return $this->json($response->toArray(), 500);
+            // Uses base class method from AbstractApiController
+            return $this->errorResponse('Erreur: ' . $e->getMessage(), 500);
         }
     }
 }

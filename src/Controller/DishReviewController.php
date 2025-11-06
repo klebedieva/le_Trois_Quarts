@@ -6,10 +6,12 @@ use App\Entity\MenuItem;
 use App\Entity\Review;
 use App\Repository\ReviewRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
+use App\Service\ValidationHelper;
+use App\Service\ReviewService;
 
 /**
  * Dish-Specific Review Controller
@@ -18,12 +20,38 @@ use Symfony\Component\Routing\Annotation\Route;
  * - List approved reviews for a specific dish
  * - Create new reviews for a dish (pending moderation)
  * 
+ * Architecture:
+ * - Extends AbstractApiController for common API functionality (JSON parsing, DTO validation, responses)
+ * - Uses ReviewService for business logic (review creation, persistence)
+ * - Supports both JSON and form-encoded request payloads (for backward compatibility)
+ * 
  * These are lightweight JSON endpoints consumed by dish-detail.js on the dish detail page.
  * Reviews are filtered by menuItem relation and must be approved to be displayed.
+ * 
+ * Note: This endpoint is not under /api/*, so JsonFieldWhitelistSubscriber won't process it,
+ * but we use the same pattern for consistency and future-proofing.
  */
 #[Route('/dish/{id}/reviews')]
-class DishReviewController extends AbstractController
+class DishReviewController extends AbstractApiController
 {
+    /**
+     * Constructor
+     *
+     * Injects dependencies required for dish review operations:
+     * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
+     * - ReviewService: Encapsulates review creation and persistence (business logic)
+     *
+     * @param ValidatorInterface $validator Symfony validator for DTO validation
+     * @param ValidationHelper $validationHelper Helper for validation operations
+     * @param ReviewService $reviewService Service for creating reviews
+     */
+    public function __construct(
+        ValidatorInterface $validator,
+        ValidationHelper $validationHelper,
+        private ReviewService $reviewService
+    ) {
+        parent::__construct($validator, $validationHelper);
+    }
     /**
      * List approved reviews for a specific menu item (dish)
      * 
@@ -51,11 +79,8 @@ class DishReviewController extends AbstractController
             ];
         }, $reviews);
 
-        $response = new \App\DTO\ApiResponseDTO(
-            success: true,
-            data: ['reviews' => $data]
-        );
-        return $this->json($response->toArray(), 200);
+        // Uses base class method from AbstractApiController
+        return $this->successResponse(['reviews' => $data], null, 200);
     }
 
     /**
@@ -71,7 +96,7 @@ class DishReviewController extends AbstractController
      * @return JsonResponse Success/error response
      */
     #[Route('', name: 'dish_reviews_add', methods: ['POST'])]
-    public function add(MenuItem $item, Request $request, \App\Service\ReviewService $reviewService, \App\Service\ValidationHelper $validationHelper, \Symfony\Component\Validator\Validator\ValidatorInterface $validator): JsonResponse
+    public function add(MenuItem $item, Request $request): JsonResponse
     {
         // Build a normalized array supporting both JSON and form-encoded payloads
         // Priority 1: Use filtered data from JsonFieldWhitelistSubscriber if available (for API requests)
@@ -96,15 +121,16 @@ class DishReviewController extends AbstractController
         }
 
         // Map to DTO and validate
+        // Uses base class method from AbstractApiController
+        // Returns DTO or JsonResponse (error if validation fails)
         // Note: If data came from JsonFieldWhitelistSubscriber, it's already filtered
         // Otherwise, DTO validation will handle any unauthorized fields
-        $dto = $validationHelper->mapArrayToDto($data, \App\DTO\ReviewCreateRequest::class);
-        $violations = $validator->validate($dto);
-        if (count($violations) > 0) {
-            $errors = $validationHelper->extractViolationMessages($violations);
-            $response = new \App\DTO\ApiResponseDTO(success: false, message: 'Erreur de validation', errors: $errors);
-            return $this->json($response->toArray(), 422);
+        $validationResult = $this->validateDto($data, \App\DTO\ReviewCreateRequest::class);
+        if ($validationResult instanceof JsonResponse) {
+            // Validation failed, return error response
+            return $validationResult;
         }
+        $dto = $validationResult;
 
         // Create new review entity associated with this dish via service
         $review = (new Review())
@@ -116,10 +142,10 @@ class DishReviewController extends AbstractController
             ->setMenuItem($item);
 
         // Delegate persistence to service to keep controller thin
-        $reviewService->createReviewFromEntity($review);
+        $this->reviewService->createReviewFromEntity($review);
 
-        $response = new \App\DTO\ApiResponseDTO(success: true, message: 'Avis soumis. En attente de validation.');
-        return $this->json($response->toArray(), 201);
+        // Uses base class method from AbstractApiController
+        return $this->successResponse(null, 'Avis soumis. En attente de validation.', 201);
     }
 }
 
