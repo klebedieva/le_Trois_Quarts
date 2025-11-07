@@ -1,0 +1,227 @@
+/* =====================================================================
+   BUTTON COMPONENTS
+   ---------------------------------------------------------------------
+   Shared button styling across the application. Groups repeated rules in
+   a single place to avoid duplication inside page-specific styles.
+   ===================================================================== */
+
+.btn {
+    border-radius: var(--radius-pill);
+    padding: 12px 30px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: var(--transition);
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border: none;
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: #ffffff;
+}
+
+.btn-outline-light:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.btn-outline-secondary {
+    background: #6c757d;
+    border: 2px solid #6c757d;
+    color: #ffffff;
+    padding: 1rem 2rem;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: var(--transition);
+}
+
+.btn-outline-secondary:hover {
+    background: #5a6268;
+    border-color: #5a6268;
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.btn-outline-secondary:disabled,
+.btn-outline-secondary.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.btn-outline-secondary:disabled:hover,
+.btn-outline-secondary.disabled:hover {
+    background: #6c757d;
+    border-color: #6c757d;
+    color: #ffffff;
+    transform: none;
+}
+
+.btn-custom-outline,
+.btn-custom-menu,
+.btn-custom-gallery,
+.btn-custom-secondary,
+.btn-soft-secondary {
+    border-radius: var(--radius-pill);
+    padding: 12px 30px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-custom-outline {
+    background: transparent;
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-custom-outline:hover,
+.btn-custom-outline:focus {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-custom-menu,
+.btn-custom-gallery {
+    background: linear-gradient(135deg, var(--primary-color), #e6c8a0);
+    border: none;
+    color: #2c1810;
+    box-shadow: 0 4px 15px rgba(212, 165, 116, 0.3);
+}
+
+.btn-custom-menu::before,
+.btn-custom-gallery::before,
+.btn-custom-secondary::before,
+.btn-soft-secondary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn-custom-menu:hover,
+.btn-custom-gallery:hover {
+    background: linear-gradient(135deg, #e6c8a0, var(--primary-color));
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(212, 165, 116, 0.4);
+    color: #2c1810;
+}
+
+.btn-custom-menu:hover::before,
+.btn-custom-gallery:hover::before {
+    left: 100%;
+}
+
+.btn-custom-menu:focus,
+.btn-custom-gallery:focus {
+    background: linear-gradient(135deg, var(--primary-color), #e6c8a0);
+    box-shadow: 0 0 0 0.2rem rgba(212, 165, 116, 0.25);
+}
+
+.btn-custom-secondary {
+    background: linear-gradient(135deg, var(--secondary-color), #a0522d);
+    border: none;
+    color: #ffffff;
+}
+
+.btn-custom-secondary:hover {
+    background: linear-gradient(135deg, #a0522d, var(--secondary-color));
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 20px rgba(139, 69, 19, 0.3);
+}
+
+.btn-custom-secondary:hover::before {
+    left: 100%;
+}
+
+.btn-custom-secondary:focus {
+    background: linear-gradient(135deg, var(--secondary-color), #a0522d);
+    box-shadow: 0 0 0 0.2rem rgba(139, 69, 19, 0.25);
+}
+
+.btn-soft-secondary {
+    background: rgba(108, 117, 125, 0.1);
+    border: 1px solid rgba(108, 117, 125, 0.3);
+    color: #6c757d;
+}
+
+.btn-soft-secondary:hover {
+    background: rgba(108, 117, 125, 0.2);
+    border-color: rgba(108, 117, 125, 0.5);
+    color: #495057;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.btn-soft-secondary:hover::before {
+    left: 100%;
+}
+
+.btn-soft-secondary:focus {
+    background: rgba(108, 117, 125, 0.2);
+    border-color: rgba(108, 117, 125, 0.5);
+    box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25);
+    color: #495057;
+}
+
+.btn-custom-menu i,
+.btn-custom-gallery i,
+.btn-custom-secondary i,
+.btn-soft-secondary i {
+    transition: transform 0.3s ease;
+}
+
+.btn-custom-menu:hover i,
+.btn-custom-gallery:hover i,
+.btn-custom-secondary:hover i,
+.btn-soft-secondary:hover i {
+    transform: scale(1.1);
+}
+
+.btn.btn-lg {
+    padding: 1rem 2rem;
+}
+
+.btn-icon-only {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+}
+
+@media (max-width: 768px) {
+    .btn,
+    .btn.btn-lg,
+    .btn-custom-outline,
+    .btn-custom-menu,
+    .btn-custom-gallery,
+    .btn-custom-secondary,
+    .btn-soft-secondary {
+        padding: 10px 22px;
+        font-size: 0.95rem;
+    }
+}
+
