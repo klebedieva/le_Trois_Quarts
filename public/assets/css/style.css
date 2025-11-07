@@ -493,7 +493,6 @@ footer a.text-white:hover {
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0,0,0,0.10);
     cursor: pointer;
-    margin-right: var(--space-md);
 }
 
 .footer-logo-row img:hover {
@@ -1979,4 +1978,8 @@ footer a[href^="mailto:"] {
 /* Homepage gallery overlay override to match container corners */
 .gallery-item .gallery-overlay {
     border-radius: inherit !important;
+}
+
+footer .footer-logo-row {
+    gap: var(--space-md);
 }
