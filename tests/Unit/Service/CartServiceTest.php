@@ -5,6 +5,7 @@ namespace App\Tests\Unit\Service;
 use App\Entity\MenuItem;
 use App\Repository\MenuItemRepository;
 use App\Service\CartService;
+use App\Service\MenuItemImageResolver;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -131,7 +132,9 @@ class CartServiceTest extends TestCase
         // Create the service under test with mocked dependencies
         $this->cartService = new CartService(
             $this->requestStack,
-            $this->menuItemRepository
+            $this->menuItemRepository,
+            // Image resolver is real (no external dependencies) and keeps behaviour identical to production code.
+            new MenuItemImageResolver()
         );
     }
 

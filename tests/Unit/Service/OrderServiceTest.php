@@ -2,19 +2,22 @@
 
 namespace App\Tests\Unit\Service;
 
+use App\DTO\OrderCreateRequest;
 use App\Entity\Order;
 use App\Entity\OrderItem;
 use App\Enum\DeliveryMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMode;
+use App\Repository\CouponRepository;
 use App\Repository\OrderRepository;
 use App\Service\AddressValidationService;
 use App\Service\CartService;
 use App\Service\OrderService;
 use App\Service\RestaurantSettingsService;
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 /**
  * Unit Tests for OrderService
@@ -45,11 +48,13 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * 
  * Dependencies Mocked:
  * - EntityManagerInterface (database operations)
+ * - Connection (transaction handling)
  * - OrderRepository (order retrieval)
+ * - CouponRepository (coupon lookup)
  * - CartService (shopping cart data)
  * - RestaurantSettingsService (tax rate, delivery fee)
  * - AddressValidationService (address validation)
- * - RequestStack (HTTP context)
+ * - ParameterBagInterface (order configuration)
  * 
  * @package App\Tests\Unit\Service
  * @author Le Trois Quarts Development Team
@@ -99,24 +104,19 @@ class OrderServiceTest extends TestCase
     private AddressValidationService $addressValidationService;
 
     /**
-     * Mock of RequestStack for HTTP context
-     * 
-     * @var RequestStack
-     */
-    private RequestStack $requestStack;
-
-    /**
      * Set up the test environment before each test method
      * 
      * This method creates a comprehensive mock environment for testing OrderService.
-     * OrderService has 6 dependencies, all of which need to be mocked:
+     * OrderService has 8 dependencies, all of which need to be mocked:
      * 
      * 1. EntityManager - Database persistence
-     * 2. OrderRepository - Order retrieval
-     * 3. CartService - Shopping cart data
-     * 4. RestaurantSettingsService - VAT rate, delivery fee
-     * 5. AddressValidationService - Delivery address validation
-     * 6. RequestStack - HTTP context (for cart session)
+     * 2. Connection - Transaction management
+     * 3. OrderRepository - Order retrieval
+     * 4. CouponRepository - Coupon lookup
+     * 5. CartService - Shopping cart data
+     * 6. RestaurantSettingsService - VAT rate, delivery fee
+     * 7. AddressValidationService - Delivery address validation
+     * 8. ParameterBagInterface - Order configuration values
      * 
      * Default Mock Behavior:
      * - Cart returns empty (tests override as needed)
@@ -135,43 +135,69 @@ class OrderServiceTest extends TestCase
      */
     protected function setUp(): void
     {
-        // Create mock of EntityManager (database operations)
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->connection = $this->createMock(Connection::class);
+        $this->connection
+            ->method('transactional')
+            ->willReturnCallback(static fn(callable $callback) => $callback());
 
-        // Create mock of OrderRepository (order retrieval)
         $this->orderRepository = $this->createMock(OrderRepository::class);
-
-        // Create mock of CartService (shopping cart)
+        $this->couponRepository = $this->createMock(CouponRepository::class);
         $this->cartService = $this->createMock(CartService::class);
-        
-        // Note: Tests must configure getCart() behavior explicitly
-        // (no default empty cart to avoid confusion)
 
-        // Create mock of RestaurantSettingsService (configuration)
         $this->restaurantSettings = $this->createMock(RestaurantSettingsService::class);
-        
-        // Configure default values
-        $this->restaurantSettings->method('getVatRate')->willReturn(0.10);  // 10% VAT
-        $this->restaurantSettings->method('getDeliveryFee')->willReturn(5.00);  // €5.00 delivery
+        $this->restaurantSettings->method('getVatRate')->willReturn(0.10);
+        $this->restaurantSettings->method('getDeliveryFee')->willReturn(5.00);
 
-        // Create mock of AddressValidationService (delivery validation)
         $this->addressValidationService = $this->createMock(AddressValidationService::class);
-        
-        // Note: Tests must configure address validation behavior explicitly
-        // (no default to avoid confusion in delivery tests)
 
-        // Create mock of RequestStack (HTTP context)
-        $this->requestStack = $this->createMock(RequestStack::class);
+        $this->parameterBag = $this->createMock(ParameterBagInterface::class);
+        $this->parameterBag->method('get')->willReturnMap([
+            ['order.no_prefix', 'ORD-'],
+            ['order.max_payload_bytes', 65536],
+            ['order.idempotency_ttl', 600],
+        ]);
 
-        // Create the service under test with all mocked dependencies
         $this->orderService = new OrderService(
             $this->entityManager,
+            $this->connection,
             $this->orderRepository,
             $this->cartService,
-            $this->requestStack,
             $this->restaurantSettings,
-            $this->addressValidationService
+            $this->addressValidationService,
+            $this->couponRepository,
+            $this->parameterBag
         );
+    }
+
+    /**
+     * Helper factory used to produce DTOs from associative arrays while keeping tests readable.
+     * When $mergeDefaults is true we pre-fill the DTO with sensible values required by validation.
+     */
+    private function createOrderDto(array $data, bool $mergeDefaults = true): OrderCreateRequest
+    {
+        $defaults = [
+            'deliveryMode' => 'pickup',
+            'paymentMode' => 'card',
+            'deliveryFee' => 0.0,
+            'clientFirstName' => 'John',
+            'clientLastName' => 'Doe',
+            'clientPhone' => '0612345678',
+            'clientEmail' => 'john.doe@example.test',
+        ];
+
+        if ($mergeDefaults) {
+            $data = array_merge($defaults, $data);
+        }
+
+        $dto = new OrderCreateRequest();
+        foreach ($data as $property => $value) {
+            if (property_exists($dto, $property)) {
+                $dto->$property = $value;
+            }
+        }
+
+        return $dto;
     }
 
     /**
@@ -249,7 +275,7 @@ class OrderServiceTest extends TestCase
         ];
 
         // ACT: Create order
-        $order = $this->orderService->createOrder($orderData);
+        $order = $this->orderService->createOrder($this->createOrderDto($orderData));
 
         // ASSERT: Verify order properties
         $this->assertInstanceOf(Order::class, $order);
@@ -346,7 +372,7 @@ class OrderServiceTest extends TestCase
         ];
 
         // ACT: Create order
-        $order = $this->orderService->createOrder($orderData);
+        $order = $this->orderService->createOrder($this->createOrderDto($orderData));
 
         // ASSERT: Pickup mode
         $this->assertEquals(DeliveryMode::PICKUP, $order->getDeliveryMode());
@@ -395,10 +421,10 @@ class OrderServiceTest extends TestCase
         $this->expectExceptionMessage('Le panier est vide');
 
         // ACT: Try to create order (will throw)
-        $this->orderService->createOrder([
+        $this->orderService->createOrder($this->createOrderDto([
             'deliveryMode' => 'delivery',
             'deliveryAddress' => '123 Rue Test'
-        ]);
+        ], false));
     }
 
     /**
@@ -434,13 +460,11 @@ class OrderServiceTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage("L'adresse de livraison est requise");
 
-        // ACT: Try to create delivery order without address
-        $this->orderService->createOrder([
+        // ACT: Attempt to create order without address
+        $this->orderService->createOrder($this->createOrderDto([
             'deliveryMode' => 'delivery',
-            // Missing: deliveryAddress
-            'clientFirstName' => 'Test',
-            'clientLastName' => 'User'
-        ]);
+            'clientFirstName' => 'Jean'
+        ], false));
     }
 
     /**
@@ -488,7 +512,7 @@ class OrderServiceTest extends TestCase
         $this->expectExceptionMessage('Livraison non disponible au-delà de 10km');
 
         // ACT: Try to create order with invalid address
-        $this->orderService->createOrder([
+        $this->orderService->createOrder($this->createOrderDto([
             'deliveryMode' => 'delivery',
             'deliveryAddress' => 'Very Far Street, Another City',
             'deliveryZip' => '99999',
@@ -496,7 +520,7 @@ class OrderServiceTest extends TestCase
             'clientLastName' => 'User',
             'clientPhone' => '0612345678',
             'clientEmail' => 'test@example.com'
-        ]);
+        ], false));
     }
 
     /**
@@ -532,14 +556,13 @@ class OrderServiceTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Numéro de téléphone invalide');
 
-        // ACT: Try to create order with invalid phone
-        $this->orderService->createOrder([
+        // ACT: Attempt to create order with invalid phone
+        $this->orderService->createOrder($this->createOrderDto([
             'deliveryMode' => 'pickup',
-            'clientFirstName' => 'Jean',
+            'clientFirstName' => 'Marie',
             'clientLastName' => 'Test',
-            'clientPhone' => '123456',  // Invalid: too short
-            'clientEmail' => 'test@example.com'
-        ]);
+            'clientPhone' => '1234'
+        ], false));
     }
 
     /**
@@ -585,13 +608,13 @@ class OrderServiceTest extends TestCase
         // ACT & ASSERT: Test each phone format
         foreach ($validPhones as $phone) {
             // ACT: Create order with this phone number
-            $order = $this->orderService->createOrder([
+            $order = $this->orderService->createOrder($this->createOrderDto([
                 'deliveryMode' => 'pickup',
                 'clientFirstName' => 'Test',
                 'clientLastName' => 'User',
                 'clientPhone' => $phone,
                 'clientEmail' => 'test@example.com'
-            ]);
+            ]));
 
             // ASSERT: Order created successfully (no exception)
             $this->assertInstanceOf(Order::class, $order);
@@ -640,14 +663,15 @@ class OrderServiceTest extends TestCase
             ->with('123 Rue Test', '13001')
             ->willReturn(['valid' => true, 'distance' => 3.0]);
 
-        // ACT: Create order with delivery
-        $order = $this->orderService->createOrder([
+        // ACT: Create order (delivery)
+        $order = $this->orderService->createOrder($this->createOrderDto([
             'deliveryMode' => 'delivery',
             'deliveryAddress' => '123 Rue Test',
             'deliveryZip' => '13001',
             'deliveryFee' => '5.00',
-            'clientFirstName' => 'Test'
-        ]);
+            'clientFirstName' => 'Jean',
+            'clientPhone' => '0612345678'
+        ]));
 
         // ASSERT: Subtotal (HT) = €50.00 / 1.10 = €45.45
         $this->assertEquals('45.45', $order->getSubtotal());
@@ -700,10 +724,10 @@ class OrderServiceTest extends TestCase
             ->method('clear');
 
         // ACT: Create order
-        $this->orderService->createOrder([
+        $this->orderService->createOrder($this->createOrderDto([
             'deliveryMode' => 'pickup',
             'clientFirstName' => 'Test'
-        ]);
+        ]));
 
         // If clear() not called, test fails due to expects(once())
     }
@@ -746,8 +770,8 @@ class OrderServiceTest extends TestCase
             ->method('clear');
 
         // ACT: Create multiple orders
-        $order1 = $this->orderService->createOrder(['deliveryMode' => 'pickup', 'clientFirstName' => 'Test1']);
-        $order2 = $this->orderService->createOrder(['deliveryMode' => 'pickup', 'clientFirstName' => 'Test2']);
+        $order1 = $this->orderService->createOrder($this->createOrderDto(['deliveryMode' => 'pickup', 'clientFirstName' => 'Test1']));
+        $order2 = $this->orderService->createOrder($this->createOrderDto(['deliveryMode' => 'pickup', 'clientFirstName' => 'Test2']));
 
         // ASSERT: Format matches ORD-YYYYMMDD-XXXX
         $this->assertMatchesRegularExpression('/^ORD-\d{8}-\d{4}$/', $order1->getNo());
@@ -812,10 +836,10 @@ class OrderServiceTest extends TestCase
             ->method('clear');
 
         // ACT: Create order
-        $order = $this->orderService->createOrder([
+        $order = $this->orderService->createOrder($this->createOrderDto([
             'deliveryMode' => 'pickup',
             'clientFirstName' => 'Test'
-        ]);
+        ]));
 
         // ASSERT: 2 order items created
         $items = $order->getItems();
@@ -1016,12 +1040,12 @@ class OrderServiceTest extends TestCase
             ->method('clear');
 
         // ACT: Create order with first and last name
-        $order = $this->orderService->createOrder([
+        $order = $this->orderService->createOrder($this->createOrderDto([
             'deliveryMode' => 'pickup',
             'clientFirstName' => 'Marie',
             'clientLastName' => 'Curie',
             'clientEmail' => 'marie@example.com'
-        ]);
+        ]));
 
         // ASSERT: Full name auto-generated
         $this->assertEquals('Marie', $order->getClientFirstName());
@@ -1060,10 +1084,10 @@ class OrderServiceTest extends TestCase
         $before = new \DateTimeImmutable();
 
         // ACT: Create order
-        $order = $this->orderService->createOrder([
+        $order = $this->orderService->createOrder($this->createOrderDto([
             'deliveryMode' => 'pickup',
             'clientFirstName' => 'Test'
-        ]);
+        ]));
 
         // Capture time after creating order
         $after = new \DateTimeImmutable();
