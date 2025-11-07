@@ -1060,16 +1060,19 @@
                     currentPage++;
                     const response = await fetch(`${window.REVIEWS_LIST_ENDPOINT}?page=${currentPage}&limit=6`);
                     const data = await response.json();
+                    const payload = data?.data || data;
+                    const reviews = payload?.reviews || [];
+                    const pagination = payload?.pagination;
                     
-                    if (data.success && data.reviews) {
+                    if (data.success && Array.isArray(reviews)) {
                         // Append new reviews to existing ones
-                        appendReviews(data.reviews);
+                        appendReviews(reviews);
                         
                         /**
                          * Hide button if no more reviews
                          * If pagination indicates no more reviews, hide button
                          */
-                        if (!data.pagination.has_more) {
+                        if (!pagination || !pagination.has_more) {
                             this.style.display = 'none';
                         } else {
                             // Reset button state for next load
@@ -1103,10 +1106,13 @@
             // Fetch first page of reviews
             const response = await fetch(`${endpoint}?page=1&limit=6`);
             const data = await response.json();
+            const payload = data?.data || data;
+            const reviews = payload?.reviews || [];
+            const pagination = payload?.pagination;
             
-            if (data.success && data.reviews) {
+            if (data.success && Array.isArray(reviews)) {
                 // Render reviews in container
-                renderReviews(data.reviews);
+                renderReviews(reviews);
                 
                 /**
                  * Manage load more button visibility
@@ -1114,7 +1120,7 @@
                  */
                 const loadMoreBtn = document.getElementById('loadMoreReviews');
                 if (loadMoreBtn) {
-                    if (data.pagination && !data.pagination.has_more) {
+                    if (pagination && !pagination.has_more) {
                         loadMoreBtn.style.display = 'none';
                     } else {
                         loadMoreBtn.style.display = 'inline-block';
