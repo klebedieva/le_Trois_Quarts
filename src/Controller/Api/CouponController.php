@@ -189,6 +189,7 @@ class CouponController extends AbstractApiController
      * @return JsonResponse Success/error response
      */
     #[Route('/apply/{couponId}', name: 'apply', methods: ['POST'])]
+    #[\Symfony\Component\Security\Http\Attribute\IsGranted('ROLE_ADMIN')]
     public function apply(int $couponId): JsonResponse
     {
         try {
@@ -222,6 +223,7 @@ class CouponController extends AbstractApiController
      * @return JsonResponse List of active coupons with full details
      */
     #[Route('/list', name: 'list', methods: ['GET'])]
+    #[\Symfony\Component\Security\Http\Attribute\IsGranted('ROLE_ADMIN')]
     public function list(): JsonResponse
     {
         // Get active coupons from the service

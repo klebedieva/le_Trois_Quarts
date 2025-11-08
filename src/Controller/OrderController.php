@@ -489,6 +489,7 @@ class OrderController extends AbstractApiController
     #[OA\Response(response: 404, description: 'Order not found', content: new OA\JsonContent(type: 'object', properties: [new OA\Property(property: 'success', type: 'boolean'), new OA\Property(property: 'message', type: 'string')]))]
     #[OA\Response(response: 500, description: 'Internal server error', content: new OA\JsonContent(type: 'object', properties: [new OA\Property(property: 'success', type: 'boolean'), new OA\Property(property: 'message', type: 'string')]))]
     #[OA\Tag(name: 'Order')]
+    #[\Symfony\Component\Security\Http\Attribute\IsGranted('ROLE_ADMIN')]
     public function getOrder(int $id): JsonResponse
     {
         try {

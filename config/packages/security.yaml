@@ -39,7 +39,16 @@ security:
     access_control:
         - { path: ^/admin, roles: [ROLE_ADMIN, ROLE_MODERATOR] }
         - { path: ^/login, roles: PUBLIC_ACCESS }
-        - { path: ^/api, roles: PUBLIC_ACCESS }
+        - { path: ^/api/coupon/validate$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/validate-(zip-code|address)$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/cart, roles: PUBLIC_ACCESS }
+        - { path: ^/api/order$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/review$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/reviews, roles: PUBLIC_ACCESS }
+        - { path: ^/api/dishes, roles: PUBLIC_ACCESS }
+        - { path: ^/api/gallery, roles: PUBLIC_ACCESS }
+        - { path: ^/api/restaurant, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: [ROLE_ADMIN, ROLE_MODERATOR] }
 
 when@test:
     security:
