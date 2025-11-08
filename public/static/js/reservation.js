@@ -14,105 +14,11 @@
 (function() {
     'use strict';
 
-    // ============================================================================
-    // VALIDATION PATTERNS
-    // ============================================================================
-
-    /**
-     * Regular expressions for field validation
-     * 
-     * These patterns validate user input format before submission.
-     * Server-side validation still required (this is client-side only).
-     * 
-     * Benefits of extracting patterns:
-     * - DRY principle: Patterns defined once, reused multiple times
-     * - Maintainability: Update patterns in one place
-     * - Readability: Clear pattern names instead of complex regex
-     * - Consistency: Same approach as contact.js
-     */
-    const validationPatterns = {
-        /**
-         * Name pattern (first name and last name)
-         * Allows: letters (including accented), spaces, hyphens
-         * Example valid: "Jean-Pierre", "José", "Mary-Jane"
-         * Example invalid: "John123", "Mary@Doe", "Bob<script>"
-         */
-        name: /^[a-zA-ZÀ-ÿ\s\-]+$/,
-        
-        /**
-         * Email pattern
-         * Validates standard email format: user@domain.tld
-         * Example valid: "user@example.com", "test.email@domain.co.uk"
-         * Example invalid: "notanemail", "@domain.com", "user@"
-         */
-        email: /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/
-    };
-
-    // ============================================================================
-    // XSS DETECTION PATTERNS
-    // ============================================================================
-
-    /**
-     * XSS (Cross-Site Scripting) attack detection patterns
-     * 
-     * These patterns detect common XSS attack vectors:
-     * - HTML tags that could inject scripts
-     * - JavaScript protocol handlers
-     * - Event handlers (onclick, onload, etc.)
-     * - Data URIs with HTML content
-     * - CSS expressions
-     * 
-     * Why this matters:
-     * XSS attacks can steal user data, hijack sessions, or deface websites.
-     * Client-side detection is the first line of defense, but server-side
-     * validation is still required (never trust client-side validation alone).
-     * 
-     * Note: These patterns are identical to contact.js for consistency.
-     */
-    const xssPatterns = [
-        /<[^>]*>/gi,                    // HTML tags (any tag)
-        /javascript:/gi,                // JavaScript protocol (javascript:alert())
-        /on\w+\s*=/gi,                  // Event handlers (onclick=, onload=, etc.)
-        /vbscript:/gi,                  // VBScript protocol (legacy)
-        /data:text\/html/gi,            // Data URI with HTML content
-        /expression\s*\(/gi,            // CSS expressions (IE legacy)
-        /<script/gi,                    // Script tags
-        /<iframe/gi,                    // Iframe tags (can load external content)
-        /<object/gi,                    // Object tags (can embed external content)
-        /<embed/gi,                     // Embed tags (can embed external content)
-        /<form/gi,                      // Form tags (can create nested forms)
-        /<link[^>]*href\s*=\s*["\']?javascript:/gi, // Link with JavaScript href
-        /<meta[^>]*http-equiv\s*=\s*["\']?refresh/gi // Meta refresh (redirect attacks)
-    ];
-
-    // ============================================================================
-    // XSS DETECTION
-    // ============================================================================
-
-    /**
-     * Check if a value contains XSS attack patterns
-     * 
-     * This function tests the input against all XSS patterns.
-     * If any pattern matches, the input is considered unsafe.
-     * 
-     * @param {string} value - The input value to check
-     * @returns {boolean} True if XSS attempt detected, false otherwise
-     * 
-     * @example
-     * containsXssAttempt('<script>alert("XSS")</script>'); // true
-     * containsXssAttempt('John Doe'); // false
-     */
-    function containsXssAttempt(value) {
-        // Loop through all XSS patterns
-        for (let pattern of xssPatterns) {
-            // Test if pattern matches the value
-            if (pattern.test(value)) {
-                // XSS attempt detected
-                return true;
-            }
-        }
-        // No XSS patterns found - value is safe
-        return false;
+    // Shared validation helper keeps rules and translations identical across forms
+    const FV = window.FormValidation;
+    if (!FV) {
+        console.error('FormValidation utility is required for reservation.js');
+        return;
     }
 
     // ============================================================================
@@ -416,7 +322,7 @@
          */
         if (!isValid) {
             const firstInvalid = form.querySelector('.is-invalid');
-            if (firstInvalid) {
+        if (firstInvalid) {
                 // Scroll to invalid field smoothly
                 firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 // Focus the field for keyboard navigation
@@ -447,6 +353,7 @@
         const fieldName = field.name;
         let isValid = false;
         let errorMessage = '';
+        const errorElementId = fieldName.replace(/\[/g, '_').replace(/\]/g, '') + 'Error';
 
         /**
          * Validation rules for each field type
@@ -455,55 +362,30 @@
         
         // First name validation
         if (fieldName.includes('[firstName]')) {
-            if (value === '') {
-                errorMessage = 'Le prénom est requis';
-            } else if (containsXssAttempt(value)) {
-                errorMessage = 'Le prénom contient des éléments non autorisés';
-            } else if (value.length < 2) {
-                errorMessage = 'Le prénom doit contenir au moins 2 caractères';
-            } else if (!validationPatterns.name.test(value)) {
-                errorMessage = 'Le prénom ne peut contenir que des lettres, espaces et tirets';
-            } else {
-                isValid = true;
-            }
+            const result = FV.validateName(value, 'Le prénom');
+            FV.applyFieldState(field, errorElementId, result);
+            return result.valid;
         }
         // Last name validation (same rules as first name)
         else if (fieldName.includes('[lastName]')) {
-            if (value === '') {
-                errorMessage = 'Le nom est requis';
-            } else if (containsXssAttempt(value)) {
-                errorMessage = 'Le nom contient des éléments non autorisés';
-            } else if (value.length < 2) {
-                errorMessage = 'Le nom doit contenir au moins 2 caractères';
-            } else if (!validationPatterns.name.test(value)) {
-                errorMessage = 'Le nom ne peut contenir que des lettres, espaces et tirets';
-            } else {
-                isValid = true;
-            }
+            const result = FV.validateName(value, 'Le nom');
+            FV.applyFieldState(field, errorElementId, result);
+            return result.valid;
         }
         // Email validation
         else if (fieldName.includes('[email]')) {
-            if (value === '') {
-                errorMessage = 'L\'email est requis';
-            } else if (containsXssAttempt(value)) {
-                errorMessage = 'L\'email contient des éléments non autorisés';
-            } else if (!validationPatterns.email.test(value)) {
-                errorMessage = 'L\'email n\'est pas valide';
-            } else {
-                isValid = true;
-            }
+            const result = FV.validateEmail(value, { label: `L'email` });
+            FV.applyFieldState(field, errorElementId, result);
+            return result.valid;
         }
         // Phone validation
         else if (fieldName.includes('[phone]')) {
-            if (value === '') {
-                errorMessage = 'Le numéro de téléphone est requis';
-            } else if (containsXssAttempt(value)) {
-                errorMessage = 'Le numéro de téléphone contient des éléments non autorisés';
-            } else if (value.length < 10) {
-                errorMessage = 'Le numéro de téléphone doit contenir au moins 10 caractères';
-            } else {
-                isValid = true;
-            }
+            const result = FV.validatePhone(value, {
+                label: 'Le numéro de téléphone',
+                required: true
+            });
+            FV.applyFieldState(field, errorElementId, result);
+            return result.valid;
         }
         // Date validation
         else if (fieldName.includes('[date]')) {
@@ -570,30 +452,19 @@
         }
         // Message validation (optional field)
         else if (fieldName.includes('[message]')) {
-            /**
-             * Message is optional, but if provided, check for XSS
-             * Empty message is valid
-             */
-            if (value !== '' && containsXssAttempt(value)) {
-                errorMessage = 'Le message contient des éléments non autorisés (balises HTML, JavaScript, etc.)';
-            } else {
-                isValid = true;
-            }
+            const result = FV.validateMessage(value, {
+                label: 'Le message',
+                required: false,
+                min: 0,
+                max: 1000
+            });
+            FV.applyFieldState(field, errorElementId, result);
+            return result.valid;
         }
 
-        /**
-         * Update field appearance and error message
-         * Use helper functions to reduce code duplication
-         */
-        const errorElementId = fieldName.replace(/\[/g, '_').replace(/\]/g, '') + 'Error';
-        
-        if (isValid) {
-            setFieldValid(field, errorElementId);
-        } else {
-            setFieldInvalid(field, errorElementId, errorMessage);
-        }
-
-        return isValid;
+        const result = isValid ? { valid: true } : { valid: false, message: errorMessage };
+        FV.applyFieldState(field, errorElementId, result);
+        return result.valid;
     }
 
     // ============================================================================
@@ -608,62 +479,6 @@
      * @param {HTMLElement} field - The input element to mark as valid
      * @param {string} errorElementId - The ID of the error message element
      */
-    function setFieldValid(field, errorElementId) {
-        // Add valid styling
-        field.classList.remove('is-invalid');
-        field.classList.add('is-valid');
-        // Clear error message
-        clearFieldError(errorElementId);
-    }
-
-    /**
-     * Set field as invalid and show error message
-     * 
-     * This helper function reduces code duplication across validation functions.
-     * 
-     * @param {HTMLElement} field - The input element to mark as invalid
-     * @param {string} errorElementId - The ID of the error message element
-     * @param {string} message - The error message to display
-     */
-    function setFieldInvalid(field, errorElementId, message) {
-        // Add invalid styling
-        field.classList.remove('is-valid');
-        field.classList.add('is-invalid');
-        // Show error message
-        showFieldError(errorElementId, message);
-    }
-
-    /**
-     * Show error message for a field
-     * 
-     * @param {string} errorElementId - The ID of the error message element
-     * @param {string} message - The error message to display
-     */
-    function showFieldError(errorElementId, message) {
-        const errorElement = document.getElementById(errorElementId);
-        if (errorElement) {
-            // Set error message text
-            errorElement.textContent = message;
-            // Make error visible (CSS class handles styling)
-            errorElement.classList.add('show');
-        }
-    }
-
-    /**
-     * Clear error message for a field
-     * 
-     * @param {string} errorElementId - The ID of the error message element
-     */
-    function clearFieldError(errorElementId) {
-        const errorElement = document.getElementById(errorElementId);
-        if (errorElement) {
-            // Clear error message text
-            errorElement.textContent = '';
-            // Hide error (remove CSS class)
-            errorElement.classList.remove('show');
-        }
-    }
-
     // ============================================================================
     // AJAX FORM SUBMISSION
     // ============================================================================

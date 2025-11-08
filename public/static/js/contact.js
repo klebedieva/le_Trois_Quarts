@@ -14,82 +14,12 @@
 (function() {
     'use strict';
 
-    // ============================================================================
-    // VALIDATION PATTERNS
-    // ============================================================================
-
-    /**
-     * Regular expressions for field validation
-     * 
-     * These patterns validate user input format before submission.
-     * Server-side validation still required (this is client-side only).
-     */
-    const validationPatterns = {
-        /**
-         * First name and last name pattern
-         * Allows: letters (including accented), spaces, hyphens
-         * Example valid: "Jean-Pierre", "José", "Mary-Jane"
-         */
-        firstName: /^[a-zA-ZÀ-ÿ\s\-]+$/,
-        lastName: /^[a-zA-ZÀ-ÿ\s\-]+$/,
-        
-        /**
-         * Email pattern
-         * Validates standard email format: user@domain.tld
-         * Example valid: "user@example.com", "test.email@domain.co.uk"
-         */
-        email: /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/,
-        
-        /**
-         * French phone number pattern
-         * Supports formats: +33, 0033, or 0 prefix
-         * Example valid: "+33 6 12 34 56 78", "0612345678", "06 12 34 56 78"
-         */
-        phone: /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.\-]*\d{2}){4}$/,
-        
-        /**
-         * Message pattern
-         * - Must not contain HTML tags (<.*?>)
-         * - Must be between 10 and 1000 characters
-         * - Allows any characters including newlines
-         */
-        message: /^(?!.*<.*?>)[\s\S]{10,1000}$/
-    };
-
-    // ============================================================================
-    // XSS DETECTION PATTERNS
-    // ============================================================================
-
-    /**
-     * XSS (Cross-Site Scripting) attack detection patterns
-     * 
-     * These patterns detect common XSS attack vectors:
-     * - HTML tags that could inject scripts
-     * - JavaScript protocol handlers
-     * - Event handlers (onclick, onload, etc.)
-     * - Data URIs with HTML content
-     * - CSS expressions
-     * 
-     * Why this matters:
-     * XSS attacks can steal user data, hijack sessions, or deface websites.
-     * Client-side detection is the first line of defense, but server-side
-     * validation is still required (never trust client-side validation alone).
-     */
-    const xssPatterns = [
-        /<[^>]*>/gi,                    // HTML tags (any tag)
-        /javascript:/gi,                // JavaScript protocol (javascript:alert())
-        /on\w+\s*=/gi,                  // Event handlers (onclick=, onload=, etc.)
-        /vbscript:/gi,                  // VBScript protocol (legacy)
-        /data:text\/html/gi,            // Data URI with HTML content
-        /expression\s*\(/gi,            // CSS expressions (IE legacy)
-        /<script/gi,                    // Script tags
-        /<iframe/gi,                    // Iframe tags (can load external content)
-        /<object/gi,                    // Object tags (can embed external content)
-        /<embed/gi,                     // Embed tags (can embed external content)
-        /<form/gi,                      // Form tags (can create nested forms)
-        /<link[^>]*href\s*=\s*["\']?javascript:/gi, // Link with JavaScript href
-        /<meta[^>]*http-equiv\s*=\s*["\']?refresh/gi // Meta refresh (redirect attacks)
-    ];
+    // Reuse the shared helper so validation messages stay consistent
+    const FV = window.FormValidation;
+    if (!FV) {
+        console.error('FormValidation utility is required for contact.js');
+        return;
+    }
 
     // ============================================================================
     // INITIALIZATION
@@ -111,36 +41,6 @@
 
     // ============================================================================
     // XSS DETECTION
-    // ============================================================================
-
-    /**
-     * Check if a value contains XSS attack patterns
-     * 
-     * This function tests the input against all XSS patterns.
-     * If any pattern matches, the input is considered unsafe.
-     * 
-     * @param {string} value - The input value to check
-     * @returns {boolean} True if XSS attempt detected, false otherwise
-     * 
-     * @example
-     * containsXssAttempt('<script>alert("XSS")</script>'); // true
-     * containsXssAttempt('Hello world'); // false
-     */
-    function containsXssAttempt(value) {
-        // Loop through all XSS patterns
-        for (let pattern of xssPatterns) {
-            // Test if pattern matches the value
-            if (pattern.test(value)) {
-                // XSS attempt detected
-                return true;
-            }
-        }
-        // No XSS patterns found - value is safe
-        return false;
-    }
-
-    // ============================================================================
-    // DOM ELEMENT CACHE
     // ============================================================================
 
     /**
@@ -332,28 +232,9 @@
         const input = elements.firstNameInput;
         const value = input.value.trim();
         const errorElement = document.getElementById('firstNameError');
-        
-        // Check if empty (required field)
-        if (value === '') {
-            setFieldInvalid(input, errorElement, 'Le prénom est requis');
-            return false;
-        }
-        
-        // Check for XSS attempts
-        if (containsXssAttempt(value)) {
-            setFieldInvalid(input, errorElement, 'Le prénom contient des éléments non autorisés');
-            return false;
-        }
-        
-        // Check format (letters, spaces, hyphens only)
-        if (!validationPatterns.firstName.test(value)) {
-            setFieldInvalid(input, errorElement, 'Le prénom ne peut contenir que des lettres, espaces et tirets');
-            return false;
-        }
-        
-        // All checks passed - field is valid
-        setFieldValid(input, errorElement);
-        return true;
+        const result = FV.validateName(value, 'Le prénom');
+        FV.applyFieldState(input, errorElement, result);
+        return result.valid;
     }
 
     /**
@@ -370,28 +251,9 @@
         const input = elements.lastNameInput;
         const value = input.value.trim();
         const errorElement = document.getElementById('lastNameError');
-        
-        // Check if empty (required field)
-        if (value === '') {
-            setFieldInvalid(input, errorElement, 'Le nom est requis');
-            return false;
-        }
-        
-        // Check for XSS attempts
-        if (containsXssAttempt(value)) {
-            setFieldInvalid(input, errorElement, 'Le nom contient des éléments non autorisés');
-            return false;
-        }
-        
-        // Check format (letters, spaces, hyphens only)
-        if (!validationPatterns.lastName.test(value)) {
-            setFieldInvalid(input, errorElement, 'Le nom ne peut contenir que des lettres, espaces et tirets');
-            return false;
-        }
-        
-        // All checks passed - field is valid
-        setFieldValid(input, errorElement);
-        return true;
+        const result = FV.validateName(value, 'Le nom');
+        FV.applyFieldState(input, errorElement, result);
+        return result.valid;
     }
 
     /**
@@ -411,28 +273,9 @@
         const input = elements.emailInput;
         const value = input.value.trim();
         const errorElement = document.getElementById('emailError');
-        
-        // Check if empty (required field)
-        if (value === '') {
-            setFieldInvalid(input, errorElement, 'L\'email est requis');
-            return false;
-        }
-        
-        // Check for XSS attempts
-        if (containsXssAttempt(value)) {
-            setFieldInvalid(input, errorElement, 'L\'email contient des éléments non autorisés');
-            return false;
-        }
-        
-        // Check email format
-        if (!validationPatterns.email.test(value)) {
-            setFieldInvalid(input, errorElement, 'L\'email n\'est pas valide');
-            return false;
-        }
-        
-        // All checks passed - field is valid
-        setFieldValid(input, errorElement);
-        return true;
+        const result = FV.validateEmail(value, { label: `L'email` });
+        FV.applyFieldState(input, errorElement, result);
+        return result.valid;
     }
 
     /**
@@ -456,26 +299,16 @@
         // Phone is optional - empty is valid
         if (value === '') {
             // Clear validation state (no error, no success)
-            input.classList.remove('is-valid', 'is-invalid');
-            clearFieldError(errorElement);
+            FV.clearFieldState(input, errorElement);
             return true;
         }
         
-        // If provided, check for XSS attempts
-        if (containsXssAttempt(value)) {
-            setFieldInvalid(input, errorElement, 'Le numéro de téléphone contient des éléments non autorisés');
-            return false;
-        }
-        
-        // If provided, check French phone format
-        if (!validationPatterns.phone.test(value)) {
-            setFieldInvalid(input, errorElement, 'Le numéro de téléphone n\'est pas valide');
-            return false;
-        }
-        
-        // All checks passed - field is valid
-        setFieldValid(input, errorElement);
-        return true;
+        const result = FV.validatePhone(value, {
+            label: 'Le numéro de téléphone',
+            required: false
+        });
+        FV.applyFieldState(input, errorElement, result);
+        return result.valid;
     }
 
     /**
@@ -496,12 +329,12 @@
         
         // Check if empty (required field)
         if (value === '') {
-            setFieldInvalid(input, errorElement, 'Le sujet est requis');
+            FV.applyFieldState(input, errorElement, { valid: false, message: 'Le sujet est requis' });
             return false;
         }
         
         // All checks passed - field is valid
-        setFieldValid(input, errorElement);
+        FV.applyFieldState(input, errorElement, { valid: true });
         return true;
     }
 
@@ -523,33 +356,14 @@
         const value = input.value.trim();
         const errorElement = document.getElementById('messageError');
         
-        // Check if empty (required field)
-        if (value === '') {
-            setFieldInvalid(input, errorElement, 'Le message est requis');
-            return false;
-        }
-        
-        // Check for XSS attempts
-        if (containsXssAttempt(value)) {
-            setFieldInvalid(input, errorElement, 'Le message contient des éléments non autorisés (balises HTML, JavaScript, etc.)');
-            return false;
-        }
-        
-        // Check minimum length (10 characters)
-        if (value.length < 10) {
-            setFieldInvalid(input, errorElement, 'Le message doit contenir au moins 10 caractères');
-            return false;
-        }
-        
-        // Check maximum length (1000 characters)
-        if (value.length > 1000) {
-            setFieldInvalid(input, errorElement, 'Le message ne peut pas dépasser 1000 caractères');
-            return false;
-        }
-        
-        // All checks passed - field is valid
-        setFieldValid(input, errorElement);
-        return true;
+        const result = FV.validateMessage(value, {
+            label: 'Le message',
+            required: true,
+            min: 10,
+            max: 1000
+        });
+        FV.applyFieldState(input, errorElement, result);
+        return result.valid;
     }
 
     /**
@@ -569,12 +383,15 @@
         
         // Check if checkbox is checked (required)
         if (!input.checked) {
-            setFieldInvalid(input, errorElement, 'Vous devez accepter d\'être contacté');
+            FV.applyFieldState(input, errorElement, {
+                valid: false,
+                message: 'Vous devez accepter d\'être contacté'
+            });
             return false;
         }
         
         // All checks passed - field is valid
-        setFieldValid(input, errorElement);
+        FV.applyFieldState(input, errorElement, { valid: true });
         return true;
     }
 
@@ -591,63 +408,6 @@
      * @param {HTMLElement} errorElement - The error message element
      * @param {string} message - The error message to display
      */
-    function setFieldInvalid(input, errorElement, message) {
-        // Add invalid styling
-        input.classList.add('is-invalid');
-        input.classList.remove('is-valid');
-        // Show error message
-        showFieldError(errorElement, message);
-    }
-
-    /**
-     * Set field as valid and clear error message
-     * 
-     * This helper function reduces code duplication across validation functions.
-     * 
-     * @param {HTMLElement} input - The input element to mark as valid
-     * @param {HTMLElement} errorElement - The error message element
-     */
-    function setFieldValid(input, errorElement) {
-        // Add valid styling
-        input.classList.add('is-valid');
-        input.classList.remove('is-invalid');
-        // Clear error message
-        clearFieldError(errorElement);
-    }
-
-    /**
-     * Show error message for a field
-     * 
-     * @param {HTMLElement} errorElement - The error message element
-     * @param {string} message - The error message to display
-     */
-    function showFieldError(errorElement, message) {
-        if (errorElement) {
-            // Set error message text
-            errorElement.textContent = message;
-            // Make error visible (CSS class handles styling)
-            errorElement.classList.add('show');
-        }
-    }
-
-    /**
-     * Clear error message for a field
-     * 
-     * @param {HTMLElement} errorElement - The error message element
-     */
-    function clearFieldError(errorElement) {
-        if (errorElement) {
-            // Clear error message text
-            errorElement.textContent = '';
-            // Hide error (remove CSS class)
-            errorElement.classList.remove('show');
-        }
-    }
-
-    // ============================================================================
-    // SUCCESS MESSAGE AUTO-HIDE
-    // ============================================================================
-
     /**
      * Set up auto-hide for success message
      * 

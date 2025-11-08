@@ -14,47 +14,12 @@
 (function() {
     'use strict';
 
-    // ============================================================================
-    // VALIDATION PATTERNS
-    // ============================================================================
-
-    /**
-     * Regular expressions for field validation
-     * 
-     * These patterns validate user input format before submission.
-     * Server-side validation still required (this is client-side only).
-     * 
-     * Benefits of extracting patterns:
-     * - DRY principle: Patterns defined once, reused multiple times
-     * - Maintainability: Update patterns in one place
-     * - Readability: Clear pattern names instead of complex regex
-     * - Consistency: Same approach as contact.js and reservation.js
-     */
-    const validationPatterns = {
-        /**
-         * Name pattern
-         * Allows: letters (including accented), spaces, hyphens
-         * Example valid: "Jean-Pierre", "José", "Mary-Jane"
-         * Example invalid: "John123", "Mary@Doe", "Bob<script>"
-         */
-        name: /^[a-zA-ZÀ-ÿ\s\-]+$/,
-        
-        /**
-         * Email pattern
-         * Validates standard email format: user@domain.tld
-         * Example valid: "user@example.com", "test.email@domain.co.uk"
-         * Example invalid: "notanemail", "@domain.com", "user@"
-         */
-        email: /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/,
-        
-        /**
-         * Comment pattern
-         * - Must not contain HTML tags (<.*?>)
-         * - Must be between 10 and 1000 characters
-         * - Allows any characters including newlines
-         */
-        comment: /^(?!.*<.*?>)[\s\S]{10,1000}$/
-    };
+    // Import the shared helper so review forms follow the same validation rules/messages
+    const FV = window.FormValidation;
+    if (!FV) {
+        console.error('FormValidation utility is required for reviews.js');
+        return;
+    }
 
     // ============================================================================
     // DOM ELEMENT CACHE
@@ -619,16 +584,9 @@
         const elements = getFormElements(modalId);
         const errorElement = elements ? elements.nameError : document.getElementById(modalId + 'NameError');
         
-        if (value === '') {
-            setFieldInvalid(input, errorElement, 'Le nom est requis');
-            return false;
-        } else if (!validationPatterns.name.test(value)) {
-            setFieldInvalid(input, errorElement, 'Le nom ne peut contenir que des lettres, espaces et tirets');
-            return false;
-        } else {
-            setFieldValid(input, errorElement);
-            return true;
-        }
+        const result = FV.validateName(value, 'Le nom');
+        FV.applyFieldState(input, errorElement, result);
+        return result.valid;
     }
 
     /**
@@ -650,19 +608,16 @@
         const elements = getFormElements(modalId);
         const errorElement = elements ? elements.emailError : document.getElementById(modalId + 'EmailError');
         
-        // Email is optional - empty is valid
+        const result = FV.validateEmail(value, {
+            label: 'L\'email',
+            // email optional
+        });
         if (value === '') {
-            // Clear validation state (no error, no success)
-            input.classList.remove('is-valid', 'is-invalid');
-            clearFieldError(errorElement);
-            return true;
-        } else if (!validationPatterns.email.test(value)) {
-            setFieldInvalid(input, errorElement, 'Veuillez saisir une adresse email valide');
-            return false;
-        } else {
-            setFieldValid(input, errorElement);
+            FV.clearFieldState(input, errorElement);
             return true;
         }
+        FV.applyFieldState(input, errorElement, result);
+        return result.valid;
     }
 
     /**
@@ -683,13 +638,12 @@
         const elements = getFormElements(modalId);
         const errorElement = elements ? elements.ratingError : document.getElementById(modalId + 'RatingError');
         
-        if (value === 0 || isNaN(value)) {
-            setFieldInvalid(ratingInput, errorElement, 'Veuillez sélectionner une note');
-            return false;
-        } else {
-            setFieldValid(ratingInput, errorElement);
-            return true;
-        }
+        const result = (value === 0 || isNaN(value))
+            ? { valid: false, message: 'Veuillez sélectionner une note' }
+            : { valid: true };
+
+        FV.applyFieldState(ratingInput, errorElement, result);
+        return result.valid;
     }
 
     /**
@@ -712,89 +666,19 @@
         const elements = getFormElements(modalId);
         const errorElement = elements ? elements.textError : document.getElementById(modalId + 'TextError');
         
-        if (value === '') {
-            setFieldInvalid(input, errorElement, 'L\'avis est requis');
-            return false;
-        } else if (value.length < 10) {
-            setFieldInvalid(input, errorElement, 'L\'avis doit contenir au moins 10 caractères');
-            return false;
-        } else if (value.length > 1000) {
-            setFieldInvalid(input, errorElement, 'L\'avis ne peut pas dépasser 1000 caractères');
-            return false;
-        } else if (!validationPatterns.comment.test(value)) {
-            setFieldInvalid(input, errorElement, 'L\'avis contient des caractères non autorisés');
-            return false;
-        } else {
-            setFieldValid(input, errorElement);
-            return true;
-        }
+        const result = FV.validateMessage(value, {
+            label: 'L\'avis',
+            required: true,
+            min: 10,
+            max: 1000
+        });
+        FV.applyFieldState(input, errorElement, result);
+        return result.valid;
     }
 
     // ============================================================================
     // VALIDATION HELPER FUNCTIONS
     // ============================================================================
-
-    /**
-     * Set field as valid and clear error message
-     * 
-     * This helper function reduces code duplication across validation functions.
-     * 
-     * @param {HTMLElement} field - The input element to mark as valid
-     * @param {HTMLElement} errorElement - The error message element
-     */
-    function setFieldValid(field, errorElement) {
-        // Add valid styling
-        field.classList.remove('is-invalid');
-        field.classList.add('is-valid');
-        // Clear error message
-        clearFieldError(errorElement);
-    }
-
-    /**
-     * Set field as invalid and show error message
-     * 
-     * This helper function reduces code duplication across validation functions.
-     * 
-     * @param {HTMLElement} field - The input element to mark as invalid
-     * @param {HTMLElement} errorElement - The error message element
-     * @param {string} message - The error message to display
-     */
-    function setFieldInvalid(field, errorElement, message) {
-        // Add invalid styling
-        field.classList.remove('is-valid');
-        field.classList.add('is-invalid');
-        // Show error message
-        showFieldError(errorElement, message);
-    }
-
-    /**
-     * Show error message for a field
-     * 
-     * @param {HTMLElement} errorElement - The error message element
-     * @param {string} message - The error message to display
-     */
-    function showFieldError(errorElement, message) {
-        if (errorElement) {
-            // Set error message text
-            errorElement.textContent = message;
-            // Make error visible (CSS class handles styling)
-            errorElement.classList.add('show');
-        }
-    }
-
-    /**
-     * Clear error message for a field
-     * 
-     * @param {HTMLElement} errorElement - The error message element
-     */
-    function clearFieldError(errorElement) {
-        if (errorElement) {
-            // Clear error message text
-            errorElement.textContent = '';
-            // Hide error (remove CSS class)
-            errorElement.classList.remove('show');
-        }
-    }
 
     // ============================================================================
     // AJAX FORM SUBMISSION
