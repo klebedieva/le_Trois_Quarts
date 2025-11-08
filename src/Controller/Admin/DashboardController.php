@@ -166,8 +166,8 @@ class DashboardController extends AbstractDashboardController
     public function configureAssets(): Assets
     {
         return Assets::new()
-            ->addCssFile('assets/css/admin-styles.css')
-            ->addJsFile('assets/js/admin.js');
+            ->addCssFile('static/css/admin-styles.css')
+            ->addJsFile('static/js/admin.js');
     }
 
     public function configureMenuItems(): iterable

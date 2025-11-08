@@ -3,7 +3,7 @@
 {% block stylesheets %}
     {{ parent() }}
     <!-- Page-specific styles for the gallery page -->
-    <link rel="stylesheet" href="{{ asset('assets/css/gallery.css') }}?v={{ 'now'|date('YmdHis') }}">
+    <link rel="stylesheet" href="{{ asset('static/css/gallery.css') }}?v={{ 'now'|date('YmdHis') }}">
 {% endblock %}
 
 {% block body %}
@@ -44,10 +44,10 @@
                 {% for image in images %}
                 <div class="col-lg-4 col-md-6 gallery-item{% if loop.index > 12 %} gallery-item-hidden{% endif %}" data-category="{{ image.category }}">
                     <div class="gallery-card" 
-                         data-image="{{ asset('assets/img/' ~ image.imagePath) }}" 
+                         data-image="{{ asset('static/img/' ~ image.imagePath) }}" 
                          data-title="{{ image.title }}" 
                          data-description="{{ image.description }}">
-                        <img src="{{ asset('assets/img/' ~ image.imagePath) }}" alt="{{ image.title }}" class="img-fluid">
+                        <img src="{{ asset('static/img/' ~ image.imagePath) }}" alt="{{ image.title }}" class="img-fluid">
                         <div class="gallery-overlay">
                             <div class="gallery-content">
                                 <h5>{{ image.title }}</h5>
@@ -74,7 +74,7 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="{{ asset('assets/js/gallery.js') }}"></script>
+    <script src="{{ asset('static/js/gallery.js') }}"></script>
 {% endblock %}
 
 

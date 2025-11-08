@@ -103,8 +103,8 @@ The contact form includes:
 ## 🎨 Customization
 
 ### Styling
-- Main styles: `public/assets/css/style.css`
-- Contact page styles: `public/assets/css/contact.css`
+- Main styles: `public/static/css/style.css`
+- Contact page styles: `public/static/css/contact.css`
 - Responsive design with Bootstrap 5
 
 ### Templates

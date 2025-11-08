@@ -3,7 +3,7 @@
    ---------------------------------------------------------------------
    This stylesheet now focuses on layout- and page-specific rules. Shared
    components (buttons, forms, cards, cart, tokens) live in dedicated
-   files under assets/css/components/* and global.css.
+   files under static/css/components/* and global.css.
    ===================================================================== */
 
 /* Typography helpers */
@@ -486,8 +486,8 @@ footer a.text-white:hover {
 
 /* Footer Logo Styles */
 .footer-logo-row img {
-    height: 90px !important;
-    width: 90px !important;
+    height: 110px !important;
+    width: 110px !important;
     object-fit: contain;
     border-radius: 50%;
     transition: all 0.3s ease;
@@ -872,8 +872,8 @@ footer a[href^="mailto:"] {
   .footer-logo-row img {
     margin-bottom: 1rem;
     margin-right: 0 !important;
-    height: 90px !important;
-    width: 90px !important;
+    height: 100px !important;
+    width: 100px !important;
   }
   .col-lg-4 > .mx-auto.text-start {
     max-width: 100% !important;
@@ -925,8 +925,8 @@ footer a[href^="mailto:"] {
   .footer-logo-row img {
     margin-bottom: 1rem;
     margin-right: 0 !important;
-    height: 90px !important;
-    width: 90px !important;
+    height: 100px !important;
+    width: 100px !important;
   }
   .col-lg-4 > .mx-auto.text-start {
     max-width: 100% !important;
@@ -1046,8 +1046,23 @@ footer a[href^="mailto:"] {
 
 /* Login Page Styles */
 .login-body {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 12% 18%, rgba(244, 228, 193, 0.6) 0%, transparent 45%),
+        radial-gradient(circle at 88% 8%, rgba(212, 165, 116, 0.35) 0%, transparent 55%),
+        radial-gradient(circle at 75% 85%, rgba(139, 69, 19, 0.18) 0%, transparent 50%),
+        linear-gradient(135deg, #fdf7f0 0%, #ffffff 40%, #f4eee4 100%);
     font-family: 'Inter', sans-serif;
+    position: relative;
+    overflow: hidden;
+}
+
+.login-body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 65%);
+    pointer-events: none;
 }
 
 /* Additional login left side enhancements */
@@ -1113,7 +1128,7 @@ footer a[href^="mailto:"] {
 }
 
 .login-left {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #c49b6b 25%, var(--secondary-color) 75%, #6b3410 100%);
+    background: linear-gradient(160deg, rgba(212, 165, 116, 0.9) 0%, rgba(139, 69, 19, 0.75) 100%);
     position: relative;
     overflow: hidden;
     display: flex;
@@ -1205,9 +1220,8 @@ footer a[href^="mailto:"] {
     z-index: 2;
     text-align: center;
     color: white;
-    padding: 3rem 2rem;
+    padding: 3rem 2rem 2rem;
     animation: fadeInUp 1s ease-out;
-    margin-top: -4rem;
 }
 
 .login-logo {
@@ -1230,6 +1244,7 @@ footer a[href^="mailto:"] {
     transform: scale(1.05);
     box-shadow: 0 20px 50px rgba(0,0,0,0.5);
 }
+
 
 .login-title {
     font-family: 'Playfair Display', serif;
@@ -1297,13 +1312,20 @@ footer a[href^="mailto:"] {
 }
 
 .login-form-container {
-    background: white;
+    background: rgba(255, 255, 255, 0.92);
     padding: 3rem;
-    border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    border-radius: 24px;
+    border: 1px solid rgba(212, 165, 116, 0.18);
+    box-shadow: 0 25px 65px rgba(212, 165, 116, 0.25);
+    backdrop-filter: blur(16px);
     width: 100%;
     max-width: 450px;
-    margin-top: -5rem;
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.login-form-container:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 30px 70px rgba(212, 165, 116, 0.28);
 }
 
 .login-form-header h2 {
@@ -1319,35 +1341,47 @@ footer a[href^="mailto:"] {
 }
 
 .login-form .input-group-text {
-    background: var(--accent-color);
-    border: 1px solid var(--border-color);
+    background: rgba(244, 228, 193, 0.35);
+    border: 1px solid rgba(212, 165, 116, 0.35);
     color: var(--secondary-color);
 }
 
 .login-form .form-control {
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(212, 165, 116, 0.35);
     padding: 0.75rem 1rem;
     font-size: 1rem;
+    background: rgba(252, 249, 243, 0.9);
+    transition: all 0.25s ease;
 }
 
 .login-form .form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(212, 165, 116, 0.25);
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 0.25rem rgba(212, 165, 116, 0.28);
+    background: rgba(255, 255, 255, 0.96);
 }
 
 .login-form .btn-primary {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    background: linear-gradient(135deg, #d4a574 0%, #b26d2b 100%);
     border: none;
-    padding: 0.75rem 2rem;
+    padding: 0.85rem 2rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.3s ease;
+    letter-spacing: 0.55px;
+    color: #fff;
+    background-size: 200% 200%;
+    box-shadow: 0 12px 22px rgba(212, 165, 116, 0.22);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, background-position 0.4s ease;
 }
 
 .login-form .btn-primary:hover {
+    background-position: right center;
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(212, 165, 116, 0.4);
+    box-shadow: 0 16px 28px rgba(139, 69, 19, 0.22);
+}
+
+.login-form .btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 8px 14px rgba(139, 69, 19, 0.18);
 }
 
 .login-footer a {

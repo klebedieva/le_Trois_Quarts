@@ -16,8 +16,8 @@ namespace App\Service;
  *
  * Supported image path formats:
  * - Absolute URLs (http/https) - returned as-is
- * - Absolute paths starting with /uploads/ or /assets/ - returned as-is
- * - Relative paths starting with assets/ - prepended with /
+ * - Absolute paths starting with /uploads/, /assets/ or /static/ - returned as-is
+ * - Relative paths starting with assets/ or static/ - prepended with /
  * - Other relative paths - prepended with /uploads/menu/
  * - Null/empty values - returns default placeholder image
  *
@@ -33,7 +33,7 @@ class MenuItemImageResolver
      * Used when a menu item has no image or the image path is null/empty.
      * This ensures the frontend always has a valid image path to display.
      */
-    private const DEFAULT_IMAGE_PATH = '/assets/img/default-dish.png';
+    private const DEFAULT_IMAGE_PATH = '/static/img/default-dish.png';
 
     /**
      * Resolve image path to absolute URL or relative path
@@ -43,15 +43,15 @@ class MenuItemImageResolver
      *
      * 1. Null/empty values: Returns default placeholder image
      * 2. Absolute URLs (http/https): Returns as-is (external images)
-     * 3. Absolute paths (/uploads/, /assets/): Returns as-is (already correct)
-     * 4. Relative paths starting with 'assets/': Prepends '/' to make absolute
+     * 3. Absolute paths (/uploads/, /assets/, /static/): Returns as-is (already correct)
+     * 4. Relative paths starting with 'assets/' or 'static/': Prepends '/' to make absolute
      * 5. Other relative paths: Prepends '/uploads/menu/' (assumes menu item images)
      *
      * Examples:
-     * - null → '/assets/img/default-dish.png'
+     * - null → '/static/img/default-dish.png'
      * - 'http://example.com/image.jpg' → 'http://example.com/image.jpg'
      * - '/uploads/menu/dish.jpg' → '/uploads/menu/dish.jpg'
-     * - 'assets/img/dish.jpg' → '/assets/img/dish.jpg'
+     * - 'static/img/dish.jpg' → '/static/img/dish.jpg'
      * - 'dish.jpg' → '/uploads/menu/dish.jpg'
      *
      * @param string|null $image Image path from database (can be null, relative, or absolute)
@@ -73,17 +73,21 @@ class MenuItemImageResolver
         }
 
         // Handle absolute paths (already correctly formatted)
-        // Paths starting with /uploads/ or /assets/ are already absolute and correct
+        // Paths starting with /uploads/, /assets/ or /static/ are already absolute and correct
         // Return them as-is without modification
-        if (str_starts_with($image, '/uploads/') || str_starts_with($image, '/assets/')) {
+        if (
+            str_starts_with($image, '/uploads/')
+            || str_starts_with($image, '/assets/')
+            || str_starts_with($image, '/static/')
+        ) {
             return $image;
         }
 
-        // Handle relative paths starting with 'assets/'
+        // Handle relative paths starting with 'assets/' or 'static/'
         // These need to be converted to absolute paths by prepending '/'
-        // Example: 'assets/img/dish.jpg' → '/assets/img/dish.jpg'
-        if (str_starts_with($image, 'assets/')) {
-            return '/' . $image;
+        // Example: 'static/img/dish.jpg' → '/static/img/dish.jpg'
+        if (str_starts_with($image, 'assets/') || str_starts_with($image, 'static/')) {
+            return '/' . ltrim($image, '/');
         }
 
         // Handle all other relative paths

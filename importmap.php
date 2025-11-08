@@ -17,7 +17,7 @@ return [
         'entrypoint' => true,
     ],
     // 'reviews' => [
-    //     'path' => './assets/js/reviews.js',
+    //     'path' => './static/js/reviews.js',
     //     'entrypoint' => true,
     // ],
     

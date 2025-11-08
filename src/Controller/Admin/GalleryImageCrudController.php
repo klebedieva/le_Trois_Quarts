@@ -62,8 +62,8 @@ class GalleryImageCrudController extends AbstractCrudController
 
     public function configureFields(string $pageName): iterable
     {
-        $imageBasePath = '/assets/img/';
-        $imageUploadPath = 'public/assets/img/';
+        $imageBasePath = '/static/img/';
+        $imageUploadPath = 'public/static/img/';
 
         // For moderators editing: allow toggling only the visibility status
         if (!$this->isGranted('ROLE_ADMIN') && $pageName === Crud::PAGE_EDIT) {
@@ -119,7 +119,7 @@ class GalleryImageCrudController extends AbstractCrudController
                 ->setBasePath($imageBasePath)
                 ->setUploadDir($imageUploadPath)
                 ->setRequired($pageName === Crud::PAGE_NEW)
-                ->setHelp('Nom du fichier (ex: terrasse_1.jpg). Le fichier doit être dans public/assets/img/. Taille maximum : 2 MB')
+                ->setHelp('Nom du fichier (ex: terrasse_1.jpg). Le fichier doit être dans public/static/img/. Taille maximum : 2 MB')
                 ->setUploadedFileNamePattern('[randomhash].[extension]')
                 ->setFormTypeOptions([
                     'attr' => [
@@ -336,7 +336,7 @@ class GalleryImageCrudController extends AbstractCrudController
                         throw new \Symfony\Component\HttpKernel\Exception\BadRequestHttpException($e->getMessage());
                     }
                     
-                    $uploadDir = 'public/assets/img/';
+                    $uploadDir = 'public/static/img/';
                     $extension = $uploadedFile->guessExtension() ?: $uploadedFile->getClientOriginalExtension();
                     $fileName = uniqid() . '.' . $extension;
                     

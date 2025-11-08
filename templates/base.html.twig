@@ -99,12 +99,12 @@
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
         {# Site styles #}
-        <link rel="stylesheet" href="{{ asset('assets/css/global.css') }}">
-        <link rel="stylesheet" href="{{ asset('assets/css/components/buttons.css') }}?v=1">
-        <link rel="stylesheet" href="{{ asset('assets/css/components/forms.css') }}?v=1">
-        <link rel="stylesheet" href="{{ asset('assets/css/components/cards.css') }}?v=1">
-        <link rel="stylesheet" href="{{ asset('assets/css/components/cart.css') }}?v=1">
-        <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}?v={{ 'now'|date('YmdHis') }}">
+        <link rel="stylesheet" href="{{ asset('static/css/global.css') }}">
+        <link rel="stylesheet" href="{{ asset('static/css/components/buttons.css') }}?v=1">
+        <link rel="stylesheet" href="{{ asset('static/css/components/forms.css') }}?v=1">
+        <link rel="stylesheet" href="{{ asset('static/css/components/cards.css') }}?v=1">
+        <link rel="stylesheet" href="{{ asset('static/css/components/cart.css') }}?v=1">
+        <link rel="stylesheet" href="{{ asset('static/css/style.css') }}?v={{ 'now'|date('YmdHis') }}">
         {# 404.css is loaded only on the 404 page to avoid global overrides #}
     {% endblock %}
     
@@ -115,10 +115,10 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         {% block importmap %}{{ importmap('app') }}{% endblock %}
         {# Main JavaScript with navigation functionality #}
-        <script src="{{ asset('assets/js/main.js') }}"></script>
+        <script src="{{ asset('static/js/main.js') }}"></script>
         {# Cart functionality - API version #}
-        <script src="{{ asset('assets/js/cart-api.js') }}?v=4"></script>
-        <script src="{{ asset('assets/js/global.js') }}"></script>
+        <script src="{{ asset('static/js/cart-api.js') }}?v=4"></script>
+        <script src="{{ asset('static/js/global.js') }}"></script>
         <script>
             window.appMenuPath = '{{ path('app_menu') }}';
         </script>

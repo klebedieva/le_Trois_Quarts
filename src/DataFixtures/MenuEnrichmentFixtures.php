@@ -9,7 +9,7 @@ use Doctrine\Persistence\ObjectManager;
 
 /**
  * Enrich existing MenuItem records with ingredients, preparation and nutrition facts.
- * Data is derived from the static "Restaurant" project (assets/js/main.js and dish-detail mappings).
+ * Data is derived from the static "Restaurant" project (static/js/main.js and dish-detail mappings).
  *
  * This fixture is idempotent and non-destructive:
  * - Finds items by name only, does NOT create new MenuItem rows

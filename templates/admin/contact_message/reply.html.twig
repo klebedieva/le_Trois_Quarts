@@ -2,7 +2,7 @@
 
 {% block head_stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('assets/css/admin.css') }}">
+    <link rel="stylesheet" href="{{ asset('static/css/admin.css') }}">
 {% endblock %}
 
 {% block content_title %}
@@ -137,5 +137,5 @@
             clientFirstName: {{ contactMessage.firstName|json_encode|raw }}
         };
     </script>
-    <script src="{{ asset('assets/js/admin.js') }}?v={{ 'now'|date('YmdHis') }}"></script>
+    <script src="{{ asset('static/js/admin.js') }}?v={{ 'now'|date('YmdHis') }}"></script>
 {% endblock %}

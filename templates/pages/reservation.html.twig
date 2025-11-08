@@ -3,7 +3,7 @@
 {% block stylesheets %}
     {{ parent() }}
     <!-- Page-specific styles shared with contact/reservation forms -->
-    <link rel="stylesheet" href="{{ asset('assets/css/contact.css') }}?v={{ 'now'|date('YmdHis') }}">
+    <link rel="stylesheet" href="{{ asset('static/css/contact.css') }}?v={{ 'now'|date('YmdHis') }}">
 {% endblock %}
 
 {% block body %}
@@ -148,5 +148,5 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="{{ asset('assets/js/reservation.js') }}?v=15"></script>
+    <script src="{{ asset('static/js/reservation.js') }}?v=15"></script>
 {% endblock %}

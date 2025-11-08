@@ -4,7 +4,7 @@
     {# Use base layout includes to avoid duplicate CSS/JS. Keep only page-specific needs. #}
     {{ parent() }}
     <!-- Page-specific styles for the homepage gallery -->
-    <link rel="stylesheet" href="{{ asset('assets/css/gallery.css') }}?v={{ 'now'|date('YmdHis') }}">
+    <link rel="stylesheet" href="{{ asset('static/css/gallery.css') }}?v={{ 'now'|date('YmdHis') }}">
 {% endblock %}
 
 {% block hero %}
@@ -72,7 +72,7 @@
                 </div>
                 <div class="col-lg-6">
                     <div class="about-image text-center">
-                        <img src="{{ asset('assets/img/restaurant_1.jpg') }}" alt="À propos du restaurant" class="img-fluid rounded shadow about-photo">
+                        <img src="{{ asset('static/img/restaurant_1.jpg') }}" alt="À propos du restaurant" class="img-fluid rounded shadow about-photo">
                     </div>
                 </div>
             </div>
@@ -235,7 +235,7 @@
     <script>
         window.REVIEWS_ENDPOINT = '/api/review';
     </script>
-    <script src="{{ asset('assets/js/reviews.js') }}"></script>
+    <script src="{{ asset('static/js/reviews.js') }}"></script>
     
     
 {% endblock %}

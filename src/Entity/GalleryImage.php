@@ -169,7 +169,7 @@ class GalleryImage
      */
     public function getFullImagePath(): string
     {
-        return 'assets/img/' . $this->imagePath;
+        return 'static/img/' . $this->imagePath;
     }
 
     /**

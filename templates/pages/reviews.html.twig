@@ -3,7 +3,7 @@
 {% block stylesheets %}
     {{ parent() }}
     <!-- Page-specific styles for the reviews page -->
-    <link rel="stylesheet" href="{{ asset('assets/css/reviews.css') }}?v={{ 'now'|date('YmdHis') }}">
+    <link rel="stylesheet" href="{{ asset('static/css/reviews.css') }}?v={{ 'now'|date('YmdHis') }}">
 {% endblock %}
 
 {% block extra_head %}
@@ -147,5 +147,5 @@
         window.REVIEWS_ENDPOINT = '/api/review';
         window.REVIEWS_LIST_ENDPOINT = '/api/reviews';
     </script>
-    <script src="{{ asset('assets/js/reviews.js') }}"></script>
+    <script src="{{ asset('static/js/reviews.js') }}"></script>
 {% endblock %}

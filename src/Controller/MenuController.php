@@ -26,7 +26,7 @@ final class MenuController extends AbstractController
         // Récupérer toutes les entrées du menu depuis la base de données
         $items = $menuItemRepository->findAll();
 
-        // Normaliser les entités pour le front (structure attendue par assets/js/menu.js)
+        // Normaliser les entités pour le front (structure attendue par static/js/menu.js)
         $menuItems = array_map(static function (MenuItem $item): array {
             // Extraire les badges (ex. noms ou slugs)
             $badges = [];
@@ -48,12 +48,17 @@ final class MenuController extends AbstractController
             $image = $item->getImage();
             if ($image) {
                 // If it's just a filename from upload, prefix the uploads base path
-                if (!str_starts_with($image, '/uploads/') && !str_starts_with($image, '/assets/') && !str_starts_with($image, 'http')) {
+                if (
+                    !str_starts_with($image, '/uploads/')
+                    && !str_starts_with($image, '/assets/')
+                    && !str_starts_with($image, '/static/')
+                    && !str_starts_with($image, 'http')
+                ) {
                     $image = '/uploads/menu/' . ltrim($image, '/');
                 }
-                // If path starts with 'assets/', make it absolute under public
-                if (str_starts_with($image, 'assets/')) {
-                    $image = '/' . $image;
+                // If path starts with 'assets/' or 'static/', make it absolute under public
+                if (str_starts_with($image, 'assets/') || str_starts_with($image, 'static/')) {
+                    $image = '/' . ltrim($image, '/');
                 }
             }
 
@@ -122,11 +127,16 @@ final class MenuController extends AbstractController
 
         $image = $item->getImage();
         if ($image) {
-            if (!str_starts_with($image, '/uploads/') && !str_starts_with($image, '/assets/') && !str_starts_with($image, 'http')) {
+            if (
+                !str_starts_with($image, '/uploads/')
+                && !str_starts_with($image, '/assets/')
+                && !str_starts_with($image, '/static/')
+                && !str_starts_with($image, 'http')
+            ) {
                 $image = '/uploads/menu/' . ltrim($image, '/');
             }
-            if (str_starts_with($image, 'assets/')) {
-                $image = '/' . $image;
+            if (str_starts_with($image, 'assets/') || str_starts_with($image, 'static/')) {
+                $image = '/' . ltrim($image, '/');
             }
         }
 
@@ -136,11 +146,16 @@ final class MenuController extends AbstractController
         foreach ($related as &$rel) {
             $rImage = $rel['image'] ?? null;
             if ($rImage) {
-                if (!str_starts_with($rImage, '/uploads/') && !str_starts_with($rImage, '/assets/') && !str_starts_with($rImage, 'http')) {
+                if (
+                    !str_starts_with($rImage, '/uploads/')
+                    && !str_starts_with($rImage, '/assets/')
+                    && !str_starts_with($rImage, '/static/')
+                    && !str_starts_with($rImage, 'http')
+                ) {
                     $rImage = '/uploads/menu/' . ltrim($rImage, '/');
                 }
-                if (str_starts_with($rImage, 'assets/')) {
-                    $rImage = '/' . $rImage;
+                if (str_starts_with($rImage, 'assets/') || str_starts_with($rImage, 'static/')) {
+                    $rImage = '/' . ltrim($rImage, '/');
                 }
             }
             $rel['image'] = $rImage;
