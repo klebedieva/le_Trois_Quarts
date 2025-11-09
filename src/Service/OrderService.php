@@ -61,7 +61,8 @@ class OrderService
         private RestaurantSettingsService $restaurantSettings,
         private AddressValidationService $addressValidationService,
         private CouponRepository $couponRepository,
-        private ParameterBagInterface $parameterBag
+        private ParameterBagInterface $parameterBag,
+        private TaxCalculationService $taxCalculationService
     ) {}
 
     /**
@@ -113,16 +114,19 @@ class OrderService
             // Step 2: Populate client information (name, phone, email)
             $this->populateClientInfo($order, $dto);
 
-            // Step 3: Calculate amounts (subtotal, tax, total, delivery fee)
-            $this->computeAndSetTotals($order, (float) $cart['total']);
-
-            // Step 4: Apply discount if coupon or discount amount is provided
-            $this->applyDiscountToOrder($order, $dto);
-
-            // Step 5: Create order items from cart items
+            // Step 3: Create order items from cart items (ensures totals operate on real line items)
             $this->createOrderItemsFromCart($order, $cart['items']);
 
-            // Step 6: Persist order and clear cart
+            // Step 4: Hydrate monetary totals prior to applying coupons/discounts.
+            $this->taxCalculationService->applyOrderTotals($order);
+
+            // Step 5: Apply discount if coupon or discount amount is provided.
+            $this->applyDiscountToOrder($order, $dto);
+
+            // Step 6: Re-run totals so coupons/manual discounts are reflected in persisted values.
+            $this->taxCalculationService->applyOrderTotals($order);
+
+            // Step 7: Persist order and clear cart
             $this->persistOrderAndClearCart($order);
 
             return $order;
@@ -261,9 +265,9 @@ class OrderService
             $withoutCountryCode = substr($cleanPhone, 3); // Remove '+33'
             
             // Check first two digits for valid prefixes (same as national format)
-            $firstTwoDigits = substr($withoutCountryCode, 0, 2);
+            $normalizedPrefix = '0' . substr($withoutCountryCode, 0, 1);
             $validPrefixes = ['06', '07', '01', '02', '03', '04', '05'];
-            return in_array($firstTwoDigits, $validPrefixes, true);
+            return in_array($normalizedPrefix, $validPrefixes, true);
         }
 
         // Step 4: If phone number doesn't match either format, it's invalid
@@ -526,86 +530,38 @@ class OrderService
      * @param Order $order Order entity to populate (will be modified in place)
      * @param float $cartTotal Cart total including taxes (TTC - toutes taxes comprises)
      */
-    private function computeAndSetTotals(Order $order, float $cartTotal): void
-    {
-        // Step 1: Extract tax amount from cart total
-        // Cart prices already include taxes (TTC), so we need to calculate:
-        // - Subtotal without tax (HT) = Cart Total / (1 + Tax Rate)
-        // - Tax Amount = Cart Total - Subtotal
-        $taxRate = $this->restaurantSettings->getVatRate();
-        
-        // Safety check: ensure tax rate is valid (greater than 0)
-        // If tax rate is invalid, use 0% (no tax) to prevent division by zero
-        if ($taxRate <= 0 || $taxRate >= 1) {
-            // Invalid tax rate, use 0% as fallback
-            // This prevents division by zero and ensures order can still be created
-            $taxRate = 0;
-        }
-        
-        $subtotalWithoutTax = $cartTotal / (1 + $taxRate);
-        $taxAmount = $cartTotal - $subtotalWithoutTax;
-
-        // Step 2: Calculate total including delivery fee
-        // Total = Cart Total (with tax) + Delivery Fee
-        // Delivery fee is already set on the order (by validateAndPopulateDelivery or validateAndPopulatePickup)
-        $deliveryFee = (float) ($order->getDeliveryFee() ?? 0);
-        $total = $cartTotal + $deliveryFee;
-
-        // Step 3: Set formatted amounts on order entity
-        // Format all amounts to 2 decimal places (e.g., "83.33", "16.67", "105.00")
-        // This ensures consistent formatting in the database
-        $order->setSubtotal(number_format($subtotalWithoutTax, 2, '.', ''));
-        $order->setTaxAmount(number_format($taxAmount, 2, '.', ''));
-        $order->setTotal(number_format($total, 2, '.', ''));
-    }
-
     /**
      * Apply discount to order (coupon or direct discount)
      *
-     * This method handles discount application in a simple, straightforward way:
-     * 1. If coupon ID is provided, try to apply the coupon
-     * 2. If coupon is invalid but discount amount is provided, apply direct discount
-     * 3. Update order total after discount is applied
-     *
-     * The discount is subtracted from the order total, and the order's discount
-     * amount field is updated to reflect the applied discount.
+     * The method resets any previous discount state, then attempts to bind a coupon
+     * or manual discount based on the DTO. Actual monetary adjustments are handled
+     * after this method via TaxCalculationService::applyOrderTotals().
      *
      * @param Order $order Order entity to apply discount to (will be modified in place)
      * @param OrderCreateRequest $dto Order creation DTO with coupon/discount data
      */
     private function applyDiscountToOrder(Order $order, OrderCreateRequest $dto): void
     {
-        // Step 1: Try to apply coupon if coupon ID is provided
+        // Reset stale state so repeated calls don't accumulate obsolete discounts.
+        $order->setCoupon(null);
+        $order->setDiscountAmount('0.00');
+
         if (isset($dto->couponId)) {
             $coupon = $this->couponRepository->find($dto->couponId);
-            
-            // Check if coupon exists and can be applied to this order amount
-            if ($coupon && $coupon->canBeAppliedToAmount((float) $order->getTotal())) {
-                // Calculate discount using coupon's discount calculation logic
-                $discount = $coupon->calculateDiscount((float) $order->getTotal());
-                
-                // Apply discount to order
-                $order->setCoupon($coupon);
-                $order->setDiscountAmount(number_format($discount, 2, '.', ''));
-                
-                // Update total: subtract discount from current total
-                $newTotal = (float) $order->getTotal() - $discount;
-                $order->setTotal(number_format($newTotal, 2, '.', ''));
-                
-                // Discount applied successfully, exit early
-                return;
+
+            if ($coupon) {
+                $orderAmount = (float) $order->getTotal();
+                if ($coupon->canBeAppliedToAmount($orderAmount)) {
+                    $order->setCoupon($coupon);
+                    return;
+                }
             }
         }
-        
-        // Step 2: Fallback to direct discount amount if coupon is not valid or not provided
-        // This allows applying a discount directly without a coupon (e.g., manual discount)
+
         if (isset($dto->discountAmount)) {
-            $discount = (float) $dto->discountAmount;
+            $discount = max(0, (float) $dto->discountAmount);
+            $discount = min($discount, (float) $order->getTotal());
             $order->setDiscountAmount(number_format($discount, 2, '.', ''));
-            
-            // Update total: subtract discount from current total
-            $newTotal = (float) $order->getTotal() - $discount;
-            $order->setTotal(number_format($newTotal, 2, '.', ''));
         }
     }
 }

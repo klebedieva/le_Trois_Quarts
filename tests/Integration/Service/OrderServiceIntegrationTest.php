@@ -10,6 +10,7 @@ use App\Service\CartService;
 use App\Service\MenuItemImageResolver;
 use App\Service\OrderService;
 use App\Service\RestaurantSettingsService;
+use App\Service\TaxCalculationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -228,6 +229,8 @@ final class OrderServiceIntegrationTest extends KernelTestCase
             }
         };
 
+        $taxCalculationService = static::getContainer()->get(TaxCalculationService::class);
+
         return new OrderService(
             $this->entityManager,
             $this->entityManager->getConnection(),
@@ -236,7 +239,8 @@ final class OrderServiceIntegrationTest extends KernelTestCase
             $restaurantSettings,
             $addressValidation,
             $this->entityManager->getRepository(Coupon::class),
-            $this->parameterBag
+            $this->parameterBag,
+            $taxCalculationService
         );
     }
 }

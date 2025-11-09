@@ -2,6 +2,9 @@
 
 namespace App\Tests\Unit\Service;
 
+use App\Entity\Coupon;
+use App\Entity\Order;
+use App\Entity\OrderItem;
 use App\Service\TaxCalculationService;
 use App\Service\RestaurantSettingsService;
 use PHPUnit\Framework\TestCase;
@@ -565,6 +568,84 @@ class TaxCalculationServiceTest extends TestCase
             $result['amountWithTax'], 
             'Total should remain €1,500.50'
         );
+    }
+
+    /**
+     * Test: Full order recomputation without discounts.
+     *
+     * Ensures TaxCalculationService::applyOrderTotals() updates subtotal, VAT,
+     * and total (including delivery fees) using the current VAT rate.
+     */
+    public function testApplyOrderTotalsWithoutDiscounts(): void
+    {
+        $order = new Order();
+        $order->setDeliveryFee('5.00');
+
+        $itemA = (new OrderItem())
+            ->setUnitPrice('12.00')
+            ->setQuantity(2);
+        $itemB = (new OrderItem())
+            ->setUnitPrice('6.00')
+            ->setQuantity(1);
+
+        $order->addItem($itemA);
+        $order->addItem($itemB);
+
+        $this->taxCalculationService->applyOrderTotals($order);
+
+        $this->assertSame('27.27', $order->getSubtotal(), 'Subtotal (HT) should reflect TTC / (1 + VAT).');
+        $this->assertSame('2.73', $order->getTaxAmount(), 'Tax amount should be TTC - HT.');
+        $this->assertSame('35.00', $order->getTotal(), 'Total should include delivery fee (30 + 5).');
+        $this->assertSame('0.00', $order->getDiscountAmount(), 'No discount expected for base scenario.');
+    }
+
+    /**
+     * Test: Order recomputation with coupon and manual discount scenarios.
+     *
+     * Verifies coupons automatically override discount amounts and manual discounts
+     * are clamped to the order total to avoid negative balances.
+     */
+    public function testApplyOrderTotalsWithCouponAndManualDiscount(): void
+    {
+        // Coupon scenario
+        $couponOrder = new Order();
+        $couponOrder->setDeliveryFee('5.00');
+
+        $couponOrder->addItem(
+            (new OrderItem())->setUnitPrice('10.00')->setQuantity(2)
+        );
+        $couponOrder->addItem(
+            (new OrderItem())->setUnitPrice('10.00')->setQuantity(1)
+        );
+
+        $coupon = (new Coupon())
+            ->setCode('PROMO10')
+            ->setDiscountType(Coupon::TYPE_PERCENTAGE)
+            ->setDiscountValue('10.00');
+
+        $couponOrder->setCoupon($coupon);
+
+        $this->taxCalculationService->applyOrderTotals($couponOrder);
+
+        $this->assertSame('27.27', $couponOrder->getSubtotal(), 'Subtotal should exclude VAT even with coupon applied.');
+        $this->assertSame('2.73', $couponOrder->getTaxAmount(), 'Tax should remain based on TTC before coupon.');
+        $this->assertSame('3.50', $couponOrder->getDiscountAmount(), 'Coupon should apply a 10% discount on (30 + 5).');
+        $this->assertSame('31.50', $couponOrder->getTotal(), 'Total should subtract coupon discount.');
+
+        // Manual discount scenario with clamping
+        $manualOrder = new Order();
+        $manualOrder->setDeliveryFee('0.00');
+        $manualOrder->addItem(
+            (new OrderItem())->setUnitPrice('15.00')->setQuantity(2)
+        );
+        $manualOrder->setDiscountAmount('50.00'); // Exceeds order amount intentionally
+
+        $this->taxCalculationService->applyOrderTotals($manualOrder);
+
+        $this->assertSame('27.27', $manualOrder->getSubtotal(), 'Subtotal should remain based on TTC without delivery.');
+        $this->assertSame('2.73', $manualOrder->getTaxAmount(), 'Tax remains based on TTC.');
+        $this->assertSame('50.00', $manualOrder->getDiscountAmount(), 'Manual discount value should be preserved.');
+        $this->assertSame('0.00', $manualOrder->getTotal(), 'Total should never be negative after discount clamping.');
     }
 }
 

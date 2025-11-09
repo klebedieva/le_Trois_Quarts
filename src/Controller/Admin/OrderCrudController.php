@@ -8,6 +8,7 @@ use App\Enum\OrderStatus;
 use App\Enum\DeliveryMode;
 use App\Enum\PaymentMode;
 use App\Service\SymfonyEmailService;
+use App\Service\TaxCalculationService;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
@@ -39,12 +40,18 @@ class OrderCrudController extends AbstractCrudController
     private EntityManagerInterface $entityManager;
     private SymfonyEmailService $emailService;
     private AdminUrlGenerator $adminUrlGenerator;
+    private TaxCalculationService $taxCalculationService;
 
-    public function __construct(EntityManagerInterface $entityManager, SymfonyEmailService $emailService, AdminUrlGenerator $adminUrlGenerator)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        SymfonyEmailService $emailService,
+        AdminUrlGenerator $adminUrlGenerator,
+        TaxCalculationService $taxCalculationService
+    ) {
         $this->entityManager = $entityManager;
         $this->emailService = $emailService;
         $this->adminUrlGenerator = $adminUrlGenerator;
+        $this->taxCalculationService = $taxCalculationService;
     }
 
     public static function getEntityFqcn(): string
@@ -347,7 +354,7 @@ class OrderCrudController extends AbstractCrudController
                 $entity->setNo($this->generateOrderNo());
             }
             // Recalculate totals based on order items
-            $entity->recalculateTotals();
+            $this->taxCalculationService->applyOrderTotals($entity);
         }
         parent::persistEntity($entityManager, $entity);
     }
@@ -359,7 +366,7 @@ class OrderCrudController extends AbstractCrudController
     {
         if ($entityInstance instanceof Order) {
             // Recalculate totals when order is updated
-            $entityInstance->recalculateTotals();
+            $this->taxCalculationService->applyOrderTotals($entityInstance);
         }
         parent::updateEntity($entityManager, $entityInstance);
     }

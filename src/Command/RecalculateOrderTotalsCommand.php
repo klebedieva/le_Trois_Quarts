@@ -4,6 +4,7 @@ namespace App\Command;
 
 use App\Entity\Order;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Service\TaxCalculationService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -16,7 +17,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class RecalculateOrderTotalsCommand extends Command
 {
-    public function __construct(private EntityManagerInterface $entityManager)
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+        private TaxCalculationService $taxCalculationService
+    )
     {
         parent::__construct();
     }
@@ -32,7 +36,7 @@ class RecalculateOrderTotalsCommand extends Command
 
         $updated = 0;
         foreach ($orders as $order) {
-            $order->recalculateTotals();
+            $this->taxCalculationService->applyOrderTotals($order);
             $this->entityManager->persist($order);
             $updated++;
         }

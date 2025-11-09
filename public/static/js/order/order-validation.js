@@ -420,8 +420,8 @@ function validateFrenchPhoneNumber(phone) {
         /**
          * Check first digits for valid prefix
          */
-        const firstTwoDigits = withoutCountryCode.substring(0, 2);
-        return validPrefixes.includes(firstTwoDigits);
+        const normalizedPrefix = `0${withoutCountryCode.substring(0, 1)}`;
+        return validPrefixes.includes(normalizedPrefix);
     }
 
     /**

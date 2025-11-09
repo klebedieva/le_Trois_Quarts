@@ -358,75 +358,8 @@ class Order
     }
 
     /**
-     * Apply a coupon to the order
+     * Domain helpers formerly responsible for monetary recomputation were moved
+     * into {@see \App\Service\TaxCalculationService}. Totals are now updated by
+     * dedicated services/listeners instead of being recalculated directly on the entity.
      */
-    public function applyCoupon(Coupon $coupon): bool
-    {
-        $subtotalWithTax = 0;
-        
-        foreach ($this->items as $item) {
-            $subtotalWithTax += (float) $item->getTotal();
-        }
-
-        $deliveryFee = (float) ($this->deliveryFee ?? 0);
-        $orderAmount = $subtotalWithTax + $deliveryFee;
-
-        if (!$coupon->canBeAppliedToAmount($orderAmount)) {
-            return false;
-        }
-
-        $discount = $coupon->calculateDiscount($orderAmount);
-        
-        $this->coupon = $coupon;
-        $this->discountAmount = number_format($discount, 2, '.', '');
-        $this->recalculateTotals();
-
-        return true;
-    }
-
-    /**
-     * Remove the coupon from the order
-     */
-    public function removeCoupon(): void
-    {
-        $this->coupon = null;
-        $this->discountAmount = '0.00';
-        $this->recalculateTotals();
-    }
-
-    /**
-     * Recalculates order totals based on all items
-     */
-    public function recalculateTotals(): void
-    {
-        $subtotalWithTax = 0; // Amount including taxes
-        
-        foreach ($this->items as $item) {
-            $item->recalculateTotal();
-            $subtotalWithTax += (float) $item->getTotal();
-        }
-        
-        // Menu prices already include taxes (TTC)
-        // Calculate amount without taxes (HT) and tax separately
-        $taxRate = 0.10; // 10% VAT - standard rate used
-        $subtotalWithoutTax = $subtotalWithTax / (1 + $taxRate);
-        $taxAmount = $subtotalWithTax - $subtotalWithoutTax;
-        
-        $this->subtotal = number_format($subtotalWithoutTax, 2, '.', '');
-        $this->taxAmount = number_format($taxAmount, 2, '.', '');
-        
-        // Calculate discount if coupon is applied
-        $discount = 0;
-        if ($this->coupon !== null) {
-            $deliveryFee = (float) ($this->deliveryFee ?? 0);
-            $orderAmount = $subtotalWithTax + $deliveryFee;
-            $discount = $this->coupon->calculateDiscount($orderAmount);
-            $this->discountAmount = number_format($discount, 2, '.', '');
-        }
-        
-        // Total amount (subtotal + taxes + delivery fees - discount)
-        $deliveryFee = (float) ($this->deliveryFee ?? 0);
-        $total = $subtotalWithTax + $deliveryFee - $discount;
-        $this->total = number_format($total, 2, '.', '');
-    }
 }

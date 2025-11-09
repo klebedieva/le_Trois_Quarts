@@ -14,6 +14,7 @@ use App\Service\AddressValidationService;
 use App\Service\CartService;
 use App\Service\OrderService;
 use App\Service\RestaurantSettingsService;
+use App\Service\TaxCalculationService;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
@@ -125,10 +126,15 @@ class OrderServiceTest extends TestCase
     private ParameterBagInterface $parameterBag;
 
     /**
+     * Concrete tax calculation service used to recompute monetary totals.
+     */
+    private TaxCalculationService $taxCalculationService;
+
+    /**
      * Set up the test environment before each test method
      * 
      * This method creates a comprehensive mock environment for testing OrderService.
-     * OrderService has 8 dependencies, all of which need to be mocked:
+     * OrderService has 9 dependencies, all of which need to be mocked:
      * 
      * 1. EntityManager - Database persistence
      * 2. Connection - Transaction management
@@ -138,6 +144,7 @@ class OrderServiceTest extends TestCase
      * 6. RestaurantSettingsService - VAT rate, delivery fee
      * 7. AddressValidationService - Delivery address validation
      * 8. ParameterBagInterface - Order configuration values
+     * 9. TaxCalculationService - Centralised monetary calculations
      * 
      * Default Mock Behavior:
      * - Cart returns empty (tests override as needed)
@@ -169,6 +176,7 @@ class OrderServiceTest extends TestCase
         $this->restaurantSettings = $this->createMock(RestaurantSettingsService::class);
         $this->restaurantSettings->method('getVatRate')->willReturn(0.10);
         $this->restaurantSettings->method('getDeliveryFee')->willReturn(5.00);
+        $this->taxCalculationService = new TaxCalculationService($this->restaurantSettings);
 
         $this->addressValidationService = $this->createMock(AddressValidationService::class);
 
@@ -187,7 +195,8 @@ class OrderServiceTest extends TestCase
             $this->restaurantSettings,
             $this->addressValidationService,
             $this->couponRepository,
-            $this->parameterBag
+            $this->parameterBag,
+            $this->taxCalculationService
         );
     }
 
@@ -344,7 +353,7 @@ class OrderServiceTest extends TestCase
         $this->assertEquals('Pasta Carbonara', $orderItem->getProductName());
         $this->assertEquals('15.5', $orderItem->getUnitPrice());  // PHP may store as '15.5' not '15.50'
         $this->assertEquals(2, $orderItem->getQuantity());
-        $this->assertEquals('31', $orderItem->getTotal());  // May be stored as '31' not '31.00'
+        $this->assertEquals('31.00', $orderItem->getTotal());
     }
 
     /**
@@ -609,6 +618,7 @@ class OrderServiceTest extends TestCase
             '06 12 34 56 78',    // Mobile with spaces
             '0612345678',        // Mobile without spaces
             '01 23 45 67 89',    // Landline (Paris region)
+            '+33 6 12 34 56 78', // International format with spaces
             '06-12-34-56-78',    // With dashes
             '06.12.34.56.78',    // With dots
         ];
@@ -872,7 +882,7 @@ class OrderServiceTest extends TestCase
         $this->assertEquals('Pasta Carbonara', $item1->getProductName());
         $this->assertEquals('15.5', $item1->getUnitPrice());  // Note: PHP may trim trailing zero
         $this->assertEquals(2, $item1->getQuantity());
-        $this->assertEquals('31', $item1->getTotal());  // 15.50 × 2 (may be stored as '31')
+        $this->assertEquals('31.00', $item1->getTotal());  // 15.50 × 2
 
         // ASSERT: Second item (Tiramisu)
         $item2 = $items[1];
@@ -880,7 +890,7 @@ class OrderServiceTest extends TestCase
         $this->assertEquals('Tiramisu', $item2->getProductName());
         $this->assertEquals('6.5', $item2->getUnitPrice());  // Note: PHP may trim trailing zero
         $this->assertEquals(1, $item2->getQuantity());
-        $this->assertEquals('6.5', $item2->getTotal());  // 6.50 × 1
+        $this->assertEquals('6.50', $item2->getTotal());  // 6.50 × 1
     }
 
     /**

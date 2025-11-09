@@ -3,8 +3,8 @@
 namespace App\Controller\Admin;
 
 use App\Entity\OrderItem;
-use App\Entity\MenuItem;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Service\TaxCalculationService;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
@@ -18,13 +18,13 @@ use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\TextFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\NumericFilter;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
-
 #[IsGranted('ROLE_ADMIN')]
 class OrderItemCrudController extends AbstractCrudController
 {
+    public function __construct(private TaxCalculationService $taxCalculationService)
+    {
+    }
+
     public static function getEntityFqcn(): string
     {
         return OrderItem::class;
@@ -75,7 +75,7 @@ class OrderItemCrudController extends AbstractCrudController
         // Recalculate order totals
         if ($entityInstance->getOrderRef()) {
             $order = $entityInstance->getOrderRef();
-            $order->recalculateTotals();
+            $this->taxCalculationService->applyOrderTotals($order);
             
             // Force update order in EntityManager
             $entityManager->persist($order);
@@ -103,7 +103,7 @@ class OrderItemCrudController extends AbstractCrudController
         // Recalculate order totals
         if ($entityInstance->getOrderRef()) {
             $order = $entityInstance->getOrderRef();
-            $order->recalculateTotals();
+            $this->taxCalculationService->applyOrderTotals($order);
             $entityManager->persist($order);
             $entityManager->flush();
         }

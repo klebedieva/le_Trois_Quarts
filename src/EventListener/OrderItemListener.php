@@ -3,17 +3,21 @@
 namespace App\EventListener;
 
 use App\Entity\OrderItem;
-use App\Entity\Order;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
 use Doctrine\ORM\Event\PostUpdateEventArgs;
 use Doctrine\ORM\Event\PrePersistEventArgs;
 use Doctrine\ORM\Event\PostPersistEventArgs;
+use App\Service\TaxCalculationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 class OrderItemListener
 {
-    public function __construct(private LoggerInterface $logger) {}
+    public function __construct(
+        private LoggerInterface $logger,
+        private TaxCalculationService $taxCalculationService
+    ) {}
+
     public function preUpdate(PreUpdateEventArgs $args): void
     {
         $entity = $args->getObject();
@@ -65,7 +69,7 @@ class OrderItemListener
     {
         if ($item->getOrderRef()) {
             $order = $item->getOrderRef();
-            $order->recalculateTotals();
+            $this->taxCalculationService->applyOrderTotals($order);
             
             $em->persist($order);
             $em->flush();
