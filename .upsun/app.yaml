@@ -37,7 +37,7 @@ applications:
         hooks:
             build: |
                 set -e
-                SYMFONY_SKIP_AUTO_SCRIPTS=1 composer install --no-dev --optimize-autoloader --apcu-autoloader
+                composer install --no-dev --optimize-autoloader --apcu-autoloader --no-scripts
             deploy: |
                 set -e
                 php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration || true
