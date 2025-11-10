@@ -12,7 +12,8 @@ applications:
                 - pdo_mysql
                 - sodium
 
-        disk: 4096
+        resources:
+            disk: 4096
 
         mounts:
             "/var": "shared:files/var"

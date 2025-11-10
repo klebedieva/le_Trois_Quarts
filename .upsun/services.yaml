@@ -1,5 +1,6 @@
 services:
     mysql:
         type: mysql:10.6
-        disk: 2048
+        resources:
+            disk: 2048
 
