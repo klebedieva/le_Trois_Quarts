@@ -95,8 +95,19 @@ class LoginAuditSubscriber implements EventSubscriberInterface
     public function onLoginFailure(LoginFailureEvent $event): void
     {
         $request = $event->getRequest();
-        $credentials = $event->getPassport()?->getBadge('user_badge');
-        $email = method_exists($credentials, 'getUserIdentifier') ? $credentials->getUserIdentifier() : null;
+
+        $email = null;
+        $passport = $event->getPassport();
+        if ($passport !== null) {
+            $badge = $passport->getBadge('user_badge');
+            if ($badge !== null && method_exists($badge, 'getUserIdentifier')) {
+                $email = $badge->getUserIdentifier();
+            }
+        }
+        // Fallback to submitted form data when passport/badge is unavailable (e.g. early failures)
+        if ($email === null) {
+            $email = $request->request->get('email');
+        }
         $ip = $request->getClientIp();
         $ua = (string)$request->headers->get('User-Agent', '');
         $this->logger->warning('Login failure', [
