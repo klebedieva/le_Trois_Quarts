@@ -27,6 +27,10 @@ applications:
                 max_execution_time: '30'
                 zend.assertions: '-1'
                 assert.active: '0'
+                session.use_strict_mode: '1'
+                zend.detect_unicode: '0'
+                realpath_cache_ttl: '7200'
+                session.gc_probability: '0'
             env:
                 APP_ENV: "prod"
                 APP_DEBUG: "0"
