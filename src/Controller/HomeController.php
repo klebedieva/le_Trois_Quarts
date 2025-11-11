@@ -80,7 +80,7 @@ class HomeController extends AbstractApiController
         $galleryImages = $galleryRepository->findLatestForHomepage(6);
         $reviewStats = $reviewRepository->getApprovedGeneralStats();
         
-        return $this->render('home/homepage.html.twig', [
+        $response = $this->render('home/homepage.html.twig', [
             'reviews' => $reviews,
             'galleryImages' => $galleryImages,
             'reviewStats' => $reviewStats,
@@ -88,6 +88,11 @@ class HomeController extends AbstractApiController
             'seo_description' => 'Découvrez Le Trois Quarts, brasserie du quartier du Camas à Marseille : cuisine méditerranéenne maison, terrasse ensoleillée et ambiance chaleureuse.',
             'seo_og_description' => 'Ambiance chaleureuse, cuisine généreuse et service souriant : Le Trois Quarts vous accueille au cœur du Camas à Marseille.',
         ]);
+
+        $response->setPublic();
+        $response->setSharedMaxAge(300);
+        
+        return $response;
     }
 
     
