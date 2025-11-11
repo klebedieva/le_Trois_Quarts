@@ -220,8 +220,11 @@
     .btn-custom-gallery,
     .btn-custom-secondary,
     .btn-soft-secondary {
-        padding: 10px 22px;
-        font-size: 0.95rem;
+        padding: 0.85rem 1.8rem;
+        font-size: 1.3rem;
+    }
+    .btn.btn-lg {
+        font-size: 1.5rem !important;
     }
 }
 

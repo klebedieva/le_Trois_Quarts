@@ -638,8 +638,8 @@ footer a.text-white:hover {
   }
   
   .d-flex.flex-column.flex-sm-row.justify-content-center.align-items-center.gap-3 .btn {
-    padding: 10px 22px !important;
-    font-size: 0.95rem !important;
+    padding: 12px 24px !important;
+    font-size: 1.5rem !important;
     font-weight: 600 !important;
   }
   
@@ -656,6 +656,9 @@ footer a.text-white:hover {
 @media (max-width: 576px) {
   .carousel-banner {
     min-height: 45vh;
+  }
+  .d-flex.flex-column.flex-sm-row.justify-content-center.align-items-center.gap-3 .btn {
+    font-size: 1.5rem !important;
   }
 }
 
@@ -719,7 +722,8 @@ footer a.text-white:hover {
   }
   
   .d-flex.flex-column.flex-sm-row.justify-content-center.align-items-center.gap-3 .btn {
-    padding: 12px 30px !important;
+    padding: 12px 24px !important;
+    font-size: 1.5rem !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.5px !important;
@@ -957,7 +961,7 @@ footer a[href^="mailto:"] {
   .reservation-header .row h1,
   .reservation-header .row .display-4 {
     text-align: center !important;
-    font-size: 3rem !important;
+    font-size: 2.5rem !important;
   }
 
   /* Ensure 3rem titles on other banner pages */
@@ -2016,4 +2020,11 @@ footer a[href^="mailto:"] {
 
 footer .footer-logo-row {
     gap: var(--space-md);
+}
+
+@media (max-width: 576px) {
+    .btn,
+    button {
+        font-size: 1.5rem !important;
+    }
 }

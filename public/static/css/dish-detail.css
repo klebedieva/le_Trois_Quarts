@@ -168,9 +168,10 @@
     .dish-title { font-size: 2rem; }
     .dish-price-section { flex-direction: column; align-items: flex-start; gap: 1rem; }
     .dish-actions { padding: 1.5rem; }
-    .quantity-controls { max-width: 120px; }
-    .dish-image-container { max-width: 100%; }
-    .dish-image-container img { max-height: 450px; max-width: 100%; }
+    .dish-actions .menu-card-actions { justify-content: flex-start; width: 100%; }
+    .quantity-controls { max-width: 120px; justify-content: flex-start; }
+    .dish-image-container { max-width: 100%; margin: 0 auto 1.5rem auto; display: block; text-align: center; }
+    .dish-image-container img { max-height: 450px; max-width: 100%; margin: 0 auto; }
 }
 
 @media (max-width: 576px) {

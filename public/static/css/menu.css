@@ -770,13 +770,13 @@
             .search-filter-row { flex-direction: column; align-items: stretch; gap: 0.75rem; }
             .search-price-row { display: flex; flex-direction: row; gap: 0.75rem; align-items: center; justify-content: center; }
             .menu-search { min-width: 200px !important; max-width: 280px !important; }
-            .menu-search input { font-size: 0.8rem; padding: 0.45rem 0.9rem 0.45rem 2.3rem; }
+            .menu-search input { font-size: 1rem; padding: 0.45rem 0.9rem 0.45rem 2.3rem; }
             .menu-search .search-icon { font-size: 0.85rem; }
             .price-filter { max-width: 250px; }
-            .price-filter select { font-size: 0.8rem; padding: 0.45rem 0.9rem; min-width: 150px; max-width: 250px; }
+            .price-filter select { font-size: 1rem; padding: 0.45rem 0.9rem; min-width: 150px; max-width: 250px; }
             .dietary-filters { gap: 0.5rem; justify-content: center; }
             .dietary-filter-item { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
-            .dietary-filter-item label { font-size: 0.7rem; }
+            .dietary-filter-item label { font-size: 1rem; }
             /* cart styles are centralized in global.css */
             .menu-section-title { font-size: 2.5rem; }
             .menu-card-content { padding: 1.5rem; }
