@@ -12,6 +12,11 @@ applications:
                 - pdo_mysql
                 - sodium
 
+        dependencies:
+            apt:
+                jpegoptim: '*'
+                pngquant: '*'
+
         mounts:
             "/var": "shared:files/var"
             "/var/log": "shared:files/logs"
@@ -49,9 +54,7 @@ applications:
         hooks:
             build: |
                 set -e
-                apt-get update
-                apt-get install -y jpegoptim pngquant
-                find public/static/img -type f -name '*.jpg' -o -name '*.jpeg' -exec jpegoptim --strip-all --max=82 {} +
+                find public/static/img -type f \( -name '*.jpg' -o -name '*.jpeg' \) -exec jpegoptim --strip-all --max=82 {} +
                 find public/static/img -type f -name '*.png' -exec pngquant --force --ext .png --quality=65-80 {} +
                 composer install --no-dev --optimize-autoloader --apcu-autoloader
                 php bin/console importmap:install --no-interaction || true
