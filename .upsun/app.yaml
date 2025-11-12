@@ -19,6 +19,7 @@ applications:
             "/var": "shared:files/var"
             "/var/log": "shared:files/logs"
             "/public/uploads": "shared:files/uploads"
+            "/public/media": "shared:files/media"
 
         relationships:
             database: "mysql:mysql"
@@ -52,6 +53,7 @@ applications:
         hooks:
             build: |
                 set -e
+                mkdir -p public/media/cache
                 composer install --no-dev --optimize-autoloader --apcu-autoloader
                 php bin/console importmap:install --no-interaction || true
                 php bin/console assets:install --relative public
