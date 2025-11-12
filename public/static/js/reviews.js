@@ -981,7 +981,7 @@
         notification.className = `notification alert ${alertClass} alert-dismissible show alert-fixed-center`;
 
         notification.innerHTML = `
-            ${icon}${message}
+            <span class="notification-content">${icon}${message}</span>
             <button type="button" class="btn-close" onclick="this.parentElement.classList.add('fade'); setTimeout(() => this.parentElement.remove(), 500)"></button>
         `;
 

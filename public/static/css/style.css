@@ -627,8 +627,8 @@ footer a.text-white:hover {
 
 @media (max-width: 768px) {
   .carousel-banner {
-    height: 65vh !important;
-    min-height: 65vh !important;
+    height: 70vh !important;
+    min-height: 70vh !important;
   }
   
   /* Larger buttons and text for screens less than 768px */
@@ -675,7 +675,8 @@ footer a.text-white:hover {
 
 @media (max-width: 576px) {
   .carousel-banner {
-    min-height: 45vh;
+    height: 70vh !important;
+    min-height: 70vh !important;
   }
   .d-flex.flex-column.flex-sm-row.justify-content-center.align-items-center.gap-3 .btn {
     font-size: 1.5rem !important;
@@ -942,6 +943,34 @@ footer a[href^="mailto:"] {
   /* Tablet styles */
 }
 
+.alert-fixed-center {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 1rem !important;
+  width: fit-content !important;
+  max-width: min(90vw, 600px) !important;
+  min-width: min(420px, 90vw) !important;
+  padding: 0.75rem 1.75rem !important;
+  text-align: left !important;
+}
+
+.alert-fixed-center .btn-close {
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  padding: 0 !important;
+}
+
+.alert-fixed-center .notification-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+}
+
 @media (max-width: 576px) {
   .reservation-form {
     margin-top: 2rem;
@@ -950,8 +979,8 @@ footer a[href^="mailto:"] {
   .alert-fixed-center {
     left: 50% !important;
     transform: translateX(-50%) !important;
-    max-width: 90%;
-    width: auto;
+    max-width: min(90vw, 600px) !important;
+    min-width: min(320px, 90vw) !important;
   }
 
   /* Responsive styles for mobile devices */
@@ -1999,10 +2028,15 @@ picture.hero-media img {
         font-size: 0.95rem;
     }
     /* Spacing between stacked cards */
+    .reservation-stats .row {
+        justify-content: center;
+        gap: 0.75rem 0;
+    }
     .reservation-stats .col-md-4 {
-        margin-bottom: 1rem;
-        width: 50%;
-        flex: 0 0 50%;
+        margin-bottom: 0;
+        width: 100%;
+        flex: 0 0 100%;
+        max-width: 300px;
     }
 }
 

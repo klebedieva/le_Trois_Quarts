@@ -819,6 +819,16 @@
             .menu-filters-section.is-sticky .menu-filters {
                 padding: 1.25rem;
             }
+
+            .menu-filters-section .toggle-filters-btn,
+            .menu-filters-section .toggle-filters-btn:focus,
+            .menu-filters-section .toggle-filters-btn:active {
+                color: #fff;
+            }
+
+            .menu-filters-section .toggle-filters-btn i {
+                color: currentColor;
+            }
         }
 
         @media (max-width: 576px) {

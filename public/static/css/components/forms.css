@@ -108,10 +108,15 @@
     transform: translateX(-50%) !important;
     z-index: 9999 !important;
     width: fit-content !important;
-    max-width: 90% !important;
-    text-align: center !important;
-    display: inline-block !important;
-    padding: 0.75rem 1rem !important;
+    max-width: min(90vw, 600px) !important;
+    min-width: min(320px, 90vw) !important;
+    text-align: left !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 1rem !important;
+    padding: 0.75rem 1.75rem !important;
+    flex-wrap: nowrap !important;
     white-space: normal !important;
     opacity: 1 !important;
     transition: opacity 0.5s ease-in !important;
@@ -142,7 +147,19 @@
 
 .alert-fixed-center .btn-close,
 .contact-form .btn-close {
-    margin-left: 1rem;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    padding: 0 !important;
+}
+
+.alert-fixed-center .notification-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1 1 auto;
 }
 
 .notification {
