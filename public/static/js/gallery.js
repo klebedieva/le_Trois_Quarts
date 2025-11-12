@@ -60,6 +60,12 @@ let cacheTimestamp = 0;
  */
 const CACHE_DURATION = 90 * 1000; // 90 seconds
 
+/**
+ * Incremental request identifier for modal image loading
+ * Helps avoid race conditions when switching images quickly
+ */
+let modalImageRequestId = 0;
+
 // ============================================================================
 // DOM ELEMENT CACHE
 // ============================================================================
@@ -388,7 +394,8 @@ function initGalleryModal() {
             e.preventDefault();
 
             // Get image data from card's data attributes
-            const imageSrc = card.getAttribute('data-image');
+            const fallbackImage = card.getAttribute('data-fallback-image') || card.getAttribute('data-image');
+            const imageSrc = card.getAttribute('data-image') || fallbackImage;
             const imageTitle = card.getAttribute('data-title');
             const imageDescription = card.getAttribute('data-description');
 
@@ -410,7 +417,7 @@ function initGalleryModal() {
             await refreshGalleryImagesFromApi();
 
             // Update modal content with clicked image
-            updateModalContent(imageSrc, imageTitle, imageDescription);
+            updateModalContent(imageSrc, imageTitle, imageDescription, fallbackImage);
 
             /**
              * Show modal using Bootstrap's modal method
@@ -541,7 +548,8 @@ async function collectGalleryImages() {
 
     // Extract image data from each card's data attributes
     galleryImages = Array.from(visibleCards).map(card => ({
-        src: card.getAttribute('data-image'),
+        src: card.getAttribute('data-image') || card.getAttribute('data-fallback-image'),
+        fallback: card.getAttribute('data-fallback-image') || card.getAttribute('data-image'),
         title: card.getAttribute('data-title'),
         description: card.getAttribute('data-description'),
     }));
@@ -615,6 +623,7 @@ async function refreshGalleryImagesFromApi() {
              */
             galleryImages = result.data.map(item => ({
                 src: item.imageUrl,
+                fallback: item.originalUrl || item.imageUrl,
                 title: item.title,
                 description: item.description,
             }));
@@ -650,7 +659,7 @@ async function refreshGalleryImagesFromApi() {
  * @param {string} imageTitle - The image title
  * @param {string} imageDescription - The image description
  */
-function updateModalContent(imageSrc, imageTitle, imageDescription) {
+function updateModalContent(imageSrc, imageTitle, imageDescription, fallbackSrc = '') {
     // Get cached modal elements
     const elements = getModalElements();
     if (!elements) return;
@@ -661,51 +670,76 @@ function updateModalContent(imageSrc, imageTitle, imageDescription) {
 
     if (modalImage) {
         /**
+         * Track the current request to avoid race conditions
+         */
+        const requestId = ++modalImageRequestId;
+        modalImage.dataset.requestId = String(requestId);
+
+        /**
          * Add loading state
-         * Show reduced opacity while image loads
          */
         modalImage.style.opacity = '0.5';
 
         /**
-         * Remove any existing event listeners
-         * Prevent duplicate handlers when navigating quickly
+         * Reset listeners to avoid duplicates
          */
         modalImage.onload = null;
         modalImage.onerror = null;
 
+        const fallback = fallbackSrc || '';
+        const optimized = imageSrc && imageSrc !== fallback ? imageSrc : '';
+
         /**
          * Handle successful image load
-         * Restore full opacity when image loads
          */
         modalImage.onload = function () {
+            if (this.dataset.requestId !== String(requestId)) {
+                return;
+            }
             this.style.opacity = '1';
         };
 
         /**
-         * Handle image load error
-         * Restore opacity even if image fails (for error state)
+         * Handle image errors, fall back to original source if needed
          */
         modalImage.onerror = function () {
+            if (this.dataset.requestId !== String(requestId)) {
+                return;
+            }
             this.style.opacity = '1';
+            if (fallback && this.src !== fallback) {
+                this.src = fallback;
+            }
         };
 
         /**
-         * Clear the src first to ensure clean state
-         * This prevents showing stale images when navigating quickly
+         * Show fallback immediately so modal is responsive
          */
-        modalImage.src = '';
-        modalImage.removeAttribute('src');
+        if (fallback) {
+            modalImage.src = fallback;
+        } else if (optimized) {
+            modalImage.src = optimized;
+        } else {
+            modalImage.removeAttribute('src');
+        }
 
         /**
-         * Small delay before setting new src
-         * This ensures the browser properly handles the image change
+         * Preload optimized image and swap once ready
          */
-        setTimeout(() => {
-            modalImage.src = imageSrc;
-            modalImage.setAttribute('src', imageSrc);
-        }, 10);
+        if (optimized) {
+            const preloadImage = new Image();
+            preloadImage.onload = function () {
+                if (modalImage.dataset.requestId === String(requestId)) {
+                    modalImage.src = optimized;
+                }
+            };
+            preloadImage.onerror = function () {
+                // Keep fallback if optimized fails
+            };
+            preloadImage.src = optimized;
+        }
 
-        // Set alt text for accessibility
+        // Update alt attribute
         modalImage.alt = imageTitle;
     }
 
@@ -765,8 +799,13 @@ async function navigateModal(direction) {
      * Update modal content with new image
      */
     const currentImage = galleryImages[currentImageIndex];
-    if (currentImage && currentImage.src) {
-        updateModalContent(currentImage.src, currentImage.title, currentImage.description);
+    if (currentImage) {
+        updateModalContent(
+            currentImage.src || currentImage.fallback,
+            currentImage.title,
+            currentImage.description,
+            currentImage.fallback || currentImage.src
+        );
     }
 }
 

@@ -233,6 +233,9 @@ function initGallery() {
     let cacheTimestamp = 0; // When cache was created (milliseconds)
     const CACHE_DURATION = 90 * 1000; // Cache is valid for 90 seconds
 
+    // Track modal image request IDs to avoid race conditions when switching fast
+    let modalImageRequestId = 0;
+
     // Guard: ensure required elements exist before proceeding
     // If no gallery items or no modal image, exit early (nothing to do)
     if (galleryItems.length === 0 || !modalImage) {
@@ -240,13 +243,27 @@ function initGallery() {
     }
 
     /**
-     * Collect all gallery images from the DOM
-     * Extract src and alt attributes from each gallery item
+     * Collect all gallery images from the DOM, including fallback data
      */
-    let galleryImages = Array.from(galleryItems).map(item => ({
-        src: item.getAttribute('data-image'), // Image URL from data attribute
-        alt: item.querySelector('img').getAttribute('alt'), // Alt text for accessibility
-    }));
+    const collectDomGalleryData = () =>
+        Array.from(document.querySelectorAll('.gallery-item')).map(item => {
+            const imgEl = item.querySelector('img');
+            const src = item.getAttribute('data-image') || imgEl?.getAttribute('src') || '';
+            const fallback = item.getAttribute('data-fallback-image') || imgEl?.getAttribute('src') || src;
+            const title = item.getAttribute('data-title') || imgEl?.getAttribute('alt') || '';
+            const description = item.getAttribute('data-description') || '';
+            const alt = imgEl?.getAttribute('alt') || title;
+
+            return {
+                src,
+                fallback,
+                title,
+                description,
+                alt,
+            };
+        });
+
+    let galleryImages = collectDomGalleryData();
 
     // Track which image is currently being displayed
     let currentImageIndex = 0;
@@ -264,72 +281,54 @@ function initGallery() {
      * Why cache? Avoids making API requests every time user navigates between images.
      */
     async function refreshGalleryImages() {
-        // Check if cache exists and is still fresh
         const now = Date.now();
         if (galleryCache && now - cacheTimestamp < CACHE_DURATION) {
-            // Use cached data (fast path, no API call)
             galleryImages = galleryCache;
             updateCounter();
             return;
         }
 
-        // Cache is stale or doesn't exist, fetch from API
+        const domData = collectDomGalleryData();
+
         try {
-            // Fetch gallery images from API (limit to 20 for performance)
             const response = await fetch('/api/gallery?limit=20');
             const result = await response.json();
 
             if (result.success) {
-                // Build list of images currently in DOM (in order)
-                const domItems = Array.from(document.querySelectorAll('.gallery-item'));
-                const domSourcesInOrder = domItems.map(item => item.getAttribute('data-image'));
-                // Create a Set for fast lookup (O(1) instead of O(n))
-                const domSet = new Set(domSourcesInOrder);
-
-                // Map API response to simple objects
                 const apiImages = result.data.map(item => ({
-                    src: item.imageUrl, // API uses 'imageUrl', we normalize to 'src'
-                    alt: item.title, // API uses 'title', we normalize to 'alt'
+                    src: item.imageUrl,
+                    fallback: item.originalUrl || item.imageUrl,
+                    title: item.title || '',
+                    description: item.description || '',
+                    alt: item.title || '',
                 }));
 
-                /**
-                 * Intersect API images with DOM images, keeping DOM order
-                 * This ensures we only show images that are actually on the page,
-                 * and in the same order they appear in the DOM
-                 */
-                const intersected = domSourcesInOrder
-                    .filter(src => domSet.has(src)) // Only keep images that exist in both
-                    .map(src => apiImages.find(ai => ai.src === src) || { src, alt: '' });
+                const apiMap = new Map(apiImages.map(image => [image.src, image]));
 
-                /**
-                 * Fallback if intersection is empty (e.g., different base URLs)
-                 * If API URLs don't match DOM URLs, just use DOM data
-                 */
-                galleryImages =
-                    intersected.length > 0
-                        ? intersected
-                        : domItems.map(item => ({
-                              src: item.getAttribute('data-image'),
-                              alt: item.querySelector('img')?.getAttribute('alt') || '',
-                          }));
+                galleryImages = domData.map(domImage => {
+                    const apiImage = apiMap.get(domImage.src);
+                    return {
+                        src: apiImage?.src || domImage.src,
+                        fallback: domImage.fallback || apiImage?.fallback || domImage.src,
+                        title: domImage.title || apiImage?.title || '',
+                        description: domImage.description || apiImage?.description || '',
+                        alt: domImage.alt || apiImage?.alt || '',
+                    };
+                });
 
-                // Save to cache for next time
                 galleryCache = galleryImages;
                 cacheTimestamp = now;
-
-                // Update the counter display
                 updateCounter();
+                return;
             }
         } catch (error) {
-            console.error('Error refreshing gallery images:', error);
-            // Fallback to DOM list if API is unavailable
-            // This ensures gallery still works even if API is down
-            galleryImages = Array.from(galleryItems).map(item => ({
-                src: item.getAttribute('data-image'),
-                alt: item.querySelector('img')?.getAttribute('alt') || '', // Use optional chaining for safety
-            }));
-            updateCounter();
+            console.warn('Failed to refresh gallery images, falling back to DOM data:', error);
         }
+
+        galleryImages = domData;
+        galleryCache = galleryImages;
+        cacheTimestamp = now;
+        updateCounter();
     }
 
     /**
@@ -374,29 +373,63 @@ function initGallery() {
             currentImageIndex = index;
         }
 
-        // Get the image data for current index
-        const currentImage = galleryImages[currentImageIndex];
+        const currentImage = galleryImages[currentImageIndex] || {};
+        const fallbackSrc = currentImage.fallback || currentImage.src || '';
+        const optimizedSrc = currentImage.src || fallbackSrc;
 
-        // Update modal image source and alt text
-        modalImage.src = currentImage.src;
-        modalImage.alt = currentImage.alt || '';
+        // Track request to avoid race conditions
+        const requestId = ++modalImageRequestId;
+        modalImage.dataset.requestId = String(requestId);
 
-        /**
-         * Populate title/description if available in DOM
-         * Some gallery items have data-title and data-description attributes
-         */
-        const domItem = document.querySelectorAll('.gallery-item')[currentImageIndex];
+        // Apply loading state
+        modalImage.style.opacity = '0.5';
+
+        // Reset previous handlers
+        modalImage.onload = null;
+        modalImage.onerror = null;
+
+        modalImage.onload = function () {
+            if (this.dataset.requestId !== String(requestId)) {
+                return;
+            }
+            this.style.opacity = '1';
+        };
+
+        modalImage.onerror = function () {
+            if (this.dataset.requestId !== String(requestId)) {
+                return;
+            }
+            this.style.opacity = '1';
+            if (fallbackSrc && this.src !== fallbackSrc) {
+                this.src = fallbackSrc;
+            }
+        };
+
+        if (fallbackSrc) {
+            modalImage.src = fallbackSrc;
+        } else {
+            modalImage.removeAttribute('src');
+        }
+
+        if (optimizedSrc && optimizedSrc !== fallbackSrc) {
+            const preloadImage = new Image();
+            preloadImage.onload = function () {
+                if (modalImage.dataset.requestId === String(requestId)) {
+                    modalImage.src = optimizedSrc;
+                }
+            };
+            preloadImage.src = optimizedSrc;
+        }
+
+        modalImage.alt = currentImage.alt || currentImage.title || '';
+
         const titleEl = document.getElementById('modalImageTitle');
         const descEl = document.getElementById('modalImageDescription');
-
-        if (domItem) {
-            // Extract title and description from data attributes
-            const t = domItem.getAttribute('data-title') || '';
-            const d = domItem.getAttribute('data-description') || '';
-
-            // Update modal text if elements exist
-            if (titleEl) titleEl.textContent = t;
-            if (descEl) descEl.textContent = d;
+        if (titleEl) {
+            titleEl.textContent = currentImage.title || '';
+        }
+        if (descEl) {
+            descEl.textContent = currentImage.description || '';
         }
 
         // Update counter display

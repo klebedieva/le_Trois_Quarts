@@ -72,7 +72,10 @@
                 </div>
                 <div class="col-lg-6">
                     <div class="about-image text-center">
-                        <img src="{{ asset('static/img/restaurant_1.jpg') }}" alt="À propos du restaurant" class="img-fluid rounded shadow about-photo">
+                        <picture>
+                            <source srcset="{{ asset('static/img/restaurant_1.jpg')|imagine_filter('hero_webp') }}" type="image/webp">
+                            <img src="{{ asset('static/img/restaurant_1.jpg')|imagine_filter('hero_jpeg') }}" alt="À propos du restaurant" class="img-fluid rounded shadow about-photo" loading="lazy">
+                        </picture>
                     </div>
                 </div>
             </div>
@@ -152,9 +155,21 @@
                     </div>
                 {% else %}
                     {% for image in galleryImages %}
+                        {% set imagePath = image.fullImagePath %}
                         <div class="col-lg-4 col-md-6">
-                            <div class="gallery-item rounded-2" data-bs-toggle="modal" data-bs-target="#galleryModal" data-image="{{ asset(image.fullImagePath) }}" data-title="{{ image.title }}" data-description="{{ image.description }}">
-                                <img src="{{ asset(image.fullImagePath) }}" alt="{{ image.title }}" class="img-fluid">
+                            <div
+                                class="gallery-item rounded-2"
+                                data-bs-toggle="modal"
+                                data-bs-target="#galleryModal"
+                                data-image="{{ asset(imagePath)|imagine_filter('hero_jpeg') }}"
+                                data-fallback-image="{{ asset(imagePath) }}"
+                                data-title="{{ image.title|default('') }}"
+                                data-description="{{ image.description|default('') }}"
+                            >
+                                <picture>
+                                    <source srcset="{{ asset(imagePath)|imagine_filter('gallery_webp') }}" type="image/webp">
+                                    <img src="{{ asset(imagePath) }}" alt="{{ image.title }}" class="img-fluid" loading="lazy">
+                                </picture>
                                 <div class="gallery-overlay">
                                     <i class="bi bi-zoom-in"></i>
                                 </div>

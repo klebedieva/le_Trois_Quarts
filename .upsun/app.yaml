@@ -25,6 +25,7 @@ applications:
                 display_errors: '0'
                 display_startup_errors: '0'
                 max_execution_time: '30'
+                memory_limit: '256M'
                 zend.assertions: '-1'
                 assert.active: '0'
                 session.use_strict_mode: '1'
@@ -48,6 +49,10 @@ applications:
         hooks:
             build: |
                 set -e
+                apt-get update
+                apt-get install -y jpegoptim pngquant
+                find public/static/img -type f -name '*.jpg' -o -name '*.jpeg' -exec jpegoptim --strip-all --max=82 {} +
+                find public/static/img -type f -name '*.png' -exec pngquant --force --ext .png --quality=65-80 {} +
                 composer install --no-dev --optimize-autoloader --apcu-autoloader
                 php bin/console importmap:install --no-interaction || true
                 php bin/console assets:install --relative public
