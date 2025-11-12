@@ -9,6 +9,8 @@ use App\Repository\MenuItemRepository;
 use App\Repository\ReviewRepository;
 use App\Repository\DrinkRepository;
 use App\Entity\MenuItem;
+use Liip\ImagineBundle\Imagine\Cache\CacheManager;
+use Psr\Log\LoggerInterface;
 
 /**
  * Public menu and dish detail pages.
@@ -21,13 +23,13 @@ use App\Entity\MenuItem;
 final class MenuController extends AbstractController
 {
     #[Route('/menu', name: 'app_menu')]
-    public function index(MenuItemRepository $menuItemRepository, DrinkRepository $drinkRepository): Response
+    public function index(MenuItemRepository $menuItemRepository, DrinkRepository $drinkRepository, CacheManager $cacheManager, LoggerInterface $logger): Response
     {
         // Récupérer toutes les entrées du menu depuis la base de données
         $items = $menuItemRepository->findAll();
 
         // Normaliser les entités pour le front (structure attendue par static/js/menu.js)
-        $menuItems = array_map(static function (MenuItem $item): array {
+        $menuItems = array_map(static function (MenuItem $item) use ($cacheManager, $logger): array {
             // Extraire les badges (ex. noms ou slugs)
             $badges = [];
             if (method_exists($item, 'getBadges')) {
@@ -62,6 +64,22 @@ final class MenuController extends AbstractController
                 }
             }
 
+            $normalizedImage = $image ? ltrim($image, '/') : null;
+            $imageJpegPath = $imageWebpPath = $imageHeroPath = $imageHeroWebpPath = null;
+            if ($normalizedImage) {
+                try {
+                    $imageJpegPath = $cacheManager->getBrowserPath($normalizedImage, 'gallery_jpeg');
+                    $imageWebpPath = $cacheManager->getBrowserPath($normalizedImage, 'gallery_webp');
+                    $imageHeroPath = $cacheManager->getBrowserPath($normalizedImage, 'hero_jpeg');
+                    $imageHeroWebpPath = $cacheManager->getBrowserPath($normalizedImage, 'hero_webp');
+                } catch (\Throwable $e) {
+                    $logger->warning('LiipImagine failed to generate menu image variant', [
+                        'path' => $normalizedImage,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             return [
                 // Forcer l'ID en string pour correspondre au JS (comparaisons strictes)
                 'id' => (string) $item->getId(),
@@ -70,6 +88,11 @@ final class MenuController extends AbstractController
                 'price' => (float) $item->getPrice(),
                 'category' => $item->getCategory(), // valeurs attendues: entrees|plats|desserts|boissons
                 'image' => $image,
+                'image_original' => $image,
+                'image_optimized' => $imageJpegPath,
+                'image_webp' => $imageWebpPath,
+                'image_full' => $imageHeroPath ?? $image,
+                'image_full_webp' => $imageHeroWebpPath,
                 'badges' => $badges,
                 'tags' => $tags,
             ];

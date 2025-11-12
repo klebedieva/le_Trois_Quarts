@@ -80,6 +80,7 @@ Thumbs.db
 
 # Upload directories (if any)
 public/uploads/
+public/media/
 
 # Postman collections (local development/testing)
 *.postman_collection.json

@@ -59,6 +59,15 @@
             "./config/routes/easyadmin.yaml"
         ]
     },
+    "liip/imagine-bundle": {
+        "version": "2.15",
+        "recipe": {
+            "repo": "github.com/symfony/recipes-contrib",
+            "branch": "main",
+            "version": "1.8",
+            "ref": "d1227d002b70d1a1f941d91845fcd7ac7fbfc929"
+        }
+    },
     "nelmio/api-doc-bundle": {
         "version": "5.6",
         "recipe": {

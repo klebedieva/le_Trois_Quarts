@@ -9,6 +9,9 @@
 {% block body %}
     <!-- Gallery Header -->
     <section class="gallery-header">
+        <picture class="hero-media">
+            <img src="{{ asset('static/img/galerie.jpg') }}" alt="Galerie photo du Trois Quarts" loading="lazy">
+        </picture>
         <div class="container">
             <div class="row">
                 <div class="col-lg-8 mx-auto text-center text-white">
@@ -42,12 +45,17 @@
         <div class="container">
             <div class="row g-3" id="galleryContainer">
                 {% for image in images %}
+                {% set imagePath = 'static/img/' ~ image.imagePath %}
                 <div class="col-lg-4 col-md-6 gallery-item{% if loop.index > 12 %} gallery-item-hidden{% endif %}" data-category="{{ image.category }}">
                     <div class="gallery-card" 
-                         data-image="{{ asset('static/img/' ~ image.imagePath) }}" 
+                         data-image="{{ asset(imagePath)|imagine_filter('hero_jpeg') }}" 
+                         data-fallback-image="{{ asset(imagePath) }}" 
                          data-title="{{ image.title }}" 
                          data-description="{{ image.description }}">
-                        <img src="{{ asset('static/img/' ~ image.imagePath) }}" alt="{{ image.title }}" class="img-fluid">
+                        <picture>
+                            <source srcset="{{ asset(imagePath)|imagine_filter('gallery_webp') }}" type="image/webp">
+                            <img src="{{ asset(imagePath) }}" alt="{{ image.title }}" class="img-fluid" loading="lazy">
+                        </picture>
                         <div class="gallery-overlay">
                             <div class="gallery-content">
                                 <h5>{{ image.title }}</h5>

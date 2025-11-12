@@ -10,6 +10,15 @@
 
 'use strict';
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // ============================================================================
 // FILTER STATE
 // ============================================================================
@@ -639,11 +648,26 @@ function renderMenuItem(item, qtyById /* Map<string,id> -> quantity */) {
             maximumFractionDigits: 0,
         }) + '€';
 
+    const imageOriginal = item.image_original || item.image || '/static/img/menu-placeholder.jpg';
+    const imageOriginalEscaped = imageOriginal.replace(/'/g, '\\\'');
+    const imageJpeg = item.image_optimized || item.image_full || imageOriginal;
+    const imageWebp = item.image_webp || item.image_full_webp || '';
+
+    const pictureMarkup = `
+        <picture>
+            ${imageWebp ? `<source srcset="${imageWebp}" type="image/webp">` : ''}
+            <img src="${imageJpeg}" alt="${escapeHtml(item.name)}" loading="lazy" onerror="this.onerror=null;this.src='${imageOriginalEscaped}'">
+        </picture>
+    `;
+
     return `
         <div class="col-lg-4 col-md-6">
             <article class="menu-card shadow-sm hover-shadow h-100" data-item-id="${item.id}" role="article" aria-labelledby="menu-item-${item.id}-title">
                 <div class="menu-card-image">
-                    <img src="${item.image}" alt="${item.name}" loading="lazy">
+                    ${pictureMarkup.replace(
+                        '<img',
+                        `<img onerror="this.onerror=null;this.src='${imageOriginal}';"`
+                    )}
                     <div class="menu-card-overlay">
                         <a href="/dish/${item.id}" class="quick-view-btn" aria-label="Voir les détails de ${item.name}">
                             <i class="bi bi-eye me-2" aria-hidden="true"></i>Voir détails
