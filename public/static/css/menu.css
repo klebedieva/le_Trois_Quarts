@@ -766,7 +766,7 @@
         @media (max-width: 768px) {
             .menu-filters { padding: 1.25rem; }
             .filter-categories { justify-content: center; gap: 0.4rem; margin-bottom: 0.75rem; }
-            .filter-category { font-size: 0.75rem; padding: 0.4rem 0.8rem; letter-spacing: 0.2px; }
+            .filter-category { font-size: 1rem !important; padding: 0.4rem 0.8rem; letter-spacing: 0.2px; }
             .filter-category .emoji { font-size: 0.8rem; }
             .search-filter-row { flex-direction: column; align-items: stretch; gap: 0.75rem; }
             .search-price-row { display: flex; flex-direction: row; gap: 0.75rem; align-items: center; justify-content: center; }
@@ -785,7 +785,7 @@
 
         @media (max-width: 576px) {
             .menu-section-title { font-size: 2rem; }
-            .filter-category { font-size: 0.75rem; padding: 0.4rem 0.8rem; }
+            .filter-category { font-size: 1rem !important; padding: 0.4rem 0.8rem; }
             .filter-category .emoji { font-size: 0.9rem; }
             .search-price-row { gap: 0.5rem; }
             .menu-search { min-width: 180px !important; max-width: 240px !important; }

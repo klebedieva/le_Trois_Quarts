@@ -737,7 +737,7 @@ footer a.text-white:hover {
   
   .d-flex.flex-column.flex-sm-row.justify-content-center.align-items-center.gap-3 .btn {
     padding: 12px 24px !important;
-    font-size: 1.5rem !important;
+    font-size: 1rem !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.5px !important;
@@ -785,6 +785,12 @@ footer a.text-white:hover {
   }
 }
 
+@media (max-width: 768px) {
+  .d-flex.flex-column.flex-sm-row.justify-content-center.align-items-center.gap-3 .btn {
+    font-size: 1.3rem !important;
+  }
+}
+
 @media (max-width: 576px) {
     .menu-card-content {
         padding: 1.5rem;
@@ -806,13 +812,13 @@ footer a.text-white:hover {
     /* Larger buttons for very small screens for better touch interaction */
     .hero-buttons .btn {
         padding: 12px 24px !important;
-        font-size: 1rem !important;
+        font-size: 1.2rem !important;
         font-weight: 600 !important;
     }
     
     .d-flex.flex-column.flex-sm-row.justify-content-center.align-items-center.gap-3 .btn {
         padding: 12px 24px !important;
-        font-size: 1rem !important;
+        font-size: 1.2rem !important;
         font-weight: 600 !important;
     }
     

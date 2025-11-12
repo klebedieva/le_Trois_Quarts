@@ -146,7 +146,7 @@ section.reviews-list.bg-info {
     box-shadow: var(--shadow);
     transition: var(--transition);
     border: 1px solid var(--border-color);
-    height: 300px;
+    min-height: 320px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -211,9 +211,8 @@ section.reviews-list.bg-info {
     font-size: 1.1rem;
     flex-grow: 1;
     overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
+    display: block;
+    max-height: none;
 }
 
 .review-rating {
@@ -333,13 +332,24 @@ section.reviews-list.bg-info {
         min-height: 70vh;
         max-height: 70vh;
     }
+
+    .review-item {
+        height: auto;
+        min-height: 360px;
+    }
+
+    .review-text {
+        -webkit-line-clamp: 6;
+    }
 }
 
 @media (max-width: 576px) {
     .review-item {
         padding: 1.5rem;
+        height: auto;
+        min-height: 340px;
     }
-    
+
     .stat-item h3 {
         font-size: 1.8rem;
     }

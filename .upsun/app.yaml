@@ -11,11 +11,9 @@ applications:
                 - opcache
                 - pdo_mysql
                 - sodium
-
-        dependencies:
-            apt:
-                jpegoptim: '*'
-                pngquant: '*'
+            packages:
+                - jpegoptim
+                - pngquant
 
         mounts:
             "/var": "shared:files/var"
