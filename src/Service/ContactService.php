@@ -37,6 +37,7 @@ class ContactService
         $message->setPhone($dto->phone);
         $message->setSubject($dto->subject);
         $message->setMessage($dto->message);
+        $message->setConsent((bool) ($dto->consent ?? false));
 
         $this->entityManager->persist($message);
         $this->entityManager->flush();

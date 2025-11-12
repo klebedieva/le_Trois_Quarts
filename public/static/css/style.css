@@ -2063,6 +2063,6 @@ footer .footer-logo-row {
 @media (max-width: 576px) {
     .btn,
     button {
-        font-size: 1.5rem !important;
+        font-size: 1.2rem !important;
     }
 }
