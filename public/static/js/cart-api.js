@@ -942,64 +942,6 @@ window.addToCartSidebar = async function (itemId) {
     }
 };
 
-// ============================================================================
-// MENU PAGE CART FUNCTIONS
-// ============================================================================
-
-/**
- * Add a menu item to the cart (called from menu page)
- *
- * This function is used when clicking the "+" button on menu items.
- *
- * @param {string|number} itemId - The ID of the menu item to add
- * @global
- */
-window.addMenuItemToCart = async function (itemId) {
-    try {
-        // Add item to cart (quantity = 1)
-        await window.cartAPI.addItem(itemId, 1);
-
-        // Update UI
-        await updateCartNavigation();
-        await updateCartSidebar();
-
-        // Dispatch event for other components
-        window.dispatchEvent(new CustomEvent('cartUpdated'));
-    } catch (error) {
-        // Show non-blocking notification instead of alert
-        // Alerts are disruptive and block user interaction
-        if (window.showCartNotification) {
-            window.showCartNotification("Erreur lors de l'ajout au panier", 'error');
-        }
-        console.error('Error adding menu item to cart:', error);
-    }
-};
-
-/**
- * Remove a menu item from the cart (called from menu page)
- *
- * This function is used when clicking the "-" button on menu items.
- *
- * @param {string|number} itemId - The ID of the menu item to remove
- * @global
- */
-window.removeMenuItemFromCart = async function (itemId) {
-    try {
-        // Remove item from cart
-        await window.cartAPI.removeItem(itemId);
-
-        // Update UI
-        await updateCartNavigation();
-        await updateCartSidebar();
-
-        // Dispatch event for other components
-        window.dispatchEvent(new CustomEvent('cartUpdated'));
-    } catch (error) {
-        console.error('Error removing menu item from cart:', error);
-    }
-};
-
-// ============================================================================
 // CART NAVIGATION UPDATE
 // ============================================================================
 
