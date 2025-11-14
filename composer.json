@@ -76,8 +76,12 @@
     },
     "scripts": {
         "auto-scripts": {},
-        "post-install-cmd": [],
-        "post-update-cmd": []
+        "post-install-cmd": [
+            "@php bin/console asset-map:compile --env=prod --no-interaction"
+        ],
+        "post-update-cmd": [
+            "@php bin/console asset-map:compile --env=prod --no-interaction"
+        ]
     },
     "conflict": {
         "symfony/symfony": "*"
