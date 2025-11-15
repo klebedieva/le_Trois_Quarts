@@ -69,6 +69,18 @@
         return formElementsCache;
     }
 
+    /**
+     * Helper to get element from cache
+     * Simplifies element access throughout the code
+     *
+     * @param {string} elementKey - Key in cached elements object
+     * @returns {HTMLElement|null} The element or null if not found
+     */
+    function getElement(elementKey) {
+        const elements = getFormElements();
+        return elements ? elements[elementKey] : null;
+    }
+
     // ============================================================================
     // INITIALIZATION
     // ============================================================================
@@ -188,10 +200,8 @@
              */
             if (input.name.includes('[date]')) {
                 input.addEventListener('change', function () {
-                    // Get time input from cache
-                    const elements = getFormElements();
-                    const timeInput = elements ? elements.timeSelect : null;
                     // If time is already selected, re-validate it
+                    const timeInput = getElement('timeSelect');
                     if (timeInput && timeInput.value) {
                         validateField(timeInput);
                     }
@@ -219,8 +229,7 @@
      * @param {string} selectedDate - Selected date in YYYY-MM-DD format
      */
     function updateTimeOptions(selectedDate) {
-        const elements = getFormElements();
-        const timeSelect = elements ? elements.timeSelect : null;
+        const timeSelect = getElement('timeSelect');
         if (!timeSelect) return;
 
         // Get today's date for comparison
@@ -417,8 +426,7 @@
                  * Check if time is in the past (only if selected date is today)
                  * For future dates, any time is valid
                  */
-                const elements = getFormElements();
-                const dateInput = elements ? elements.dateInput : null;
+                const dateInput = getElement('dateInput');
                 const selectedDate = dateInput ? dateInput.value : '';
                 const today = new Date().toISOString().split('T')[0];
 
@@ -471,18 +479,6 @@
         return result.valid;
     }
 
-    // ============================================================================
-    // VALIDATION HELPER FUNCTIONS
-    // ============================================================================
-
-    /**
-     * Set field as valid and clear error message
-     *
-     * This helper function reduces code duplication across validation functions.
-     *
-     * @param {HTMLElement} field - The input element to mark as valid
-     * @param {string} errorElementId - The ID of the error message element
-     */
     // ============================================================================
     // AJAX FORM SUBMISSION
     // ============================================================================

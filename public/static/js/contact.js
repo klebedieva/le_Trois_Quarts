@@ -85,6 +85,18 @@
         return formElementsCache;
     }
 
+    /**
+     * Helper to get element from cache
+     * Simplifies element access throughout the code
+     *
+     * @param {string} elementKey - Key in cached elements object
+     * @returns {HTMLElement|null} The element or null if not found
+     */
+    function getElement(elementKey) {
+        const elements = getFormElements();
+        return elements?.[elementKey] ?? null;
+    }
+
     // ============================================================================
     // REAL-TIME VALIDATION SETUP
     // ============================================================================
@@ -233,10 +245,9 @@
      * @returns {boolean} True if valid, false otherwise
      */
     function validateFirstName() {
-        const elements = getFormElements();
-        if (!elements || !elements.firstNameInput) return false;
+        const input = getElement('firstNameInput');
+        if (!input) return false;
 
-        const input = elements.firstNameInput;
         const value = input.value.trim();
         const errorElement = document.getElementById('firstNameError');
         const result = FV.validateName(value, 'Le prénom');
@@ -252,10 +263,9 @@
      * @returns {boolean} True if valid, false otherwise
      */
     function validateLastName() {
-        const elements = getFormElements();
-        if (!elements || !elements.lastNameInput) return false;
+        const input = getElement('lastNameInput');
+        if (!input) return false;
 
-        const input = elements.lastNameInput;
         const value = input.value.trim();
         const errorElement = document.getElementById('lastNameError');
         const result = FV.validateName(value, 'Le nom');
@@ -274,10 +284,9 @@
      * @returns {boolean} True if valid, false otherwise
      */
     function validateEmail() {
-        const elements = getFormElements();
-        if (!elements || !elements.emailInput) return false;
+        const input = getElement('emailInput');
+        if (!input) return false;
 
-        const input = elements.emailInput;
         const value = input.value.trim();
         const errorElement = document.getElementById('emailError');
         const result = FV.validateEmail(value, { label: `L'email` });
@@ -296,10 +305,9 @@
      * @returns {boolean} True if valid, false otherwise
      */
     function validatePhone() {
-        const elements = getFormElements();
-        if (!elements || !elements.phoneInput) return true; // No phone field, consider valid
+        const input = getElement('phoneInput');
+        if (!input) return true; // No phone field, consider valid
 
-        const input = elements.phoneInput;
         const value = input.value.trim();
         const errorElement = document.getElementById('phoneError');
 
@@ -327,10 +335,9 @@
      * @returns {boolean} True if valid, false otherwise
      */
     function validateSubject() {
-        const elements = getFormElements();
-        if (!elements || !elements.subjectInput) return false;
+        const input = getElement('subjectInput');
+        if (!input) return false;
 
-        const input = elements.subjectInput;
         const value = input.value;
         const errorElement = document.getElementById('subjectError');
 
@@ -359,10 +366,9 @@
      * @returns {boolean} True if valid, false otherwise
      */
     function validateMessage() {
-        const elements = getFormElements();
-        if (!elements || !elements.messageInput) return false;
+        const input = getElement('messageInput');
+        if (!input) return false;
 
-        const input = elements.messageInput;
         const value = input.value.trim();
         const errorElement = document.getElementById('messageError');
 
@@ -385,10 +391,9 @@
      * @returns {boolean} True if valid, false otherwise
      */
     function validateConsent() {
-        const elements = getFormElements();
-        if (!elements || !elements.consentInput) return false;
+        const input = getElement('consentInput');
+        if (!input) return false;
 
-        const input = elements.consentInput;
         const errorElement = document.getElementById('consentError');
 
         // Check if checkbox is checked (required)
@@ -406,18 +411,9 @@
     }
 
     // ============================================================================
-    // VALIDATION HELPER FUNCTIONS
+    // AUTO-HIDE SUCCESS MESSAGE
     // ============================================================================
 
-    /**
-     * Set field as invalid and show error message
-     *
-     * This helper function reduces code duplication across validation functions.
-     *
-     * @param {HTMLElement} input - The input element to mark as invalid
-     * @param {HTMLElement} errorElement - The error message element
-     * @param {string} message - The error message to display
-     */
     /**
      * Set up auto-hide for success message
      *
@@ -470,10 +466,8 @@
      * - Can show inline notifications
      */
     function submitContactForm() {
-        const elements = getFormElements();
-        if (!elements || !elements.submitBtn) return;
-
-        const submitBtn = elements.submitBtn;
+        const submitBtn = getElement('submitBtn');
+        if (!submitBtn) return;
 
         // Store original button text for restoration
         const originalText = submitBtn.innerHTML;
@@ -494,14 +488,22 @@
         const formData = new FormData();
 
         // Collect all form field values (using cached elements)
-        formData.append('firstName', elements.firstNameInput.value.trim());
-        formData.append('lastName', elements.lastNameInput.value.trim());
-        formData.append('email', elements.emailInput.value.trim());
-        formData.append('phone', elements.phoneInput ? elements.phoneInput.value.trim() : '');
-        formData.append('subject', elements.subjectInput.value);
-        formData.append('message', elements.messageInput.value.trim());
+        const firstNameInput = getElement('firstNameInput');
+        const lastNameInput = getElement('lastNameInput');
+        const emailInput = getElement('emailInput');
+        const phoneInput = getElement('phoneInput');
+        const subjectInput = getElement('subjectInput');
+        const messageInput = getElement('messageInput');
+        const consentInput = getElement('consentInput');
+
+        formData.append('firstName', firstNameInput?.value.trim() || '');
+        formData.append('lastName', lastNameInput?.value.trim() || '');
+        formData.append('email', emailInput?.value.trim() || '');
+        formData.append('phone', phoneInput?.value.trim() || '');
+        formData.append('subject', subjectInput?.value || '');
+        formData.append('message', messageInput?.value.trim() || '');
         // Convert checkbox boolean to string ('1' or '0')
-        formData.append('consent', elements.consentInput.checked ? '1' : '0');
+        formData.append('consent', consentInput?.checked ? '1' : '0');
 
         /**
          * Add CSRF token to form data

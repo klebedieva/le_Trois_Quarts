@@ -70,6 +70,20 @@
         return formElementsCache[modalId];
     }
 
+    /**
+     * Helper to get element from cache or fallback to direct query
+     * Simplifies element access throughout the code
+     *
+     * @param {string} modalId - The modal ID
+     * @param {string} elementKey - Key in cached elements object
+     * @param {string} fallbackId - Fallback element ID if cache unavailable
+     * @returns {HTMLElement|null} The element or null if not found
+     */
+    function getElement(modalId, elementKey, fallbackId) {
+        const elements = getFormElements(modalId);
+        return elements?.[elementKey] ?? (fallbackId ? document.getElementById(fallbackId) : null);
+    }
+
     // ============================================================================
     // INITIALIZATION
     // ============================================================================
@@ -154,11 +168,7 @@
                 if (group) {
                     // Find modal ID (for multiple modals support)
                     const modalId = group.closest('.modal')?.id || 'addReviewModal';
-                    // Use cache if available, otherwise fallback to direct query
-                    const elements = getFormElements(modalId);
-                    const ratingInput = elements
-                        ? elements.ratingInput
-                        : document.getElementById(modalId + 'Rating');
+                    const ratingInput = getElement(modalId, 'ratingInput', modalId + 'Rating');
 
                     if (!ratingInput) {
                         return;
@@ -188,10 +198,7 @@
             }
 
             const modalId = group.closest('.modal')?.id || 'addReviewModal';
-            const elements = getFormElements(modalId);
-            const ratingInput = elements
-                ? elements.ratingInput
-                : document.getElementById(modalId + 'Rating');
+            const ratingInput = getElement(modalId, 'ratingInput', modalId + 'Rating');
             if (!ratingInput) {
                 return;
             }
@@ -281,11 +288,7 @@
                 if (e.target && e.target.classList && e.target.classList.contains('rating-stars')) {
                     const group = e.target;
                     const modalId = group.closest('.modal')?.id || 'addReviewModal';
-                    // Use cache if available, otherwise fallback to direct query
-                    const elements = getFormElements(modalId);
-                    const ratingInput = elements
-                        ? elements.ratingInput
-                        : document.getElementById(modalId + 'Rating');
+                    const ratingInput = getElement(modalId, 'ratingInput', modalId + 'Rating');
                     const stars = group.querySelectorAll('.star-rating');
 
                     if (!ratingInput) return;
@@ -302,9 +305,9 @@
     /**
      * Set up star rating for a specific modal
      *
-     * This function is called when a modal is shown. It sets up event listeners
-     * for stars within that modal. We clone stars to remove any existing listeners
-     * to prevent duplicate event handlers.
+     * This function is called when a modal is shown. It ensures the rating
+     * display is synchronized with the current value. Event delegation in
+     * setupStarRating handles all interactions, so we only need to sync state.
      *
      * @param {string} modalId - The ID of the modal containing the rating stars
      */
@@ -312,59 +315,10 @@
         const modal = document.getElementById(modalId);
         if (!modal) return;
 
-        const stars = modal.querySelectorAll('.star-rating');
-        // Use cache if available, otherwise fallback to direct query
-        const elements = getFormElements(modalId);
-        const ratingInput = elements
-            ? elements.ratingInput
-            : document.getElementById(modalId + 'Rating');
-
+        const ratingInput = getElement(modalId, 'ratingInput', modalId + 'Rating');
         if (!ratingInput) return;
 
-        /**
-         * Clone stars to remove existing listeners
-         * This prevents duplicate event handlers when modal is reopened
-         */
-        stars.forEach(star => {
-            // Clone node to remove all event listeners
-            star.replaceWith(star.cloneNode(true));
-        });
-
-        // Re-query after cloning (cloned nodes are new references)
-        const newStars = modal.querySelectorAll('.star-rating');
-
-        /**
-         * Add event listeners to cloned stars
-         * These listeners handle clicks and hover for this specific modal
-         */
-        newStars.forEach(star => {
-            // Handle star click
-            star.addEventListener('click', function () {
-                const rating = parseInt(this.getAttribute('data-rating'));
-
-                setRating(rating, ratingInput);
-                validateRating(ratingInput);
-            });
-
-            // Handle star hover
-            star.addEventListener('mouseenter', function () {
-                const rating = parseInt(this.getAttribute('data-rating'));
-                highlightStars(rating, newStars);
-            });
-        });
-
-        /**
-         * Handle star group mouse leave
-         * Reset to selected rating when user leaves star group
-         */
-        const group = modal.querySelector('.rating-stars');
-        if (group) {
-            group.addEventListener('mouseleave', function () {
-                const currentRating = parseInt(ratingInput.value);
-                highlightStars(currentRating, newStars, { updateAria: true });
-            });
-        }
-
+        // Sync star display with current rating value
         const currentRatingValue = parseInt(ratingInput.value) || 0;
         setRating(currentRatingValue, ratingInput);
     }
@@ -561,22 +515,20 @@
                 /**
                  * Validate all fields before submission
                  * All validations must pass for form to be submitted
-                 * Use cached elements if available
                  */
-                const elements = getFormElements(modalId);
                 const isNameValid = validateName(
-                    elements ? elements.nameInput : document.getElementById(modalId + 'Name'),
+                    getElement(modalId, 'nameInput', modalId + 'Name'),
                     modalId
                 );
                 const isEmailValid = validateEmail(
-                    elements ? elements.emailInput : document.getElementById(modalId + 'Email'),
+                    getElement(modalId, 'emailInput', modalId + 'Email'),
                     modalId
                 );
                 const isRatingValid = validateRating(
-                    elements ? elements.ratingInput : document.getElementById(modalId + 'Rating')
+                    getElement(modalId, 'ratingInput', modalId + 'Rating')
                 );
                 const isCommentValid = validateComment(
-                    elements ? elements.textInput : document.getElementById(modalId + 'Text'),
+                    getElement(modalId, 'textInput', modalId + 'Text'),
                     modalId
                 );
 
@@ -617,11 +569,7 @@
         if (!input) return true; // No input element, consider valid
 
         const value = input.value.trim();
-        // Use cache if available, otherwise fallback to direct query
-        const elements = getFormElements(modalId);
-        const errorElement = elements
-            ? elements.nameError
-            : document.getElementById(modalId + 'NameError');
+        const errorElement = getElement(modalId, 'nameError', modalId + 'NameError');
 
         const result = FV.validateName(value, 'Le nom');
         FV.applyFieldState(input, errorElement, result);
@@ -643,11 +591,7 @@
         if (!input) return true; // No input element, consider valid
 
         const value = input.value.trim();
-        // Use cache if available, otherwise fallback to direct query
-        const elements = getFormElements(modalId);
-        const errorElement = elements
-            ? elements.emailError
-            : document.getElementById(modalId + 'EmailError');
+        const errorElement = getElement(modalId, 'emailError', modalId + 'EmailError');
 
         const result = FV.validateEmail(value, {
             label: "L'email",
@@ -675,11 +619,7 @@
 
         const value = parseInt(ratingInput.value);
         const modalId = ratingInput.id.replace('Rating', '');
-        // Use cache if available, otherwise fallback to direct query
-        const elements = getFormElements(modalId);
-        const errorElement = elements
-            ? elements.ratingError
-            : document.getElementById(modalId + 'RatingError');
+        const errorElement = getElement(modalId, 'ratingError', modalId + 'RatingError');
 
         const result =
             value === 0 || isNaN(value)
@@ -706,11 +646,7 @@
         if (!input) return true; // No input element, consider valid
 
         const value = input.value.trim();
-        // Use cache if available, otherwise fallback to direct query
-        const elements = getFormElements(modalId);
-        const errorElement = elements
-            ? elements.textError
-            : document.getElementById(modalId + 'TextError');
+        const errorElement = getElement(modalId, 'textError', modalId + 'TextError');
 
         const result = FV.validateMessage(value, {
             label: "L'avis",
@@ -849,25 +785,11 @@
                      * Use Bootstrap Modal API to properly close modal
                      */
                     const openModalEl = document.getElementById(modalId);
-                    if (openModalEl) {
-                        // Try to get existing modal instance
-                        const modalInstance = window.bootstrap
-                            ? window.bootstrap.Modal.getInstance(openModalEl)
-                            : null;
-                        if (modalInstance) {
-                            // Use existing instance to close
-                            modalInstance.hide();
-                        } else {
-                            // If no instance, create one and hide
-                            const newModalInstance = window.bootstrap
-                                ? new window.bootstrap.Modal(openModalEl)
-                                : null;
-                            if (newModalInstance) {
-                                newModalInstance.hide();
-                            } else {
-                                openModalEl.classList.remove('show');
-                            }
-                        }
+                    if (openModalEl && window.bootstrap) {
+                        const modalInstance =
+                            window.bootstrap.Modal.getInstance(openModalEl) ||
+                            new window.bootstrap.Modal(openModalEl);
+                        modalInstance.hide();
                     }
 
                     /**
@@ -903,13 +825,11 @@
                  * User shouldn't be stuck with open modal on error
                  */
                 const openModalEl = document.getElementById(modalId);
-                if (openModalEl) {
-                    const modalInstance = window.bootstrap
-                        ? window.bootstrap.Modal.getInstance(openModalEl)
-                        : null;
-                    if (modalInstance) {
-                        modalInstance.hide();
-                    }
+                if (openModalEl && window.bootstrap) {
+                    const modalInstance =
+                        window.bootstrap.Modal.getInstance(openModalEl) ||
+                        new window.bootstrap.Modal(openModalEl);
+                    modalInstance.hide();
                 }
             })
             .finally(() => {
@@ -994,18 +914,17 @@
     /**
      * Show success notification message
      *
-     * Wrapper function for backward compatibility and convenience.
-     *
-     * @param {string} message - The success message to display (ignored, uses default message)
+     * @param {string} message - Optional custom message (defaults to standard success message)
      */
-    function showSuccessMessage() {
-        showNotification('Votre avis a été envoyé et sera publié après modération.', 'success');
+    function showSuccessMessage(message) {
+        showNotification(
+            message || 'Votre avis a été envoyé et sera publié après modération.',
+            'success'
+        );
     }
 
     /**
      * Show error notification message
-     *
-     * Wrapper function for backward compatibility and convenience.
      *
      * @param {string} message - The error message to display
      */

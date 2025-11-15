@@ -234,21 +234,36 @@
     background: #ffffff;
     border-radius: 20px;
     box-shadow: var(--shadow);
-    padding: 2rem;
-    max-width: 650px;
+    padding: 2rem !important;
+    max-width: 700px;
     margin: 0 auto;
+    box-sizing: border-box;
 }
 
 .contact-form-card {
     background: #fefcf8;
     border-radius: 1rem;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    padding: 2.5rem;
-    border: 1px solid rgba(212, 165, 116, 0.1);
+    padding: 2rem !important;
+    border: none;
     position: relative;
     overflow: hidden;
-    max-width: 650px;
+    max-width: 700px;
     margin: 0 auto;
+    box-sizing: border-box;
+}
+
+/* Responsive adjustments for contact form card */
+@media (max-width: 992px) {
+    .contact-form-card {
+        padding: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .contact-form-card {
+        padding: 1.5rem;
+    }
 }
 
 @media (max-width: 576px) {

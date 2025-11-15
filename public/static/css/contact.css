@@ -23,11 +23,8 @@
 .contact-header::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(139, 69, 19, 0.35), rgba(212, 165, 116, 0.25)), linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.4));
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 69, 19, 0.35), rgba(212, 165, 116, 0.25)), linear-gradient(to bottom, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.45));
     z-index: 1;
 }
 
@@ -196,6 +193,11 @@ section.contact-section .contact-info {
     border-color: #e74c3c;
     border-width: 1px;
     box-shadow: 0 0 0 0.1rem rgba(231, 76, 60, 0.15);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='M6 3v4M6 9h.01'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right calc(0.375em + 0.1875rem) center !important;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem) !important;
+    padding-right: calc(1.5em + 0.75rem) !important;
 }
 
 .contact-form .form-control.is-valid,
@@ -205,15 +207,6 @@ section.contact-section .contact-info {
     box-shadow: 0 0 0 0.1rem rgba(39, 174, 96, 0.15);
     background-image: none !important;
     padding-right: 0.75rem !important;
-}
-
-.contact-form .form-control.is-invalid,
-.contact-form .form-select.is-invalid {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='M6 3v4M6 9h.01'/%3e%3c/svg%3e") !important;
-    background-repeat: no-repeat !important;
-    background-position: right calc(0.375em + 0.1875rem) center !important;
-    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem) !important;
-    padding-right: calc(1.5em + 0.75rem) !important;
 }
 
 .contact-form .invalid-feedback {

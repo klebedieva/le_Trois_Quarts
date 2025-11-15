@@ -197,23 +197,14 @@
 /* Hero Section */
 .hero-section {
     /* Remove external Pexels fallback; carousel slides supply local banner images */
-    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
-    background-position: center;
-    background-size: cover;
+    /* Background removed - overlay is handled by .carousel-overlay inside .carousel-banner */
     display: flex;
     align-items: center;
     position: relative;
     color: white;
 }
 
-.hero-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(212, 165, 116, 0.3), rgba(139, 69, 19, 0.3));
-}
+/* .hero-overlay is defined later in this file (near img.hero-media) */
 
 .hero-title {
     font-size: 4rem;
@@ -505,11 +496,8 @@ footer a.text-white:hover {
 }
 .carousel-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(139, 69, 19, 0.35), rgba(212, 165, 116, 0.25)), linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.4));
+  inset: 0;
+  background: linear-gradient(135deg, rgba(139, 69, 19, 0.35), rgba(212, 165, 116, 0.25)), linear-gradient(to bottom, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.45));
   z-index: 1;
 }
 .carousel-banner .container,
@@ -1612,11 +1600,9 @@ img.hero-media {
 .reservation-header::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(139, 69, 19, 0.35), rgba(212, 165, 116, 0.25)), linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.4));
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 69, 19, 0.35), rgba(212, 165, 116, 0.25)), linear-gradient(to bottom, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.45));
+    z-index: 1;
 }
 
 .reservation-header .container {
