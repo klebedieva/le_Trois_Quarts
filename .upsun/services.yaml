@@ -1,4 +1,0 @@
-services:
-    mysql:
-        type: mysql:10.6
-

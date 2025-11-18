@@ -355,15 +355,7 @@ function initGallery() {
      *
      * @param {number} index - The index of the image to show
      */
-    async function showImage(index) {
-        // Refresh gallery images to get latest data (uses cache if fresh)
-        await refreshGalleryImages();
-
-        // Safety check: if no images, do nothing
-        if (galleryImages.length === 0) {
-            return;
-        }
-
+    function showImage(index) {
         // Handle wrapping: if index is out of bounds, wrap around
         if (index < 0) {
             // Negative index: go to last image
@@ -374,6 +366,11 @@ function initGallery() {
         } else {
             // Valid index: use it
             currentImageIndex = index;
+        }
+
+        // Safety check: if no images, do nothing
+        if (galleryImages.length === 0) {
+            return;
         }
 
         const currentImage = galleryImages[currentImageIndex] || {};
@@ -455,11 +452,50 @@ function initGallery() {
      * When user clicks an image, open it in the modal
      */
     galleryItems.forEach((item, index) => {
-        item.addEventListener('click', async function () {
+        item.addEventListener('click', function (e) {
+            // Prevent Bootstrap's default modal opening behavior
+            // We'll open it manually after setting the image
+            e.preventDefault();
+            e.stopPropagation();
+            
             // Set current index to the clicked item
             currentImageIndex = index;
-            // Show the image in modal
-            await showImage(currentImageIndex);
+            // Show the image in modal immediately (using DOM data)
+            showImage(currentImageIndex);
+            
+            // Open modal manually after image is set
+            if (modal) {
+                const modalInstance = window.bootstrap.Modal.getOrCreateInstance(modal);
+                modalInstance.show();
+            }
+            
+            // Refresh gallery images in background (non-blocking)
+            // This updates the cache for future navigation but doesn't delay the first image
+            refreshGalleryImages().then(() => {
+                // If gallery was updated, refresh current image with latest data
+                if (galleryImages.length > 0 && currentImageIndex < galleryImages.length) {
+                    const updatedImage = galleryImages[currentImageIndex];
+                    if (updatedImage && modalImage.dataset.requestId) {
+                        // Only update if image data changed
+                        const currentSrc = modalImage.src;
+                        const newSrc = updatedImage.src || updatedImage.fallback;
+                        if (newSrc && currentSrc !== newSrc) {
+                            const requestId = ++modalImageRequestId;
+                            modalImage.dataset.requestId = String(requestId);
+                            modalImage.style.opacity = '0.5';
+                            
+                            const img = new Image();
+                            img.onload = function() {
+                                if (modalImage.dataset.requestId === String(requestId)) {
+                                    modalImage.src = newSrc;
+                                    modalImage.style.opacity = '1';
+                                }
+                            };
+                            img.src = newSrc;
+                        }
+                    }
+                }
+            });
         });
     });
 
@@ -468,8 +504,8 @@ function initGallery() {
      * Previous button: go to previous image (with wrapping)
      */
     if (prevBtn) {
-        prevBtn.addEventListener('click', async function () {
-            await showImage(currentImageIndex - 1);
+        prevBtn.addEventListener('click', function () {
+            showImage(currentImageIndex - 1);
         });
     }
 
@@ -477,8 +513,8 @@ function initGallery() {
      * Next button: go to next image (with wrapping)
      */
     if (nextBtn) {
-        nextBtn.addEventListener('click', async function () {
-            await showImage(currentImageIndex + 1);
+        nextBtn.addEventListener('click', function () {
+            showImage(currentImageIndex + 1);
         });
     }
 
@@ -487,15 +523,15 @@ function initGallery() {
      * Arrow keys: navigate between images
      * Escape: close the modal
      */
-    document.addEventListener('keydown', async function (e) {
+    document.addEventListener('keydown', function (e) {
         // Only handle keyboard if modal is currently open
         if (modal && modal.classList.contains('show')) {
             if (e.key === 'ArrowLeft') {
                 // Left arrow: previous image
-                await showImage(currentImageIndex - 1);
+                showImage(currentImageIndex - 1);
             } else if (e.key === 'ArrowRight') {
                 // Right arrow: next image
-                await showImage(currentImageIndex + 1);
+                showImage(currentImageIndex + 1);
             } else if (e.key === 'Escape') {
                 // Escape key: close modal
                 const modalInstance = window.bootstrap.Modal.getInstance(modal);

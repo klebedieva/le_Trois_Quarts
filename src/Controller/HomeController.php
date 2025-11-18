@@ -5,14 +5,12 @@ namespace App\Controller;
 use App\DTO\ReservationCreateRequest;
 use App\Entity\Review;
 use App\Entity\Reservation;
-use App\Enum\ReservationStatus;
 use App\Form\ReviewType;
 use App\Form\ReservationType;
 use App\Repository\ReviewRepository;
 use App\Repository\GalleryImageRepository;
 use App\Service\InputSanitizer;
 use App\Service\SymfonyEmailService;
-use App\Service\TableAvailabilityService;
 use App\Service\ValidationHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -44,14 +42,12 @@ class HomeController extends AbstractApiController
      *
      * Injects dependencies required for public pages and reservation handling:
      * - SymfonyEmailService: Sends email notifications for reservations
-     * - TableAvailabilityService: Checks table availability for reservations
      * - LoggerInterface: Logs errors for debugging
      * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
      * - ReservationService: Encapsulates reservation creation and persistence (business logic)
      * - ReviewService: Encapsulates review creation and persistence (business logic)
      *
      * @param SymfonyEmailService $emailService Email service for notifications
-     * @param TableAvailabilityService $availability Service for checking table availability
      * @param LoggerInterface $logger Logger for error tracking
      * @param ValidatorInterface $validator Symfony validator for DTO validation
      * @param ValidationHelper $validationHelper Helper for validation operations
@@ -60,7 +56,6 @@ class HomeController extends AbstractApiController
      */
     public function __construct(
         private SymfonyEmailService $emailService,
-        private TableAvailabilityService $availability,
         private LoggerInterface $logger,
         ValidatorInterface $validator,
         ValidationHelper $validationHelper,

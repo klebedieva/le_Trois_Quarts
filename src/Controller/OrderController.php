@@ -6,7 +6,6 @@ use App\DTO\ApiResponseDTO;
 use App\DTO\OrderCreateRequest;
 use App\DTO\OrderItemDTO;
 use App\DTO\OrderResponseDTO;
-use App\Service\InputSanitizer;
 use App\Service\ValidationHelper;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Psr\Log\LoggerInterface;

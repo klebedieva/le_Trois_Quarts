@@ -4,7 +4,6 @@ namespace App\Controller\Api;
 
 use App\Controller\AbstractApiController;
 use App\DTO\CouponValidateRequest;
-use App\Entity\Coupon;
 use App\Service\CouponService;
 use App\Service\ValidationHelper;
 use Symfony\Component\HttpFoundation\JsonResponse;

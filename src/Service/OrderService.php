@@ -4,7 +4,6 @@ namespace App\Service;
 
 use App\Entity\Order;
 use App\Entity\OrderItem;
-use App\Entity\Coupon;
 use App\DTO\OrderCreateRequest;
 use App\Enum\DeliveryMode;
 use App\Enum\OrderStatus;
