@@ -56,11 +56,18 @@ class MenuItemCrudController extends AbstractCrudController
 
     public function configureFields(string $pageName): iterable
     {
+        // Configure ImageField for display only - file upload is handled manually in handleFileUpload()
+        // We disable EasyAdmin's automatic upload handling to avoid conflicts
         $imageField = ImageField::new('image', 'Image')
             ->setBasePath('/uploads/menu')
             ->setUploadDir('public/uploads/menu')
             ->setUploadedFileNamePattern('[slug]-[timestamp].[extension]')
-            ->setHelp('Téléversez une image; le fichier sera copié dans /public/uploads/menu');
+            ->setHelp('Téléversez une image; le fichier sera copié dans /public/uploads/menu')
+            // Disable EasyAdmin's automatic file handling - we handle it manually
+            ->setFormTypeOptions([
+                'required' => $pageName === Crud::PAGE_NEW,
+                'allow_delete' => false, // Prevent EasyAdmin from deleting files
+            ]);
 
         // On edit, keep existing image and make upload optional
         if ($pageName === Crud::PAGE_EDIT) {
@@ -192,9 +199,14 @@ class MenuItemCrudController extends AbstractCrudController
     public function persistEntity(EntityManagerInterface $entityManager, $entityInstance): void
     {
         if ($entityInstance instanceof MenuItem) {
+            // Store the image value before EasyAdmin processes it
+            $savedImageValue = $entityInstance->getImage();
+            
             // Handle file upload FIRST - this ensures file is saved before entity validation
             try {
                 $this->handleFileUpload($entityInstance);
+                // After our manual upload, save the image value to prevent EasyAdmin from overwriting it
+                $savedImageValue = $entityInstance->getImage();
             } catch (\Symfony\Component\HttpKernel\Exception\BadRequestHttpException $e) {
                 // Re-throw to show validation error in form
                 throw $e;
@@ -202,8 +214,19 @@ class MenuItemCrudController extends AbstractCrudController
                 // Convert to BadRequestHttpException for proper form error display
                 throw new \Symfony\Component\HttpKernel\Exception\BadRequestHttpException($e->getMessage(), $e);
             }
+            
+            // Call parent to let EasyAdmin process the entity
+            parent::persistEntity($entityManager, $entityInstance);
+            
+            // Ensure our manually set image value is preserved after EasyAdmin processing
+            if ($savedImageValue && $entityInstance->getImage() !== $savedImageValue) {
+                $entityInstance->setImage($savedImageValue);
+                $entityManager->persist($entityInstance);
+                $entityManager->flush();
+            }
+        } else {
+            parent::persistEntity($entityManager, $entityInstance);
         }
-        parent::persistEntity($entityManager, $entityInstance);
     }
 
     /**
@@ -212,9 +235,20 @@ class MenuItemCrudController extends AbstractCrudController
     public function updateEntity(EntityManagerInterface $entityManager, $entityInstance): void
     {
         if ($entityInstance instanceof MenuItem) {
+            // Get original image value before processing
+            $originalEntity = $entityManager->getRepository(MenuItem::class)->find($entityInstance->getId());
+            $originalImageValue = $originalEntity ? $originalEntity->getImage() : null;
+            
+            // Store the image value before EasyAdmin processes it
+            $savedImageValue = $entityInstance->getImage();
+            
             // Handle file upload if new file is being uploaded
             try {
                 $this->handleFileUpload($entityInstance);
+                // After our manual upload, save the image value
+                if ($entityInstance->getImage()) {
+                    $savedImageValue = $entityInstance->getImage();
+                }
             } catch (\Symfony\Component\HttpKernel\Exception\BadRequestHttpException $e) {
                 // Re-throw to show validation error in form
                 throw $e;
@@ -224,14 +258,23 @@ class MenuItemCrudController extends AbstractCrudController
             }
             
             // If image is empty after upload attempt, keep the existing value
-            if (empty($entityInstance->getImage())) {
-                $originalEntity = $entityManager->getRepository(MenuItem::class)->find($entityInstance->getId());
-                if ($originalEntity && $originalEntity->getImage()) {
-                    $entityInstance->setImage($originalEntity->getImage());
-                }
+            if (empty($savedImageValue) && $originalImageValue) {
+                $savedImageValue = $originalImageValue;
+                $entityInstance->setImage($originalImageValue);
             }
+            
+            // Call parent to let EasyAdmin process the entity
+            parent::updateEntity($entityManager, $entityInstance);
+            
+            // Ensure our manually set image value is preserved after EasyAdmin processing
+            if ($savedImageValue && $entityInstance->getImage() !== $savedImageValue) {
+                $entityInstance->setImage($savedImageValue);
+                $entityManager->persist($entityInstance);
+                $entityManager->flush();
+            }
+        } else {
+            parent::updateEntity($entityManager, $entityInstance);
         }
-        parent::updateEntity($entityManager, $entityInstance);
     }
 
     /**
@@ -316,11 +359,35 @@ class MenuItemCrudController extends AbstractCrudController
             // Store only the filename in database (not full path)
             // The basePath in ImageField will handle the path resolution for display
             $menuItem->setImage($fileName);
+            
+            // Log successful upload for debugging (can be removed in production)
+            if ($this->container->has('logger')) {
+                $logger = $this->container->get('logger');
+                $logger->info('Menu item image uploaded', [
+                    'menu_item_id' => $menuItem->getId(),
+                    'menu_item_name' => $menuItem->getName(),
+                    'filename' => $fileName,
+                    'full_path' => $fullPath,
+                    'upload_dir' => $uploadDir,
+                ]);
+            }
         } catch (\Exception $e) {
             // Clean up if file was partially moved
             if (file_exists($fullPath)) {
                 @unlink($fullPath);
             }
+            
+            // Log error for debugging
+            if ($this->container->has('logger')) {
+                $logger = $this->container->get('logger');
+                $logger->error('Menu item image upload failed', [
+                    'menu_item_id' => $menuItem->getId(),
+                    'menu_item_name' => $menuItem->getName(),
+                    'error' => $e->getMessage(),
+                    'upload_dir' => $uploadDir,
+                ]);
+            }
+            
             throw new \InvalidArgumentException('Erreur lors de l\'upload du fichier: ' . $e->getMessage());
         }
     }
