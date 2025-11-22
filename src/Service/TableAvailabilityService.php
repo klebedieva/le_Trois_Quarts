@@ -47,8 +47,10 @@ class TableAvailabilityService
         return ($totalCapacity - $overlapGuests) >= $guests;
     }
 
+    // Get total capacity of all tables
     private function getTotalCapacity(): int
     {
+        // Sum capacity of all tables
         $tables = $this->tableRepository->findAll();
         $sum = 0;
         foreach ($tables as $t) {
@@ -57,6 +59,7 @@ class TableAvailabilityService
         return $sum;
     }
 
+    // Sum guests for overlapping reservations  
     private function sumGuestsForOverlappingReservations(\DateTimeInterface $reqStart, \DateTimeInterface $reqEnd): int
     {
         $reservations = $this->reservationRepository->findBy([
@@ -75,6 +78,7 @@ class TableAvailabilityService
         return $sum;
     }
 
+    // Combine date and time into a single DateTime object
     private static function combineDateAndTime(?\DateTimeInterface $date, string $time): \DateTime
     {
         $dateStr = $date?->format('Y-m-d') ?? (new \DateTime())->format('Y-m-d');
@@ -83,6 +87,7 @@ class TableAvailabilityService
         return $dt;
     }
 
+    // Check if two time ranges overlap
     private function rangesOverlap(\DateTimeInterface $aStart, \DateTimeInterface $aEnd, \DateTimeInterface $bStart, \DateTimeInterface $bEnd): bool
     {
         return ($aStart < $bEnd) && ($aEnd > $bStart);

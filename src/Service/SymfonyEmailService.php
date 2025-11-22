@@ -170,7 +170,8 @@ class SymfonyEmailService
         </html>";
     }
 
-    public function sendReservationConfirmation(string $clientEmail, string $clientName, string $subject, string $message, Reservation $reservation): bool
+    public function sendReservationConfirmation(string $clientEmail, string $clientName, string $subject, 
+    string $message, Reservation $reservation): bool
     {
         try {
             $email = (new Email())

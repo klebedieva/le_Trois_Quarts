@@ -29,17 +29,20 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGenerator;
 
 #[IsGranted('ROLE_MODERATOR')]
 class ReservationCrudController extends AbstractCrudController
 {
     private EntityManagerInterface $entityManager;
     private SymfonyEmailService $emailService;
+    private AdminUrlGenerator $adminUrlGenerator;
 
-    public function __construct(EntityManagerInterface $entityManager, SymfonyEmailService $emailService)
+    public function __construct(EntityManagerInterface $entityManager, SymfonyEmailService $emailService, AdminUrlGenerator $adminUrlGenerator)
     {
         $this->entityManager = $entityManager;
         $this->emailService = $emailService;
+        $this->adminUrlGenerator = $adminUrlGenerator;
     }
 
     public static function getEntityFqcn(): string
@@ -285,22 +288,27 @@ class ReservationCrudController extends AbstractCrudController
             ->add(DateTimeFilter::new('createdAt', 'Date de création'));
     }
 
-    
-
+    /**
+     * Change reservation status by clicking on status badge.
+     * Cycles through statuses: pending -> confirmed -> completed -> no_show -> pending
+     * 
+     * @param Request $request HTTP request with entityId query parameter
+     * @return Response Redirects to referer or reservations index page
+     */
     #[Route('/backoffice/reservation/change-status', name: 'admin_reservation_change_status')]
     public function changeStatus(Request $request): Response
     {
         $entityId = $request->query->get('entityId');
         if (!$entityId) {
             $this->addFlash('error', 'ID de la réservation non trouvé.');
-            return $this->redirectToRoute('admin');
+            return $this->redirectToRoute('admin_reservation_index');
         }
 
         /** @var Reservation|null $reservation */
         $reservation = $this->entityManager->getRepository(Reservation::class)->find($entityId);
         if (!$reservation) {
             $this->addFlash('error', 'Réservation non trouvée.');
-            return $this->redirectToRoute('admin');
+            return $this->redirectToRoute('admin_reservation_index');
         }
 
         // Status cycle for click: pending -> confirmed -> completed -> no_show -> pending
@@ -320,26 +328,34 @@ class ReservationCrudController extends AbstractCrudController
 
         $this->entityManager->flush();
 
-        return $this->redirect($request->headers->get('referer') ?: $this->generateUrl('admin'));
+        return $this->redirect($request->headers->get('referer') ?: $this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
     }
 
     /**
      * EasyAdmin inlined action to confirm the reservation.
-     * This keeps EA context (and avoids template errors about `ea` variable).
+     * This method is an alternative implementation that keeps EA context
+     * (avoids template errors about `ea` variable).
+     * 
+     * Note: Currently not used in configureActions() - the confirm() method is used instead.
+     * This method does not include CSRF protection or a confirmation form.
+     * 
+     * @param Request $request HTTP request
+     * @param TableAvailabilityService $availability Service to check table availability
+     * @return Response Redirects to reservations index page
      */
     public function confirmReservation(Request $request, TableAvailabilityService $availability): Response
     {
         $entityId = $request->query->get('entityId');
         if (!$entityId) {
             $this->addFlash('error', 'ID de la réservation non trouvé.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
         }
 
         /** @var Reservation|null $reservation */
         $reservation = $this->entityManager->getRepository(Reservation::class)->find($entityId);
         if (!$reservation) {
             $this->addFlash('error', 'Réservation non trouvée.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
         }
 
         // Optional: final availability check on confirmation
@@ -350,7 +366,7 @@ class ReservationCrudController extends AbstractCrudController
         );
         if (!$isFree) {
             $this->addFlash('danger', 'Pas de places suffisantes pour ce créneau.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
         }
 
         $confirmationMessage = $request->request->get('confirmationMessage', 'Votre réservation est confirmée.');
@@ -386,34 +402,48 @@ class ReservationCrudController extends AbstractCrudController
             $this->addFlash('error', 'Erreur lors de la confirmation: '.$e->getMessage());
         }
 
-        return $this->redirectToRoute('admin');
+        return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
     }
 
     /**
      * Confirmation page (GET) + process (POST).
+     * 
+     * This method handles the reservation confirmation workflow:
+     * - GET: Displays a confirmation form with reservation details
+     * - POST: Processes the confirmation with CSRF protection, availability check,
+     *         status update, and email notification to the client
+     * 
+     * After successful confirmation, redirects to the reservations index page.
+     * 
+     * @param Request $request HTTP request (GET or POST)
+     * @param TableAvailabilityService $availability Service to check table availability
+     * @return Response Renders confirmation form (GET) or redirects to index (POST)
      */
     public function confirm(Request $request, TableAvailabilityService $availability): Response
     {
+        // Get entity ID from query parameters
         $entityId = $request->query->get('entityId');
         if (!$entityId) {
             $this->addFlash('error', 'ID de la réservation non trouvé.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
         }
 
         /** @var Reservation|null $reservation */
         $reservation = $this->entityManager->getRepository(Reservation::class)->find($entityId);
         if (!$reservation) {
             $this->addFlash('error', 'Réservation non trouvée.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
         }
 
+        // Handle POST request: process confirmation
         if ($request->isMethod('POST')) {
+            // Step 1: Validate CSRF token
             if (!$this->isCsrfTokenValid('reservation_confirm_'.$reservation->getId(), $request->request->get('_token'))) {
                 $this->addFlash('error', 'Token CSRF invalide.');
-                return $this->redirectToRoute('admin');
+                return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
             }
 
-            // Final availability check
+            // Step 2: Final availability check before confirmation
             $isFree = $availability->isAvailable(
                 $reservation->getDate(),
                 (string) $reservation->getTime(),
@@ -421,22 +451,25 @@ class ReservationCrudController extends AbstractCrudController
             );
             if (!$isFree) {
                 $this->addFlash('danger', 'Pas de places suffisantes pour ce créneau.');
-                return $this->redirectToRoute('admin');
+                return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
             }
 
+            // Step 3: Get confirmation message (default if not provided)
             $confirmationMessage = $request->request->get('confirmationMessage', 'Votre réservation est confirmée.');
 
             try {
-                // Update reservation status using enum for type safety
+                // Step 4: Update reservation status using enum for type safety
                 $reservation->setStatus(ReservationStatus::CONFIRMED);
                 // Note: isConfirmed is automatically updated by setStatus() method in Reservation entity
                 $reservation->setConfirmedAt(new \DateTimeImmutable());
                 $reservation->setConfirmationMessage($confirmationMessage);
                 $this->entityManager->flush();
 
-                // Try to send email, but do not block on failures (sandbox limits, etc.)
+                // Step 5: Send confirmation email to client
                 $clientName = $reservation->getFirstName().' '.$reservation->getLastName();
                 $emailSubject = 'Confirmation de votre réservation - Le Trois Quarts';
+                
+                // Try to send email, but do not block on failures (sandbox limits, etc.)
                 $emailSent = $this->emailService->sendReservationConfirmation(
                     $reservation->getEmail(),
                     $clientName,
@@ -444,39 +477,47 @@ class ReservationCrudController extends AbstractCrudController
                     $confirmationMessage,
                     $reservation
                 );
+
                 if ($emailSent) {
                     $this->addFlash('success', 'Réservation confirmée et email envoyé.');
                 } else {
-                    $this->addFlash('warning', 'Réservation confirmée 
-                    (envoi d\'email non garanti: limite sandbox).');
+                    $this->addFlash('warning', 'Réservation confirmée (envoi d\'email non garanti: limite sandbox).');
                 }
 
             } catch (\Throwable $e) {
                 $this->addFlash('error', 'Erreur lors de la confirmation: '.$e->getMessage());
             }
 
-            return $this->redirectToRoute('admin');
+            // Redirect to reservations index page after confirmation
+            return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
         }
 
-        // GET: render confirmation page
+        // GET: Render confirmation page with reservation details
         return $this->render('admin/reservation/confirm.html.twig', [
             'reservation' => $reservation,
         ]);
     }
 
+    /**
+     * Cancel a reservation.
+     * Updates the reservation status to CANCELLED and sends a cancellation email to the client.
+     * 
+     * @param Request $request HTTP request with entityId query parameter
+     * @return Response Redirects to reservations index page
+     */
     #[Route('/admin/reservation/cancel', name: 'admin_reservation_cancel')]
     public function cancel(Request $request): Response
     {
         $entityId = $request->query->get('entityId');
         if (!$entityId) {
             $this->addFlash('error', 'ID de la réservation non trouvé.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
         }
 
         $reservation = $this->entityManager->getRepository(Reservation::class)->find($entityId);
         if (!$reservation) {
             $this->addFlash('error', 'Réservation non trouvée.');
-            return $this->redirectToRoute('admin');
+            return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
         }
 
         try {
@@ -507,7 +548,7 @@ class ReservationCrudController extends AbstractCrudController
             $this->addFlash('error', 'Erreur lors de l\'annulation: ' . $e->getMessage());
         }
 
-        return $this->redirectToRoute('admin');
+        return $this->redirect($this->adminUrlGenerator->setController(ReservationCrudController::class)->setAction('index')->generateUrl());
     }
 
     public function createEntity(string $entityFqcn): object
