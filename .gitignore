@@ -17,6 +17,8 @@ docs/reports/
 ###> phpunit/phpunit ###
 /phpunit.xml
 /.phpunit.cache/
+/coverage/
+coverage.xml
 ###< phpunit/phpunit ###
 
 ###> symfony/asset-mapper ###

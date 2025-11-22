@@ -9,6 +9,7 @@ use App\Service\ValidationHelper;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
@@ -130,10 +131,16 @@ class CouponController extends AbstractApiController
             )
         ]
     )]
-    public function validate(Request $request): JsonResponse
+    public function validate(Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
+        // Step 1: Validate CSRF token (protect against CSRF attacks)
+        $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
+        if ($csrfError !== null) {
+            return $csrfError;
+        }
+
         try {
-            // Get JSON data from request
+            // Step 2: Get JSON data from request
             // Uses base class method from AbstractApiController
             // Returns array or JsonResponse (error if JSON invalid)
             $jsonResult = $this->getJsonDataFromRequest($request);
@@ -143,7 +150,7 @@ class CouponController extends AbstractApiController
             }
             $data = $jsonResult;
 
-            // Map JSON payload to DTO and validate
+            // Step 3: Map JSON payload to DTO and validate
             // Uses base class method from AbstractApiController
             // Returns DTO or JsonResponse (error if validation fails)
             $validationResult = $this->validateDto($data, CouponValidateRequest::class);
@@ -159,6 +166,12 @@ class CouponController extends AbstractApiController
             // This ensures codes like " SAVE10 " are normalized to "SAVE10" before validation.
             if ($dto->code !== null) {
                 $dto->code = trim($dto->code);
+            }
+
+            // Step 4: XSS validation for coupon code (defense in depth)
+            $xssError = $this->validateXss($dto, ['code']);
+            if ($xssError !== null) {
+                return $xssError;
             }
 
             // Delegate to service

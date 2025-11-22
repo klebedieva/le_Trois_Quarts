@@ -270,35 +270,27 @@ class AddressValidationService
             'countrycodes' => 'fr',
             'city' => 'Marseille'
         ];
-
-        // Try to extract house number and street name
-        // Example: "5 Bd Eugene Cabassud" -> number: "5", street: "Bd Eugene Cabassud"
         if (preg_match('/^(\d+)\s+(.+)$/i', $address, $matches)) {
             $queryParams['street'] = $matches[1] . ' ' . trim($matches[2]);
         } else {
             $queryParams['street'] = $address;
         }
-
-        // Add zip code if available (improves accuracy)
         if ($zipCode) {
             $cleanZipCode = preg_replace('/[^0-9]/', '', $zipCode);
             if (preg_match('/^[0-9]{5}$/', $cleanZipCode)) {
                 $queryParams['postalcode'] = $cleanZipCode;
             }
         }
-
         try {
             $response = $this->httpClient->request('GET', 'https://nominatim.openstreetmap.org/search', [
                 'query' => $queryParams,
                 'headers' => ['User-Agent' => 'LeTroisQuarts/1.0'],
                 'timeout' => 5
             ]);
-
             $data = $response->toArray();
             if (empty($data)) {
                 return null;
             }
-
             $result = $data[0];
             return [
                 'lat' => (float) $result['lat'],

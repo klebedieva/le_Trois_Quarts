@@ -412,13 +412,8 @@ class OrderService
      */
     private function persistOrderAndClearCart(Order $order): void
     {
-        // Persist order and items to database (within transaction)
         $this->entityManager->persist($order);
         $this->entityManager->flush();
-
-        // Clear cart after successful database commit
-        // This happens inside transaction, but cart clearing is session-based
-        // and won't be rolled back if transaction fails (which is acceptable)
         $this->cartService->clear();
     }
 

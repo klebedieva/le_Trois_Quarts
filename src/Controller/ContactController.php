@@ -193,24 +193,14 @@ class ContactController extends AbstractApiController
             if (count($violations) > 0) {
                 // Extract validation error messages from violations
                 $errors = $this->validationHelper->extractViolationMessages($violations);
-                
-                // Also check for XSS attempts (additional security layer)
-                // This provides defense in depth - even if basic validation passes, we check for malicious content
                 // Uses base class method from AbstractApiController
-                $xssErrors = $this->validationHelper->validateXssAttempts($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
-                
-                // Merge validation errors and XSS errors into single array
-                $allErrors = array_merge($errors, $xssErrors);
-                // Uses base class method from AbstractApiController
-                return $this->errorResponse('Erreur de validation. Veuillez vérifier vos données.', 422, $allErrors);
+                return $this->errorResponse('Erreur de validation. Veuillez vérifier vos données.', 422, $errors);
             }
 
-            // Additional XSS check after validation (defense in depth)
-            // Perform XSS validation again after DTO validation passes to ensure no malicious content
-            // This double-check prevents XSS attacks that might bypass initial validation
+            // XSS validation for user input fields (defense in depth)
+            // Perform XSS validation after DTO validation passes to ensure no malicious content
             // Uses base class method from AbstractApiController
             $xssError = $this->validateXss($dto, ['firstName', 'lastName', 'email', 'phone', 'message']);
-            
             if ($xssError !== null) {
                 // XSS detected, return error response
                 return $xssError;

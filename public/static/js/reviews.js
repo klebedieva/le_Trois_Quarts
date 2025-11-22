@@ -710,8 +710,11 @@
         const email = elements.emailInput.value.trim();
         const rating = elements.ratingInput.value;
         const comment = elements.textInput.value.trim();
-        const csrfInput = form.querySelector('input[name="_token"]');
-        const csrfToken = csrfInput ? csrfInput.value : null;
+        // Get CSRF token: first try form field, then fallback to global meta tag
+        let csrfToken = form.querySelector('input[name="_token"]')?.value;
+        if (!csrfToken && window.getCsrfToken) {
+            csrfToken = window.getCsrfToken();
+        }
         const dishIdInput = form.querySelector('input[name="dish_id"]');
 
         /**
@@ -762,18 +765,22 @@
         /**
          * Submit form via AJAX
          * Uses fetch API for modern, promise-based HTTP requests
+         * For API endpoints, use window.apiRequest() to automatically include CSRF token
          */
-        fetch(endpoint, {
-            method: 'POST',
-            headers: isApiEndpoint
-                ? {
-                      'Content-Type': 'application/json',
+        const requestPromise = isApiEndpoint
+            ? window.apiRequest(endpoint, {
+                  method: 'POST',
+                  body: JSON.stringify(payload),
+              })
+            : fetch(endpoint, {
+                  method: 'POST',
+                  headers: {
                       'X-Requested-With': 'XMLHttpRequest', // Identifies request as AJAX
-                      ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
-                  }
-                : {},
-            body: isApiEndpoint ? JSON.stringify(payload) : payload,
-        })
+                  },
+                  body: payload,
+              });
+        
+        requestPromise
             .then(response => response.json()) // Parse JSON response
             .then(data => {
                 if (data.success) {

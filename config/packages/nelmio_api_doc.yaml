@@ -20,7 +20,7 @@ nelmio_api_doc:
             contact:
                 name: 'Le Trois Quarts'
                 url: '%app.base_url%'
-                email: 'contact@letroisquarts.com'
+                email: 'contact@letroisquarts.online'
         components:
             securitySchemes:
                 SwaggerBypass:

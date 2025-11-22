@@ -4,6 +4,8 @@ Allow: /
 # Block admin and technical endpoints
 Disallow: /admin
 Disallow: /login
+Disallow: /_profiler
+Disallow: /_wdt
 
 Sitemap: https://letroisquarts.online/sitemap.xml
 

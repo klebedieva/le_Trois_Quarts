@@ -83,7 +83,16 @@
         "post-update-cmd": [
             "@php bin/console asset-map:compile --env=prod --no-interaction",
             "@php bin/console assets:install --relative public --env=prod --no-interaction"
-        ]
+        ],
+        "test": "php bin/phpunit",
+        "test:unit": "php bin/phpunit tests/Unit/",
+        "test:integration": "php bin/phpunit tests/Integration/",
+        "test:coverage": "php bin/phpunit --coverage-html coverage/ --coverage-text",
+        "test:coverage:html": "php bin/phpunit --coverage-html coverage/",
+        "test:coverage:text": "php bin/phpunit --coverage-text",
+        "test:coverage:xml": "php bin/phpunit --coverage-clover coverage.xml",
+        "test:dox": "php bin/phpunit --testdox",
+        "test:coverage:dox": "php bin/phpunit --coverage-html coverage/ --coverage-text --testdox"
     },
     "conflict": {
         "symfony/symfony": "*"

@@ -17,7 +17,7 @@ class SymfonyEmailService
     public function __construct(MailerInterface $mailer)
     {
         $this->mailer = $mailer;
-        $this->fromEmail = 'contact@letroisquarts.com';
+        $this->fromEmail = 'contact@letroisquarts.online';
         $this->fromName = 'Le Trois Quarts';
     }
 
@@ -43,7 +43,7 @@ class SymfonyEmailService
         try {
             $email = (new Email())
                 ->from(new Address($this->fromEmail, $this->fromName))
-                ->to(new Address($this->fromEmail, $this->fromName)) // Admin receives at contact@letroisquarts.com
+                ->to(new Address($this->fromEmail, $this->fromName)) // Admin receives at contact@letroisquarts.online
                 ->replyTo(new Address($clientEmail, $clientName))
                 ->subject("🔔 Nouveau message de contact: " . $subject)
                 ->html($this->getAdminNotificationTemplate($clientName, $clientEmail, $subject, $message));
@@ -162,7 +162,7 @@ class SymfonyEmailService
                     </div>
                 </div>
                 <div class='footer'>
-                    <p>contact@letroisquarts.com | 04 91 92 96 16</p>
+                    <p>contact@letroisquarts.online | 04 91 92 96 16</p>
                     <p>139 Boulevard Chave, 13005 Marseille</p>
                 </div>
             </div>
@@ -338,7 +338,7 @@ class SymfonyEmailService
 
             $email = (new Email())
                 ->from(new Address($this->fromEmail, $this->fromName))
-                ->to(new Address($this->fromEmail, $this->fromName)) // Admin receives at contact@letroisquarts.com
+                ->to(new Address($this->fromEmail, $this->fromName)) // Admin receives at contact@letroisquarts.online
                 ->replyTo(new Address($clientEmail, $clientName))
                 ->subject("🔔 Nouvelle demande de réservation: " . $clientName)
                 ->html($this->getReservationAdminNotificationTemplate($clientName, $clientEmail, $date, $time, $guests, $phone, $message));
@@ -430,7 +430,7 @@ class SymfonyEmailService
                     </div>
                 </div>
                 <div class='footer'>
-                    <p>contact@letroisquarts.com | 04 91 92 96 16</p>
+                    <p>contact@letroisquarts.online | 04 91 92 96 16</p>
                     <p>139 Boulevard Chave, 13005 Marseille</p>
                 </div>
             </div>
@@ -660,7 +660,7 @@ class SymfonyEmailService
                     </div>
                 </div>
                 <div class='footer'>
-                    <p>contact@letroisquarts.com | 04 91 92 96 16</p>
+                    <p>contact@letroisquarts.online | 04 91 92 96 16</p>
                     <p>139 Boulevard Chave, 13005 Marseille</p>
                 </div>
             </div>

@@ -166,40 +166,37 @@ class OrderController extends AbstractApiController
     #[OA\Tag(name: 'Order')]
     public function createOrder(Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
-        // Step 1: Validate request size (protect against excessively large payloads)
-        $payloadSizeError = $this->validatePayloadSize($request);
-        if ($payloadSizeError !== null) {
-            return $payloadSizeError;
-        }
-
-        // Step 2: Validate CSRF token (protect against CSRF attacks)
+        // Step 1: Validate CSRF token (protect against CSRF attacks)
+        // Note: Payload size is validated globally by ApiRateLimitSubscriber (priority 9)
         $csrfError = $this->validateCsrfToken($request, $csrfTokenManager);
         if ($csrfError !== null) {
             return $csrfError;
         }
 
-        // Step 3: Check idempotency (return cached response if request was already processed)
-        $idempotencyKey = (string)($request->headers->get('Idempotency-Key') ?? '');
-        $idempotencyResponse = $this->checkIdempotency($idempotencyKey);
-        if ($idempotencyResponse !== null) {
-            return $idempotencyResponse;
-        }
-
-        // Step 4: Get and validate JSON data
+        // Step 2: Get and validate JSON data (must be done before idempotency check)
         $jsonResult = $this->getJsonDataFromRequest($request);
         if ($jsonResult instanceof JsonResponse) {
             return $jsonResult;
         }
         $data = $jsonResult;
 
-        // Step 5: Map to DTO and validate
+        // Step 3: Check idempotency (return cached response if request was already processed)
+        // Note: Since client generates a unique UUID for each order attempt, checking only
+        // the idempotency key is sufficient. The key uniquely identifies the request.
+        $idempotencyKey = (string)($request->headers->get('Idempotency-Key') ?? '');
+        $idempotencyResponse = $this->checkIdempotency($idempotencyKey);
+        if ($idempotencyResponse !== null) {
+            return $idempotencyResponse;
+        }
+
+        // Step 4: Map to DTO and validate
         $validationResult = $this->validateDto($data, OrderCreateRequest::class);
         if ($validationResult instanceof JsonResponse) {
             return $validationResult;
         }
         $dto = $validationResult;
         
-        // Step 5b: Additional XSS check
+        // Step 4b: Additional XSS check
         $xssError = $this->validateXss(
             $dto,
             ['deliveryAddress', 'deliveryInstructions', 'clientFirstName', 'clientLastName', 'clientPhone', 'clientEmail']
@@ -208,56 +205,19 @@ class OrderController extends AbstractApiController
             return $xssError;
         }
 
-        // Step 6: Create the order
+        // Step 5: Create the order
         $order = $this->orderService->createOrder($dto);
 
-        // Step 7: Notify admin (non-blocking)
+        // Step 6: Notify admin (non-blocking)
         $this->notifyAdminAboutNewOrder($order);
 
-        // Step 8: Build success response
+        // Step 7: Build success response
         $responseArray = $this->buildOrderResponse($order);
 
-        // Step 9: Store idempotent response if key provided
+        // Step 8: Store idempotent response if key provided
         $this->storeIdempotentResponse($idempotencyKey, $responseArray);
 
         return $this->json($responseArray, 201);
-    }
-
-    /**
-     * Validate request payload size
-     *
-     * This method checks if the request payload exceeds the maximum allowed size.
-     * This protects against DoS attacks via excessively large payloads.
-     *
-     * @param Request $request HTTP request to validate
-     * @return JsonResponse|null Error response if payload is too large, null if valid
-     */
-    private function validatePayloadSize(Request $request): ?JsonResponse
-    {
-        $rawContent = $request->getContent();
-        
-        // Get max payload size from parameters (with fallback if parameter not found)
-        // Note: This catch is for graceful fallback, not error handling
-        // Main exceptions are handled by ApiExceptionSubscriber
-        try {
-            $maxPayloadBytes = $this->getParameter('order.max_payload_bytes');
-        } catch (\Exception $e) {
-            // Fallback to default if parameter not found (should not happen in production)
-            // This is a graceful degradation, not an error condition
-            $maxPayloadBytes = 65536; // 64KB default
-            $this->logger->warning('Parameter order.max_payload_bytes not found, using default', [
-                'default' => $maxPayloadBytes
-            ]);
-        }
-        
-        if (strlen($rawContent) > $maxPayloadBytes) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Requête trop volumineuse'
-            ], 413);
-        }
-
-        return null;
     }
 
     /**
@@ -266,6 +226,9 @@ class OrderController extends AbstractApiController
      * Idempotency ensures that the same client action does not create duplicate orders.
      * If a request with the same Idempotency-Key was already processed, we return
      * the cached response instead of processing the request again.
+     *
+     * The client generates a unique UUID for each order attempt (see order-api.js),
+     * so checking only the key is sufficient. The key uniquely identifies the request.
      *
      * Note: CSRF validation is handled by base class method validateCsrfToken().
      * This method is specific to OrderController and handles order-specific idempotency.
@@ -281,7 +244,10 @@ class OrderController extends AbstractApiController
         }
 
         // Check if we already processed this request
-        $cached = $this->cache->getItem('idem_order_' . hash('sha256', $idempotencyKey));
+        // The client generates a unique UUID for each order attempt, so the key uniquely identifies the request
+        $cacheKey = 'idem_order_' . hash('sha256', $idempotencyKey);
+        $cached = $this->cache->getItem($cacheKey);
+        
         if ($cached->isHit()) {
             // Request was already processed, return cached response
             $cachedPayload = $cached->get();
@@ -381,8 +347,11 @@ class OrderController extends AbstractApiController
      * Store idempotent response in cache
      *
      * This method stores the order creation response in cache using the idempotency key.
-     * If the same request is made again with the same idempotency key, the cached
-     * response will be returned instead of creating a duplicate order.
+     * If the same request is made again with the same idempotency key, the cached response
+     * will be returned instead of creating a duplicate order.
+     *
+     * The client generates a unique UUID for each order attempt, so the key uniquely
+     * identifies the request and is sufficient for idempotency.
      *
      * @param string $idempotencyKey Idempotency key from request header (empty string if not provided)
      * @param array $responseArray Response data to cache
@@ -395,7 +364,9 @@ class OrderController extends AbstractApiController
         }
 
         // Store response in cache for idempotency
-        $cached = $this->cache->getItem('idem_order_' . hash('sha256', $idempotencyKey));
+        // The client generates a unique UUID for each order attempt, so the key uniquely identifies the request
+        $cacheKey = 'idem_order_' . hash('sha256', $idempotencyKey);
+        $cached = $this->cache->getItem($cacheKey);
         $cached->set(['body' => $responseArray, 'status' => 201]);
         
         // TTL is configurable via order.idempotency_ttl parameter

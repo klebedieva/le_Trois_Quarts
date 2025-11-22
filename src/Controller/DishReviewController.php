@@ -140,6 +140,12 @@ class DishReviewController extends AbstractApiController
         }
         $dto = $validationResult;
 
+        // XSS validation for user input fields (defense in depth)
+        $xssError = $this->validateXss($dto, ['name', 'email', 'comment']);
+        if ($xssError !== null) {
+            return $xssError;
+        }
+
         // Create new review entity associated with this dish via service
         $review = (new Review())
             ->setName($dto->name)

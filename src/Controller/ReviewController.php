@@ -214,6 +214,12 @@ class ReviewController extends AbstractApiController
         }
         $dto = $validationResult;
 
+        // XSS validation for user input fields (defense in depth)
+        $xssError = $this->validateXss($dto, ['name', 'email', 'comment']);
+        if ($xssError !== null) {
+            return $xssError;
+        }
+
         // Delegate creation to ReviewService (no direct persist/flush in controller)
         // This follows Single Responsibility Principle: controller handles HTTP, service handles domain logic
         // The service encapsulates entity creation, approval flag initialization (false), and persistence

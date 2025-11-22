@@ -114,13 +114,28 @@ class ApiRateLimitSubscriber implements EventSubscriberInterface
         // Enforce body size limit for JSON requests
         if (in_array($request->getMethod(), ['POST', 'PUT', 'PATCH'], true)) {
             $contentType = (string) $request->headers->get('Content-Type', '');
-            $length = (int) ($request->headers->get('Content-Length') ?? 0);
-            if (str_contains($contentType, 'application/json') && $length > $this->maxJsonBytes) {
-                $event->setResponse(new JsonResponse([
-                    'success' => false,
-                    'message' => 'Payload too large',
-                ], 413));
-                return;
+            if (str_contains($contentType, 'application/json')) {
+                // First check: Content-Length header (fast early rejection if header is too large)
+                // Note: This is not secure by itself as header can be faked, but useful for early rejection
+                $contentLength = (int) ($request->headers->get('Content-Length') ?? 0);
+                if ($contentLength > $this->maxJsonBytes) {
+                    $event->setResponse(new JsonResponse([
+                        'success' => false,
+                        'message' => 'Payload too large',
+                    ], 413));
+                    return;
+                }
+                
+                // Second check: Actual body size (reliable validation)
+                // This protects against clients that fake the Content-Length header
+                $rawContent = $request->getContent(false);
+                if ($rawContent !== false && strlen($rawContent) > $this->maxJsonBytes) {
+                    $event->setResponse(new JsonResponse([
+                        'success' => false,
+                        'message' => 'Payload too large',
+                    ], 413));
+                    return;
+                }
             }
         }
 

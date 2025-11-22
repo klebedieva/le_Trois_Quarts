@@ -29,22 +29,11 @@
      * that every form validates the same way (especially useful for translations).
      */
     const patterns = {
-        // Allows letters (including accents), spaces and hyphens for names.
         name: /^[a-zA-ZÀ-ÿ\s-]+$/,
-        // Basic email pattern. Server-side validation still required.
         email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-        // French phone numbers (country code optional, accepts separators).
         phone: /^(?:(?:\+|00)33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/,
     };
 
-    /**
-     * Quick-and-dirty XSS detection
-     * -----------------------------
-     * Client-side validation is never enough to protect against XSS, but we still
-     * provide a first line of defence to show immediate feedback to the user.
-     * These patterns catch typical script injection attempts. Each regex is reset
-     * before testing (by setting `lastIndex = 0`) so repeated calls are safe.
-     */
     const xssPatterns = [
         /<[^>]*>/gi,
         /javascript:/gi,
@@ -61,11 +50,6 @@
         /<meta[^>]*http-equiv\s*=\s*["']?refresh/gi,
     ];
 
-    /**
-     * Centralised error messages in French.
-     * The helpers accept labels (field names) so every form displays natural,
-     * context-aware phrases without repeating string templates everywhere.
-     */
     const messages = {
         required: label => `${label} est requis`,
         minLength: (label, min) => `${label} doit contenir au moins ${min} caractères`,
