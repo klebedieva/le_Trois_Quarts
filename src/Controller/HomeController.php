@@ -12,7 +12,6 @@ use App\Repository\GalleryImageRepository;
 use App\Service\InputSanitizer;
 use App\Service\SymfonyEmailService;
 use App\Service\ValidationHelper;
-use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -125,7 +124,7 @@ class HomeController extends AbstractApiController
     }
 
     #[Route('/reservation', name: 'app_reservation', methods: ['GET','POST'])]
-    public function reservation(Request $request, EntityManagerInterface $entityManager): Response
+    public function reservation(Request $request): Response
     {
         $reservation = new Reservation();
         $reservationForm = $this->createForm(ReservationType::class, $reservation);
@@ -136,13 +135,15 @@ class HomeController extends AbstractApiController
             // Variant B: always accept the request on the public side.
             // Availability will be validated by an admin later when confirming the reservation.
 
-            try {
-                // Delegate persistence to service to keep controller thin
-                $this->reservationService->createReservationFromEntity($reservation);
-                $this->emailService->sendReservationNotificationToAdmin($reservation);
-            } catch (\Throwable $e) {
-                $this->logger->error('Error sending reservation notification to admin: {error}', ['error' => $e->getMessage()]);
-            }
+            // Delegate persistence to service to keep controller thin
+            $this->reservationService->createReservationFromEntity($reservation);
+            
+            // Send notification to admin (non-blocking)
+            $this->safeNotifyAdmin(
+                fn() => $this->emailService->sendReservationNotificationToAdmin($reservation),
+                $this->logger,
+                'Error sending reservation notification to admin'
+            );
 
             $this->addFlash('success', 'Your reservation request has been accepted!');
             return $this->redirectToRoute('app_reservation');
@@ -157,7 +158,7 @@ class HomeController extends AbstractApiController
     }
 
     #[Route('/reservation-ajax', name: 'app_reservation_ajax', methods: ['POST'])]
-    public function reservationAjax(Request $request, EntityManagerInterface $entityManager, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
+    public function reservationAjax(Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
         // CSRF Protection
         // Uses base class method from AbstractApiController
@@ -166,10 +167,10 @@ class HomeController extends AbstractApiController
             return $csrfError;
         }
         
-        return $this->handleReservationAjax($request, $entityManager);
+        return $this->handleReservationAjax($request);
     }
     
-    private function handleReservationAjax(Request $request, EntityManagerInterface $entityManager): JsonResponse
+    private function handleReservationAjax(Request $request): JsonResponse
     {
         // Check if it's an AJAX request
         if (!$request->isXmlHttpRequest()) {
@@ -262,18 +263,12 @@ class HomeController extends AbstractApiController
             // This makes the code more testable (can mock service) and reusable (service can be called from elsewhere)
             $reservation = $this->reservationService->createReservation($dto);
 
-            // Send notification to admin
-            // This is a non-blocking operation (email sending)
-            // We catch exceptions here because email failure should not break reservation creation
-            // This is different from main business logic exceptions, which are handled by ApiExceptionSubscriber
-            try {
-                $this->emailService->sendReservationNotificationToAdmin($reservation);
-            } catch (\Exception $e) {
-                // Log error but don't prevent saving
-                // Note: This catch is intentional - we want to handle email failures gracefully
-                // without affecting the main reservation creation flow
-                $this->logger->error('Error sending reservation notification to admin: {error}', ['error' => $e->getMessage()]);
-            }
+            // Send notification to admin (non-blocking)
+            $this->safeNotifyAdmin(
+                fn() => $this->emailService->sendReservationNotificationToAdmin($reservation),
+                $this->logger,
+                'Error sending reservation notification to admin'
+            );
             
             // Uses base class method from AbstractApiController
             return $this->successResponse(null, 'Votre réservation a été enregistrée. Nous vous contacterons pour confirmation.', 201);
@@ -292,7 +287,7 @@ class HomeController extends AbstractApiController
     }
 
     #[Route('/reviews', name: 'app_reviews')]
-    public function reviews(Request $request, ReviewRepository $reviewRepository, EntityManagerInterface $entityManager): Response
+    public function reviews(Request $request, ReviewRepository $reviewRepository): Response
     {
         // Get only approved reviews for display on reviews page
         $reviews = $reviewRepository->findApprovedOrderedByDate();

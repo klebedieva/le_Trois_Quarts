@@ -10,6 +10,7 @@ use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use App\Service\ValidationHelper;
+use Psr\Log\LoggerInterface;
 
 /**
  * Abstract Base Controller for API Endpoints
@@ -169,7 +170,6 @@ abstract class AbstractApiController extends AbstractController
         if ($bypassSecret && $bypassHeader && hash_equals($bypassSecret, $bypassHeader)) {
             return null;
         }
-
         // Try to get token from header first (preferred for API requests)
         $csrfToken = $request->headers->get('X-CSRF-Token');
         
@@ -177,13 +177,10 @@ abstract class AbstractApiController extends AbstractController
         if (!$csrfToken) {
             $csrfToken = $request->request->get('_token');
         }
-        
         // Validate token using Symfony's CSRF token manager
-        // Token name 'submit' is standard for form submissions
         if (!$csrfToken || !$csrfTokenManager->isTokenValid(new CsrfToken($tokenId, $csrfToken))) {
             return $this->errorResponse('Token CSRF invalide', 403);
         }
-        
         // Token is valid, return null to allow request to proceed
         return null;
     }
@@ -326,6 +323,54 @@ abstract class AbstractApiController extends AbstractController
             cart: $cartResponse
         );
         return $this->json($response->toArray(), $status);
+    }
+
+    /**
+     * Safely notify admin (non-blocking email notification)
+     *
+     * This method provides a centralized way to send email notifications to admin
+     * without blocking the main business logic flow. If email sending fails,
+     * it logs the error but does not throw exceptions.
+     *
+     * This eliminates code duplication across controllers that need to send
+     * admin notifications (contact messages, reservations, orders).
+     *
+     * Usage pattern:
+     * ```php
+     * $this->safeNotifyAdmin(function() use ($emailService, $entity) {
+     *     $emailService->sendNotificationToAdmin(...);
+     * }, $logger, 'Error sending notification');
+     * ```
+     *
+     * @param callable $notificationCallable Callable that sends the email notification
+     * @param LoggerInterface|null $logger Optional logger for error tracking
+     * @param string $errorMessage Error message to log if notification fails
+     * @param array $context Optional context data for error logging
+     * @return bool True if notification was sent successfully, false otherwise
+     */
+    protected function safeNotifyAdmin(callable $notificationCallable, ?LoggerInterface $logger = null, string $errorMessage = 'Error sending admin notification', array $context = []): bool
+    {
+        // This is a non-blocking operation (email sending)
+        // We catch exceptions here because email failure should not break main business logic
+        // This is different from main business logic exceptions, which are handled by ApiExceptionSubscriber
+        try {
+            $notificationCallable();
+            if ($logger !== null) {
+                $logger->info('Admin notification sent successfully', $context);
+            }
+            return true;
+        } catch (\Exception $e) {
+            // Log error but don't prevent main operation
+            // Note: This catch is intentional - we want to handle email failures gracefully
+            // without affecting the main business logic flow
+            if ($logger !== null) {
+                $logger->error($errorMessage . ': {error}', array_merge($context, [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]));
+            }
+            return false;
+        }
     }
 }
 

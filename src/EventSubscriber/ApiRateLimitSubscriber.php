@@ -128,6 +128,7 @@ class ApiRateLimitSubscriber implements EventSubscriberInterface
                 
                 // Second check: Actual body size (reliable validation)
                 // This protects against clients that fake the Content-Length header
+                
                 $rawContent = $request->getContent(false);
                 if ($rawContent !== false && strlen($rawContent) > $this->maxJsonBytes) {
                     $event->setResponse(new JsonResponse([

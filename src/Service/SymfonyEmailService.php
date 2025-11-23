@@ -331,10 +331,10 @@ class SymfonyEmailService
         try {
             $clientName = $reservation->getFirstName() . ' ' . $reservation->getLastName();
             $clientEmail = $reservation->getEmail();
-            $date = $reservation->getDate()->format('d/m/Y');
-            $time = $reservation->getTime();
-            $guests = $reservation->getGuests();
-            $phone = $reservation->getPhone();
+            $date = $reservation->getDate() ? $reservation->getDate()->format('d/m/Y') : 'Non spécifiée';
+            $time = $reservation->getTime() ?: 'Non spécifié';
+            $guests = $reservation->getGuests() ?: 0;
+            $phone = $reservation->getPhone() ?: 'Non spécifié';
             $message = $reservation->getMessage() ?: '';
 
             $email = (new Email())

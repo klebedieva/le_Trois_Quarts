@@ -96,23 +96,17 @@ class ContactController extends AbstractApiController
             // Delegate persistence to service to keep controller thin
             $this->contactService->createContactMessageFromEntity($msg);
 
-            // Send email notification to admin (non-blocking - failures are logged but don't break the flow)
-            // This is a non-blocking operation (email sending)
-            // We catch exceptions here because email failure should not break message storage
-            // This is different from main business logic exceptions, which are handled by ApiExceptionSubscriber
-            try {
-                $this->emailService->sendNotificationToAdmin(
+            // Send notification to admin (non-blocking)
+            $this->safeNotifyAdmin(
+                fn() => $this->emailService->sendNotificationToAdmin(
                     $msg->getEmail(),
                     $msg->getFirstName() . ' ' . $msg->getLastName(),
                     $msg->getSubject(),
                     $msg->getMessage()
-                );
-            } catch (\Exception $e) {
-                // Log error but don't prevent saving - email failure shouldn't block message storage
-                // Note: This catch is intentional - we want to handle email failures gracefully
-                // without affecting the main message storage flow
-                $this->logger->error('Error sending contact notification: {error}', ['error' => $e->getMessage()]);
-            }
+                ),
+                $this->logger,
+                'Error sending contact notification'
+            );
 
             // Show success message and redirect to prevent duplicate submissions
             $this->addFlash('success', 'Merci! Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.');
@@ -212,22 +206,17 @@ class ContactController extends AbstractApiController
             // This makes the code more testable (can mock service) and reusable (service can be called from elsewhere)
             $contactMessage = $this->contactService->createContactMessage($dto);
 
-            // Send notification to admin
-            // This is a non-blocking operation (email sending)
-            // We catch exceptions here because email failure should not break message storage
-            // This is different from main business logic exceptions, which are handled by ApiExceptionSubscriber
-            try {
-                $this->emailService->sendNotificationToAdmin(
+            // Send notification to admin (non-blocking)
+            $this->safeNotifyAdmin(
+                fn() => $this->emailService->sendNotificationToAdmin(
                     $contactMessage->getEmail(),
                     $contactMessage->getFirstName() . ' ' . $contactMessage->getLastName(),
                     $contactMessage->getSubject(),
                     $contactMessage->getMessage()
-                );
-            } catch (\Exception $e) {
-                // Note: This catch is intentional - we want to handle email failures gracefully
-                // without affecting the main message storage flow
-                $this->logger->error('Error sending contact notification: {error}', ['error' => $e->getMessage()]);
-            }
+                ),
+                $this->logger,
+                'Error sending contact notification'
+            );
             
             // Uses base class method from AbstractApiController
             return $this->successResponse(null, 'Merci! Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.', 201);

@@ -11,17 +11,13 @@ class InputSanitizer
     {
         // Remove HTML tags
         $sanitized = strip_tags($input);
-        
         // Decode HTML entities
         $sanitized = html_entity_decode($sanitized, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        
         // Remove potentially dangerous characters
         $sanitized = preg_replace('/[<>"\']/', '', $sanitized);
-        
         // Remove JavaScript events and protocols
         $sanitized = preg_replace('/javascript:/i', '', $sanitized);
         $sanitized = preg_replace('/on\w+\s*=/i', '', $sanitized);
-        
         return trim($sanitized);
     }
 

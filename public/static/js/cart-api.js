@@ -60,6 +60,68 @@ class CartAPI {
          * After this time, cache is considered stale and will be refreshed
          */
         this._CACHE_TTL_MS = 500;
+
+        /**
+         * Default error messages for cart operations
+         */
+        this._ERROR_MESSAGES = {
+            add: "Erreur lors de l'ajout",
+            remove: 'Erreur lors de la suppression',
+            update: 'Erreur lors de la mise à jour',
+            clear: 'Erreur lors du vidage',
+        };
+    }
+
+    /**
+     * Invalidate cart cache
+     * Called after any cart modification operation
+     */
+    _invalidateCache() {
+        this._cartCacheAt = 0;
+    }
+
+    /**
+     * Handle HTTP error response
+     * Tries to extract error message from response, falls back to default
+     *
+     * @param {Response} response - HTTP response object
+     * @param {string} defaultMessage - Default error message if parsing fails
+     * @returns {Promise<Error>} Error object with message
+     */
+    async _handleHttpError(response, defaultMessage) {
+        let errorMessage = `Erreur ${response.status}: ${defaultMessage}`;
+        try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+            // If JSON parsing fails, use default message
+        }
+        return new Error(errorMessage);
+    }
+
+    /**
+     * Execute cart operation and handle response
+     * Common logic for all cart modification operations
+     *
+     * @param {Response} response - HTTP response object
+     * @param {string} operationName - Name of operation (for error messages)
+     * @returns {Promise<Object>} Cart object from response
+     * @throws {Error} If operation fails
+     */
+    async _handleCartResponse(response, operationName) {
+        if (!response.ok) {
+            throw await this._handleHttpError(response, this._ERROR_MESSAGES[operationName]);
+        }
+
+        this._invalidateCache();
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || this._ERROR_MESSAGES[operationName]);
+        }
+
+        return data.cart;
     }
 
     /**
@@ -155,38 +217,12 @@ class CartAPI {
      */
     async addItem(itemId, quantity = 1) {
         try {
-            // Make POST request to add item endpoint
             const response = await window.apiRequest(`${this.baseUrl}/add`, {
                 method: 'POST',
                 body: JSON.stringify({ itemId, quantity }),
             });
 
-            // Check HTTP response status first
-            if (!response.ok) {
-                // Try to parse error message from response
-                let errorMessage = `Erreur ${response.status}: Erreur lors de l'ajout`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || errorData.error || errorMessage;
-                } catch {
-                    // If JSON parsing fails, use default message
-                }
-                throw new Error(errorMessage);
-            }
-
-            // Invalidate cache (cart has changed, cache is stale)
-            this._cartCacheAt = 0;
-
-            // Parse response
-            const data = await response.json();
-
-            // Check if operation was successful
-            if (!data.success) {
-                throw new Error(data.message || "Erreur lors de l'ajout");
-            }
-
-            // Return updated cart
-            return data.cart;
+            return await this._handleCartResponse(response, 'add');
         } catch (error) {
             console.error('Error adding item:', error);
             throw error;
@@ -205,37 +241,11 @@ class CartAPI {
      */
     async removeItem(itemId) {
         try {
-            // Make DELETE request to remove item endpoint
             const response = await window.apiRequest(`${this.baseUrl}/remove/${itemId}`, {
                 method: 'DELETE',
             });
 
-            // Check HTTP response status first
-            if (!response.ok) {
-                // Try to parse error message from response
-                let errorMessage = `Erreur ${response.status}: Erreur lors de la suppression`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || errorData.error || errorMessage;
-                } catch {
-                    // If JSON parsing fails, use default message
-                }
-                throw new Error(errorMessage);
-            }
-
-            // Invalidate cache (cart has changed)
-            this._cartCacheAt = 0;
-
-            // Parse response
-            const data = await response.json();
-
-            // Check if operation was successful
-            if (!data.success) {
-                throw new Error(data.message || 'Erreur lors de la suppression');
-            }
-
-            // Return updated cart
-            return data.cart;
+            return await this._handleCartResponse(response, 'remove');
         } catch (error) {
             console.error('Error removing item:', error);
             throw error;
@@ -255,38 +265,12 @@ class CartAPI {
      */
     async updateQuantity(itemId, quantity) {
         try {
-            // Make PUT request to update quantity endpoint
             const response = await window.apiRequest(`${this.baseUrl}/update/${itemId}`, {
                 method: 'PUT',
                 body: JSON.stringify({ quantity }),
             });
 
-            // Check HTTP response status first
-            if (!response.ok) {
-                // Try to parse error message from response
-                let errorMessage = `Erreur ${response.status}: Erreur lors de la mise à jour`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || errorData.error || errorMessage;
-                } catch {
-                    // If JSON parsing fails, use default message
-                }
-                throw new Error(errorMessage);
-            }
-
-            // Invalidate cache (cart has changed)
-            this._cartCacheAt = 0;
-
-            // Parse response
-            const data = await response.json();
-
-            // Check if operation was successful
-            if (!data.success) {
-                throw new Error(data.message || 'Erreur lors de la mise à jour');
-            }
-
-            // Return updated cart
-            return data.cart;
+            return await this._handleCartResponse(response, 'update');
         } catch (error) {
             console.error('Error updating quantity:', error);
             throw error;
@@ -304,37 +288,11 @@ class CartAPI {
      */
     async clearCart() {
         try {
-            // Make POST request to clear cart endpoint
             const response = await window.apiRequest(`${this.baseUrl}/clear`, {
                 method: 'POST',
             });
 
-            // Check HTTP response status first
-            if (!response.ok) {
-                // Try to parse error message from response
-                let errorMessage = `Erreur ${response.status}: Erreur lors du vidage`;
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || errorData.error || errorMessage;
-                } catch {
-                    // If JSON parsing fails, use default message
-                }
-                throw new Error(errorMessage);
-            }
-
-            // Invalidate cache (cart is now empty)
-            this._cartCacheAt = 0;
-
-            // Parse response
-            const data = await response.json();
-
-            // Check if operation was successful
-            if (!data.success) {
-                throw new Error(data.message || 'Erreur lors du vidage');
-            }
-
-            // Return empty cart
-            return data.cart;
+            return await this._handleCartResponse(response, 'clear');
         } catch (error) {
             console.error('Error clearing cart:', error);
             throw error;
@@ -632,27 +590,17 @@ function initCartSidebar() {
                     await window.cartAPI.clearCart();
 
                     // Update UI
-                    await updateCartNavigation();
-                    await updateCartSidebar();
+                    await updateCartUI();
 
                     // Show success notification
                     if (window.showCartNotification) {
                         window.showCartNotification('Panier vidé avec succès', 'success');
                     }
 
-                    /**
-                     * Trigger menu re-render if available
-                     * This updates item quantities in the menu page
-                     */
+                    // Trigger menu re-render if available
                     if (window.renderMenu && typeof window.renderMenu === 'function') {
                         await window.renderMenu();
                     }
-
-                    /**
-                     * Dispatch cartUpdated event
-                     * Other parts of the app listen to this event to update their UI
-                     */
-                    window.dispatchEvent(new CustomEvent('cartUpdated'));
 
                     /**
                      * Close cart sidebar after clearing
@@ -755,19 +703,11 @@ async function updateCartSidebar() {
          * Disable button if cart is empty (nothing to clear)
          */
         if (clearCartBtn) {
-            if (cart.items.length === 0) {
-                // Cart is empty - disable button
-                clearCartBtn.disabled = true;
-                clearCartBtn.classList.add('disabled');
-                clearCartBtn.style.opacity = '0.5';
-                clearCartBtn.style.cursor = 'not-allowed';
-            } else {
-                // Cart has items - enable button
-                clearCartBtn.disabled = false;
-                clearCartBtn.classList.remove('disabled');
-                clearCartBtn.style.opacity = '1';
-                clearCartBtn.style.cursor = 'pointer';
-            }
+            const isEmpty = cart.items.length === 0;
+            clearCartBtn.disabled = isEmpty;
+            clearCartBtn.classList.toggle('disabled', isEmpty);
+            clearCartBtn.style.opacity = isEmpty ? '0.5' : '1';
+            clearCartBtn.style.cursor = isEmpty ? 'not-allowed' : 'pointer';
         }
 
         /**
@@ -847,6 +787,23 @@ async function updateCartSidebar() {
 // ============================================================================
 
 /**
+ * Common UI update logic after cart operations
+ *
+ * @param {string|number} itemId - Optional item ID for menu page updates
+ * @returns {Promise<void>}
+ */
+async function updateCartUI(itemId = null) {
+    await updateCartSidebar();
+    await updateCartNavigation();
+
+    if (itemId && window.updateQuantityDisplay) {
+        window.updateQuantityDisplay(itemId);
+    }
+
+    window.dispatchEvent(new CustomEvent('cartUpdated'));
+}
+
+/**
  * Remove item from cart (via sidebar controls)
  *
  * If quantity > 1, decreases quantity.
@@ -857,40 +814,24 @@ async function updateCartSidebar() {
  */
 window.removeFromCartSidebar = async function (itemId) {
     try {
-        // Get current cart
         const cart = await window.cartAPI.getCart();
-        // Find the item in cart
         const item = cart.items.find(i => i.id === itemId);
 
-        if (item) {
-            if (item.quantity > 1) {
-                // Decrease quantity (item stays in cart)
-                await window.cartAPI.updateQuantity(itemId, item.quantity - 1);
-                // Show notification
-                if (window.showCartNotification) {
-                    window.showCartNotification(`Quantité de ${item.name} diminuée`, 'info');
-                }
-            } else {
-                // Remove item (quantity was 1, now remove entirely)
-                await window.cartAPI.removeItem(itemId);
-                // Show notification
-                if (window.showCartNotification) {
-                    window.showCartNotification(`${item.name} supprimé du panier`, 'info');
-                }
+        if (!item) return;
+
+        if (item.quantity > 1) {
+            await window.cartAPI.updateQuantity(itemId, item.quantity - 1);
+            if (window.showCartNotification) {
+                window.showCartNotification(`Quantité de ${item.name} diminuée`, 'info');
             }
-
-            // Update UI
-            await updateCartSidebar();
-            await updateCartNavigation();
-
-            // Update quantity display on menu page (if available)
-            if (window.updateQuantityDisplay) {
-                window.updateQuantityDisplay(itemId);
+        } else {
+            await window.cartAPI.removeItem(itemId);
+            if (window.showCartNotification) {
+                window.showCartNotification(`${item.name} supprimé du panier`, 'info');
             }
-
-            // Dispatch event for other components
-            window.dispatchEvent(new CustomEvent('cartUpdated'));
         }
+
+        await updateCartUI(itemId);
     } catch (error) {
         console.error('Error removing from cart sidebar:', error);
         if (window.showCartNotification) {
@@ -908,32 +849,18 @@ window.removeFromCartSidebar = async function (itemId) {
  */
 window.addToCartSidebar = async function (itemId) {
     try {
-        // Get current cart
         const cart = await window.cartAPI.getCart();
-        // Find the item in cart
         const item = cart.items.find(i => i.id === itemId);
 
-        if (item) {
-            // Increase quantity
-            await window.cartAPI.updateQuantity(itemId, item.quantity + 1);
+        if (!item) return;
 
-            // Update UI
-            await updateCartSidebar();
-            await updateCartNavigation();
+        await window.cartAPI.updateQuantity(itemId, item.quantity + 1);
 
-            // Update quantity display on menu page (if available)
-            if (window.updateQuantityDisplay) {
-                window.updateQuantityDisplay(itemId);
-            }
-
-            // Show success notification
-            if (window.showCartNotification) {
-                window.showCartNotification(`Quantité de ${item.name} augmentée`, 'success');
-            }
-
-            // Dispatch event for other components
-            window.dispatchEvent(new CustomEvent('cartUpdated'));
+        if (window.showCartNotification) {
+            window.showCartNotification(`Quantité de ${item.name} augmentée`, 'success');
         }
+
+        await updateCartUI(itemId);
     } catch (error) {
         console.error('Error adding to cart sidebar:', error);
         if (window.showCartNotification) {

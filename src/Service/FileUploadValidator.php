@@ -48,7 +48,6 @@ class FileUploadValidator
         if ($errorCode !== UPLOAD_ERR_OK) {
             throw new FileException($this->translateUploadError($errorCode));
         }
-
         // Fast-fail: extension whitelist (cheap check before MIME inspection)
         $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension());
         if (!in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
@@ -59,7 +58,6 @@ class FileUploadValidator
                 )
             );
         }
-
         // Enforce size limit (server-side safety net)
         $size = $file->getSize();
         if ($size !== null && $size > $this->maxFileSize) {
@@ -68,7 +66,6 @@ class FileUploadValidator
                 sprintf('Le fichier est trop volumineux. Taille maximum autorisée : %s MB', $maxSizeMB)
             );
         }
-
         // Validate MIME type from file content (reliable check)
         $mimeType = $file->getMimeType();
         if (!$mimeType || !in_array(strtolower($mimeType), self::ALLOWED_MIME_TYPES, true)) {
@@ -79,7 +76,6 @@ class FileUploadValidator
                 )
             );
         }
-
         // Ensure extension matches MIME type
         $this->validateMimeExtensionMatch($mimeType, $extension);
     }

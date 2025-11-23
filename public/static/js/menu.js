@@ -36,6 +36,49 @@ function getElementById(id) {
     return document.getElementById(id);
 }
 
+/**
+ * Normalize ID to string for consistent comparison
+ *
+ * @param {string|number} id - Item ID
+ * @returns {string} Normalized string ID
+ */
+function normalizeId(id) {
+    return String(id);
+}
+
+/**
+ * Compare two IDs (handles both string and number formats)
+ *
+ * @param {string|number} id1 - First ID
+ * @param {string|number} id2 - Second ID
+ * @returns {boolean} True if IDs match
+ */
+function compareIds(id1, id2) {
+    return normalizeId(id1) === normalizeId(id2) || parseInt(id1) === parseInt(id2);
+}
+
+/**
+ * Find menu item by ID
+ *
+ * @param {string|number} itemId - Item ID to find
+ * @returns {Object|undefined} Menu item or undefined
+ */
+function findMenuItemById(itemId) {
+    if (!window.menuItems) return undefined;
+    return window.menuItems.find(item => compareIds(item.id, itemId));
+}
+
+/**
+ * Update cart sidebar if available
+ *
+ * @returns {Promise<void>}
+ */
+async function updateCartSidebarIfAvailable() {
+    if (window.updateCartSidebar) {
+        await window.updateCartSidebar();
+    }
+}
+
 // ============================================================================
 // FILTER STATE
 // ============================================================================
@@ -173,9 +216,7 @@ function initMenu() {
      * Also update cart sidebar on initialization
      * Ensures sidebar shows current cart state
      */
-    if (window.updateCartSidebar) {
-        window.updateCartSidebar();
-    }
+    updateCartSidebarIfAvailable();
 
     /**
      * Listen for cart updates from other parts of the page
@@ -323,10 +364,11 @@ function setupMobileFilterAutoClose() {
         return;
     }
 
+    // eslint-disable-next-line no-undef
     const collapseInstance = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
     const shouldAutoClose = () => window.innerWidth < 768;
 
-    document.addEventListener('click', (event) => {
+    document.addEventListener('click', event => {
         if (!shouldAutoClose() || !collapseEl.classList.contains('show')) {
             return;
         }
@@ -487,28 +529,23 @@ function observeStickyState() {
     const getStickyTop = () =>
         parseInt(getComputedStyle(root).getPropertyValue('--menu-sticky-top')) || 76;
     const originalTop = section.offsetTop; // distance from document top
+    const inner = section.querySelector('.menu-filters');
 
     // Only visual shadow toggle; sticky handled by CSS. Fallback remains passive.
     const onScroll = () => {
-        if (window.scrollY > originalTop - getStickyTop()) {
+        const isSticky = window.scrollY > originalTop - getStickyTop();
+        if (isSticky) {
             section.classList.add('is-sticky');
-            // Section: only bottom margin when sticky (no Bootstrap py on section)
             section.classList.remove('py-1', 'py-2', 'py-3', 'mb-2');
-            const inner = section.querySelector('.menu-filters');
             if (inner) {
-                // Inner filters: keep comfortable padding py-3 and bottom margin mb-2
                 inner.classList.remove('py-0', 'py-1', 'py-2');
                 inner.classList.add('py-3', 'mb-2');
             }
         } else {
             section.classList.remove('is-sticky');
-            // Section: no mb on section; spacing goes to inner container
             section.classList.remove('py-1', 'py-2', 'py-3', 'mb-2');
-            const inner = section.querySelector('.menu-filters');
             if (inner) {
-                // Inner default spacing: ensure mb-2 present even when not sticky
                 inner.classList.add('mb-2');
-                // remove forced py when not sticky
                 inner.classList.remove('py-3');
             }
         }
@@ -597,17 +634,13 @@ function filterItems() {
 
         // Price filter
         if (priceFilter) {
-            switch (priceFilter) {
-                case 'under-15':
-                    if (item.price >= 15) return false;
-                    break;
-                case '15-25':
-                    if (item.price < 15 || item.price > 25) return false;
-                    break;
-                case 'over-25':
-                    if (item.price <= 25) return false;
-                    break;
-            }
+            const price = Number(item.price) || 0;
+            const priceRanges = {
+                'under-15': price < 15,
+                '15-25': price >= 15 && price <= 25,
+                'over-25': price > 25,
+            };
+            if (!priceRanges[priceFilter]) return false;
         }
 
         // Dietary filters
@@ -670,11 +703,7 @@ function renderCategorySection(category, items, cartItems = []) {
     `;
 
     // Build a fast lookup for quantities once per section
-    const qtyById = new Map();
-    for (const ci of cartItems) {
-        // Normalize to string id for consistent lookups
-        qtyById.set(String(ci.id), ci.quantity);
-    }
+    const qtyById = new Map(cartItems.map(ci => [normalizeId(ci.id), ci.quantity]));
 
     items.forEach(item => {
         html += renderMenuItem(item, qtyById);
@@ -690,8 +719,8 @@ function renderCategorySection(category, items, cartItems = []) {
 
 // Render a single menu item card including quantity controls and add button
 function renderMenuItem(item, qtyById /* Map<string,id> -> quantity */) {
-    const idKey = String(item.id);
-    const quantity = qtyById && qtyById.has(idKey) ? qtyById.get(idKey) : 0;
+    const idKey = normalizeId(item.id);
+    const quantity = qtyById?.get(idKey) || 0;
 
     const badges = (item.badges || [])
         .map(badge => {
@@ -709,7 +738,7 @@ function renderMenuItem(item, qtyById /* Map<string,id> -> quantity */) {
         }) + '€';
 
     const imageOriginal = item.image_original || item.image || '/static/img/menu-placeholder.jpg';
-    const imageOriginalEscaped = imageOriginal.replace(/'/g, '\\\'');
+    const imageOriginalEscaped = imageOriginal.replace(/'/g, "\\'");
     const imageJpeg = item.image_optimized || item.image_full || imageOriginal;
     const imageWebp = item.image_webp || item.image_full_webp || '';
 
@@ -769,94 +798,61 @@ function renderMenuItem(item, qtyById /* Map<string,id> -> quantity */) {
 function renderDrinksSection() {
     if (!window.drinksData) return '';
 
-    const formatDrinkPrice = p => {
-        const n = Number(p);
-        if (isNaN(n)) return p;
+    const formatDrinkPrice = price => {
+        const num = Number(price);
+        if (isNaN(num)) return price;
         return (
-            n.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'
+            num.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) +
+            ' €'
         );
     };
 
-    let html = `
+    const renderDrinkCategory = (drinks, title, icon) => {
+        if (!drinks || drinks.length === 0) return '';
+        return `
+            <div class="drinks-category">
+                <h4><i class="bi ${icon} me-2"></i>${title}</h4>
+                ${drinks
+                    .map(
+                        drink => `
+                    <div class="drink-item">
+                        <span class="drink-name">${drink.name}</span>
+                        <span class="drink-price">${formatDrinkPrice(drink.price)}</span>
+                    </div>
+                `
+                    )
+                    .join('')}
+            </div>
+        `;
+    };
+
+    const drinkCategories = [
+        { data: window.drinksData.vins, title: 'Vins', icon: 'bi-cup' },
+        { data: window.drinksData.chaudes, title: 'Boissons chaudes', icon: 'bi-cup-hot' },
+        { data: window.drinksData.bieres, title: 'Bières', icon: 'bi-cup-straw' },
+        { data: window.drinksData.fraiches, title: 'Boissons fraîches', icon: 'bi-droplet' },
+    ];
+
+    const leftColumn = drinkCategories.slice(0, 2);
+    const rightColumn = drinkCategories.slice(2);
+
+    return `
         <div class="menu-section fade-in">
             <h2 class="menu-section-title">Boissons</h2>
             <div class="row g-4">
-    `;
-
-    // Wines
-    html += `
-        <div class="col-lg-6">
-            <div class="drinks-section">
-                <div class="drinks-category">
-                    <h4><i class="bi bi-cup me-2"></i>Vins</h4>
-                    ${window.drinksData.vins
-                        .map(
-                            drink => `
-                        <div class="drink-item">
-                            <span class="drink-name">${drink.name}</span>
-                            <span class="drink-price">${formatDrinkPrice(drink.price)}</span>
-                        </div>
-                    `
-                        )
-                        .join('')}
+                <div class="col-lg-6">
+                    <div class="drinks-section">
+                        ${leftColumn.map(cat => renderDrinkCategory(cat.data, cat.title, cat.icon)).join('')}
+                    </div>
                 </div>
-                <div class="drinks-category">
-                    <h4><i class="bi bi-cup-hot me-2"></i>Boissons chaudes</h4>
-                    ${window.drinksData.chaudes
-                        .map(
-                            drink => `
-                        <div class="drink-item">
-                            <span class="drink-name">${drink.name}</span>
-                            <span class="drink-price">${formatDrinkPrice(drink.price)}</span>
-                        </div>
-                    `
-                        )
-                        .join('')}
+                <div class="col-lg-6">
+                    <div class="drinks-section">
+                        ${rightColumn.map(cat => renderDrinkCategory(cat.data, cat.title, cat.icon)).join('')}
+                    </div>
                 </div>
             </div>
         </div>
     `;
-
-    // Beers and cold drinks
-    html += `
-        <div class="col-lg-6">
-            <div class="drinks-section">
-                <div class="drinks-category">
-                    <h4><i class="bi bi-cup-straw me-2"></i>Bières</h4>
-                    ${window.drinksData.bieres
-                        .map(
-                            drink => `
-                        <div class="drink-item">
-                            <span class="drink-name">${drink.name}</span>
-                            <span class="drink-price">${formatDrinkPrice(drink.price)}</span>
-                        </div>
-                    `
-                        )
-                        .join('')}
-                </div>
-                <div class="drinks-category">
-                    <h4><i class="bi bi-droplet me-2"></i>Boissons fraîches</h4>
-                    ${window.drinksData.fraiches
-                        .map(
-                            drink => `
-                        <div class="drink-item">
-                            <span class="drink-name">${drink.name}</span>
-                            <span class="drink-price">${formatDrinkPrice(drink.price)}</span>
-                        </div>
-                    `
-                        )
-                        .join('')}
-                </div>
-            </div>
-        </div>
-    `;
-
-    html += `
-            </div>
-        </div>
-    `;
-
-    return html;
 }
 
 /**
@@ -946,9 +942,7 @@ async function performCartUpdate(cartOperation) {
     if (window.updateCartNavigation) {
         await window.updateCartNavigation();
     }
-    if (window.updateCartSidebar) {
-        await window.updateCartSidebar();
-    }
+    await updateCartSidebarIfAvailable();
 
     /**
      * Keep cart sidebar open when modifying quantities
@@ -974,42 +968,37 @@ async function performCartUpdate(cartOperation) {
  * Adds item to cart and updates menu card display
  */
 async function addToCart(itemId) {
-    const key = String(itemId);
-    const item = window.menuItems.find(
-        i => String(i.id) === key || parseInt(i.id) === parseInt(itemId)
-    );
-    if (item) {
-        try {
-            /**
-             * Perform cart update using common logic
-             * This handles UI updates, state management, and event dispatching
-             */
-            await performCartUpdate(async () => {
-                const cart = await window.cartAPI.addItem(itemId, 1);
-                // Safety check: ensure cart exists and has items array
-                // This prevents "Cannot read properties of undefined" errors
-                if (!cart || !cart.items || !Array.isArray(cart.items)) {
-                    throw new Error('Invalid cart response structure');
-                }
-                const updated = cart.items.find(
-                    i => String(i.id) === key || parseInt(i.id) === parseInt(itemId)
-                );
-                if (updated) {
-                    updateMenuCard(updated.id, updated.quantity);
-                }
+    const item = findMenuItemById(itemId);
+    if (!item) return;
 
-                /**
-                 * Show notification for adding item
-                 */
-                if (window.showCartNotification) {
-                    window.showCartNotification(`${item.name} ajouté au panier`, 'success');
-                }
-            });
-        } catch (error) {
-            console.error('Error adding to cart:', error);
-            if (window.showCartNotification) {
-                window.showCartNotification("Erreur lors de l'ajout au panier", 'error');
+    try {
+        /**
+         * Perform cart update using common logic
+         * This handles UI updates, state management, and event dispatching
+         */
+        await performCartUpdate(async () => {
+            const cart = await window.cartAPI.addItem(itemId, 1);
+            // Safety check: ensure cart exists and has items array
+            // This prevents "Cannot read properties of undefined" errors
+            if (!cart || !cart.items || !Array.isArray(cart.items)) {
+                throw new Error('Invalid cart response structure');
             }
+            const updated = cart.items.find(i => compareIds(i.id, itemId));
+            if (updated) {
+                updateMenuCard(updated.id, updated.quantity);
+            }
+
+            /**
+             * Show notification for adding item
+             */
+            if (window.showCartNotification) {
+                window.showCartNotification(`${item.name} ajouté au panier`, 'success');
+            }
+        });
+    } catch (error) {
+        console.error('Error adding to cart:', error);
+        if (window.showCartNotification) {
+            window.showCartNotification("Erreur lors de l'ajout au panier", 'error');
         }
     }
 }
@@ -1022,49 +1011,42 @@ async function addToCart(itemId) {
 async function removeFromCart(itemId) {
     try {
         const cart = await window.cartAPI.getCart();
-        const item = cart.items.find(
-            i => String(i.id) === String(itemId) || parseInt(i.id) === parseInt(itemId)
-        );
+        const item = cart.items.find(i => compareIds(i.id, itemId));
 
-        if (item) {
-            const itemName = item.name;
+        if (!item) return;
 
-            /**
-             * Perform cart update using common logic
-             * This handles UI updates, state management, and event dispatching
-             */
-            await performCartUpdate(async () => {
-                if (item.quantity > 1) {
-                    /**
-                     * Decrease quantity by 1
-                     * Item remains in cart with reduced quantity
-                     */
-                    const updatedCart = await window.cartAPI.updateQuantity(
-                        itemId,
-                        item.quantity - 1
-                    );
-                    const updated = updatedCart.items.find(
-                        i => String(i.id) === String(itemId) || parseInt(i.id) === parseInt(itemId)
-                    );
-                    updateMenuCard(itemId, updated ? updated.quantity : item.quantity - 1);
+        const itemName = item.name;
 
-                    if (window.showCartNotification) {
-                        window.showCartNotification('Quantité diminuée', 'success');
-                    }
-                } else {
-                    /**
-                     * Remove item completely from cart
-                     * This happens when quantity is 1 (last item)
-                     */
-                    await window.cartAPI.removeItem(itemId);
-                    updateMenuCard(itemId, 0);
+        /**
+         * Perform cart update using common logic
+         * This handles UI updates, state management, and event dispatching
+         */
+        await performCartUpdate(async () => {
+            if (item.quantity > 1) {
+                /**
+                 * Decrease quantity by 1
+                 * Item remains in cart with reduced quantity
+                 */
+                const updatedCart = await window.cartAPI.updateQuantity(itemId, item.quantity - 1);
+                const updated = updatedCart.items.find(i => compareIds(i.id, itemId));
+                updateMenuCard(itemId, updated ? updated.quantity : item.quantity - 1);
 
-                    if (window.showCartNotification) {
-                        window.showCartNotification(`${itemName} supprimé du panier`, 'info');
-                    }
+                if (window.showCartNotification) {
+                    window.showCartNotification('Quantité diminuée', 'success');
                 }
-            });
-        }
+            } else {
+                /**
+                 * Remove item completely from cart
+                 * This happens when quantity is 1 (last item)
+                 */
+                await window.cartAPI.removeItem(itemId);
+                updateMenuCard(itemId, 0);
+
+                if (window.showCartNotification) {
+                    window.showCartNotification(`${itemName} supprimé du panier`, 'info');
+                }
+            }
+        });
     } catch (error) {
         console.error('Error removing from cart:', error);
     }
@@ -1085,21 +1067,22 @@ async function updateCartDisplay() {
     }
 
     // Also update cart sidebar if it exists
-    if (window.updateCartSidebar) {
-        await window.updateCartSidebar();
-    }
+    await updateCartSidebarIfAvailable();
 }
 
 // Expose functions globally and override those from main.js
-window.initMenu = initMenu;
-window.renderMenu = renderMenu;
+const globalExports = {
+    initMenu,
+    renderMenu,
+    addToCart,
+    removeFromCart,
+    updateCartDisplay,
+};
 
-// Override cart functions from main.js for the menu page
-window.addToCart = addToCart;
-window.removeFromCart = removeFromCart;
-window.updateCartDisplay = updateCartDisplay;
+// Apply all exports to window
+Object.assign(window, globalExports);
 
-// Also override global cart functions
+// Override global cart functions namespace
 window.LesTroisQuarts = window.LesTroisQuarts || {};
 window.LesTroisQuarts.addToCart = addToCart;
 window.LesTroisQuarts.removeCartItem = removeFromCart;
@@ -1129,9 +1112,7 @@ async function refreshMenuState() {
     try {
         await refreshMenuQuantitiesFromCart();
         await updateCartDisplay();
-        if (window.updateCartSidebar) {
-            await window.updateCartSidebar();
-        }
+        await updateCartSidebarIfAvailable();
     } catch (err) {
         console.error('Menu refresh failed:', err);
     }
@@ -1231,10 +1212,10 @@ async function refreshMenuQuantitiesFromCart() {
     if (cards.length === 0) return;
     try {
         const cart = await window.cartAPI.getCart();
-        const idToQty = new Map(cart.items.map(i => [String(i.id), i.quantity]));
+        const idToQty = new Map(cart.items.map(i => [normalizeId(i.id), i.quantity]));
         cards.forEach(card => {
             const id = card.getAttribute('data-item-id');
-            const q = idToQty.get(String(id)) || 0;
+            const q = idToQty.get(normalizeId(id)) || 0;
             updateMenuCard(id, q);
         });
     } catch (e) {

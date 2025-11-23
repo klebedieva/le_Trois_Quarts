@@ -209,7 +209,12 @@ class OrderController extends AbstractApiController
         $order = $this->orderService->createOrder($dto);
 
         // Step 6: Notify admin (non-blocking)
-        $this->notifyAdminAboutNewOrder($order);
+        $this->safeNotifyAdmin(
+            fn() => $this->emailService->sendOrderNotificationToAdmin($order),
+            $this->logger,
+            'Order admin notification failed',
+            ['orderId' => $order->getId()]
+        );
 
         // Step 7: Build success response
         $responseArray = $this->buildOrderResponse($order);
@@ -258,34 +263,6 @@ class OrderController extends AbstractApiController
         return null;
     }
 
-
-    /**
-     * Notify admin about new order (non-blocking)
-     *
-     * This method sends an email notification to the admin about a new order.
-     * It's non-blocking: if email sending fails, it logs the error but doesn't
-     * break the order creation process.
-     *
-     * @param \App\Entity\Order $order Created order entity
-     */
-    private function notifyAdminAboutNewOrder(\App\Entity\Order $order): void
-    {
-        // This is a non-blocking operation (email sending)
-        // We catch exceptions here because email failure should not break order creation
-        // This is different from main business logic exceptions, which are handled by ApiExceptionSubscriber
-        try {
-            $this->emailService->sendOrderNotificationToAdmin($order);
-        } catch (\Exception $e) {
-            // Log silently; do not break order creation
-            // Email notification is a nice-to-have feature, not critical for order creation
-            // Note: This catch is intentional - we want to handle email failures gracefully
-            // without affecting the main order creation flow
-            $this->logger->warning('Order admin notification failed', [
-                'orderId' => $order->getId(),
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
 
     /**
      * Build order response DTO

@@ -252,7 +252,8 @@ function initGallery() {
         Array.from(document.querySelectorAll('.gallery-item')).map(item => {
             const imgEl = item.querySelector('img');
             const src = item.getAttribute('data-image') || imgEl?.getAttribute('src') || '';
-            const fallback = item.getAttribute('data-fallback-image') || imgEl?.getAttribute('src') || src;
+            const fallback =
+                item.getAttribute('data-fallback-image') || imgEl?.getAttribute('src') || src;
             const title = item.getAttribute('data-title') || imgEl?.getAttribute('alt') || '';
             const description = item.getAttribute('data-description') || '';
             const alt = imgEl?.getAttribute('alt') || title;
@@ -457,18 +458,18 @@ function initGallery() {
             // We'll open it manually after setting the image
             e.preventDefault();
             e.stopPropagation();
-            
+
             // Set current index to the clicked item
             currentImageIndex = index;
             // Show the image in modal immediately (using DOM data)
             showImage(currentImageIndex);
-            
+
             // Open modal manually after image is set
             if (modal) {
                 const modalInstance = window.bootstrap.Modal.getOrCreateInstance(modal);
                 modalInstance.show();
             }
-            
+
             // Refresh gallery images in background (non-blocking)
             // This updates the cache for future navigation but doesn't delay the first image
             refreshGalleryImages().then(() => {
@@ -483,9 +484,9 @@ function initGallery() {
                             const requestId = ++modalImageRequestId;
                             modalImage.dataset.requestId = String(requestId);
                             modalImage.style.opacity = '0.5';
-                            
+
                             const img = new Image();
-                            img.onload = function() {
+                            img.onload = function () {
                                 if (modalImage.dataset.requestId === String(requestId)) {
                                     modalImage.src = newSrc;
                                     modalImage.style.opacity = '1';
@@ -600,22 +601,6 @@ function initSmoothScrolling() {
             }
         });
     });
-
-    /**
-     * Scroll indicator click behavior
-     * The hero section has a "scroll down" indicator button
-     * Clicking it scrolls to the "about" section
-     */
-    const scrollIndicator = document.querySelector('.scroll-indicator');
-    if (scrollIndicator) {
-        scrollIndicator.addEventListener('click', function () {
-            const aboutSection = document.getElementById('about');
-            if (aboutSection) {
-                // Use scrollIntoView for simple, smooth scrolling
-                aboutSection.scrollIntoView({ behavior: 'smooth' });
-            }
-        });
-    }
 }
 
 // ============================================================================

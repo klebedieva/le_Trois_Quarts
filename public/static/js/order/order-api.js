@@ -238,10 +238,8 @@ window.couponAPI = {
      * }
      */
     async validateCoupon(code, orderAmount) {
-        const res = await fetch('/api/coupon/validate', {
+        const res = await window.apiRequest('/api/coupon/validate', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
             body: JSON.stringify({ code, orderAmount }),
         });
 
@@ -275,10 +273,8 @@ window.couponAPI = {
      * @throws {Error} If API call fails
      */
     async applyCoupon(couponId) {
-        const res = await fetch(`/api/coupon/apply/${couponId}`, {
+        const res = await window.apiRequest(`/api/coupon/apply/${couponId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
         });
 
         const data = await res.json();

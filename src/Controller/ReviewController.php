@@ -3,8 +3,8 @@
 namespace App\Controller;
 
 use App\Entity\Review;
+use App\Repository\ReviewRepository;
 use App\Service\ValidationHelper;
-use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,33 +33,36 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 class ReviewController extends AbstractApiController
 {
     /**
-     * Constructor for ReviewController
-     *
-     * Injects dependencies required for review API operations:
-     * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
-     * - ReviewService: Encapsulates review creation and persistence (business logic)
-     *
-     * @param ValidatorInterface $validator Symfony validator for DTO validation
-     * @param ValidationHelper $validationHelper Helper for validation operations
-     * @param \App\Service\ReviewService $reviewService Service for creating reviews
-     */
-    public function __construct(
-        ValidatorInterface $validator,
-        ValidationHelper $validationHelper,
-        private \App\Service\ReviewService $reviewService
-    ) {
-        parent::__construct($validator, $validationHelper);
-    }
-    /**
      * List approved reviews with pagination support
      * 
      * Returns only approved reviews (not dish-specific) for the restaurant homepage/reviews page.
      * Supports pagination via query parameters.
      * 
      * @param Request $request HTTP request containing pagination parameters
-     * @param EntityManagerInterface $em Entity manager for database operations
      * @return JsonResponse Paginated list of approved reviews
      */
+    /**
+     * Constructor for ReviewController
+     *
+     * Injects dependencies required for review API operations:
+     * - ValidatorInterface and ValidationHelper: Passed to parent for DTO validation
+     * - ReviewService: Encapsulates review creation and persistence (business logic)
+     * - ReviewRepository: Repository for querying reviews
+     *
+     * @param ValidatorInterface $validator Symfony validator for DTO validation
+     * @param ValidationHelper $validationHelper Helper for validation operations
+     * @param \App\Service\ReviewService $reviewService Service for creating reviews
+     * @param \App\Repository\ReviewRepository $reviewRepository Repository for querying reviews
+     */
+    public function __construct(
+        ValidatorInterface $validator,
+        ValidationHelper $validationHelper,
+        private \App\Service\ReviewService $reviewService,
+        private \App\Repository\ReviewRepository $reviewRepository
+    ) {
+        parent::__construct($validator, $validationHelper);
+    }
+
     #[Route('/reviews', name: 'api_reviews_list', methods: ['GET'])]
     #[OA\Get(
         path: '/api/reviews',
@@ -71,7 +74,7 @@ class ReviewController extends AbstractApiController
     #[OA\Parameter(name: 'limit', in: 'query', required: false, description: 'Items per page (default: 6)', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100))]
     #[OA\Response(response: 200, description: 'Successful response', content: new OA\JsonContent(type: 'object', properties: [new OA\Property(property: 'success', type: 'boolean'), new OA\Property(property: 'data', type: 'object')]))]
     #[OA\Response(response: 400, description: 'Bad request', content: new OA\JsonContent(type: 'object', properties: [new OA\Property(property: 'success', type: 'boolean'), new OA\Property(property: 'message', type: 'string')]))]
-    public function list(Request $request, EntityManagerInterface $em): JsonResponse
+    public function list(Request $request): JsonResponse
     {
         // Extract pagination parameters from query string (defaults: page=1, limit=6)
         $page = (int) $request->query->get('page', 1);
@@ -80,10 +83,8 @@ class ReviewController extends AbstractApiController
 
         // Query only general reviews (not dish-specific) that are approved
         // menuItem IS NULL means it's a general restaurant review, not a dish review
-        /** @var \App\Repository\ReviewRepository $repo */
-        $repo = $em->getRepository(Review::class);
-        $reviews = $repo->findApprovedGeneralPaginated($page, $limit);
-        $totalCount = $repo->countApprovedGeneral();
+        $reviews = $this->reviewRepository->findApprovedGeneralPaginated($page, $limit);
+        $totalCount = $this->reviewRepository->countApprovedGeneral();
 
         // Determine if there are more pages available
         $hasMore = ($offset + count($reviews)) < $totalCount;
@@ -118,7 +119,6 @@ class ReviewController extends AbstractApiController
      * and require admin moderation before being displayed publicly.
      * 
      * @param Request $request HTTP request containing review data (name, email, rating, comment)
-     * @param EntityManagerInterface $em Entity manager for persisting the review
      * @return JsonResponse Success/error response
      */
     #[Route('/review', name: 'api_review_create', methods: ['POST'])]
@@ -186,7 +186,7 @@ class ReviewController extends AbstractApiController
             ]
         )
     )]
-    public function create(Request $request, EntityManagerInterface $em, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
+    public function create(Request $request, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
     {
         // Validate CSRF token (supports header X-CSRF-Token or _token parameter)
         $csrfError = $this->validateCsrfToken($request, $csrfTokenManager, 'review_submit');

@@ -196,15 +196,11 @@
 
 /* Hero Section */
 .hero-section {
-    /* Remove external Pexels fallback; carousel slides supply local banner images */
-    /* Background removed - overlay is handled by .carousel-overlay inside .carousel-banner */
     display: flex;
     align-items: center;
     position: relative;
     color: white;
 }
-
-/* .hero-overlay is defined later in this file (near img.hero-media) */
 
 .hero-title {
     font-size: 4rem;
@@ -221,16 +217,6 @@
 
 .hero-buttons {
     animation: fadeInUp 1s ease-out 0.6s both;
-}
-
-.scroll-indicator {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 2rem;
-    animation: bounce 2s infinite;
-    cursor: pointer;
 }
 
 /* Sections - using Bootstrap classes */
@@ -521,10 +507,6 @@ footer a.text-white:hover {
 }
 
 @media (max-width: 768px) {
-  .carousel-banner {
-    height: 70vh !important;
-    min-height: 70vh !important;
-  }
   
   /* Larger buttons and text for screens less than 768px */
   .hero-buttons .btn {
@@ -786,8 +768,8 @@ footer a[href^="mailto:"] {
     padding-left: 4rem !important;
 }
 
-/* Footer styles for screens larger than 576px - same as mobile */
-@media (min-width: 577px) and (max-width: 991px) {
+/* Footer styles for screens up to 991px */
+@media (max-width: 991px) {
   .footer-logo-row {
     justify-content: center !important;
     flex-direction: column !important;
@@ -821,10 +803,6 @@ footer a[href^="mailto:"] {
     display: inline-block;
     margin-bottom: 0.5rem;
   }
-}
-
-@media (max-width: 991px) and (min-width: 577px) {
-  /* Tablet styles */
 }
 
 /* Reservation Section Styles */
@@ -832,39 +810,6 @@ footer a[href^="mailto:"] {
 /* Mobile styles for reservation section - replaced with Bootstrap classes */
 
 @media (max-width: 576px) {
-  .footer-logo-row {
-    justify-content: center !important;
-    flex-direction: column !important;
-    text-align: center !important;
-  }
-  .footer-logo-row p {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-  .footer-logo-row img {
-    margin-bottom: 1rem;
-    margin-right: 0 !important;
-    height: 100px !important;
-    width: 100px !important;
-  }
-  .col-lg-4 > .mx-auto.text-start {
-    max-width: 100% !important;
-    text-align: center !important;
-  }
-  .col-lg-4 > .mx-auto.text-start * {
-    text-align: center !important;
-  }
-  .ps-lg-custom {
-    padding-left: 0 !important;
-  }
-  footer .row.align-items-center > div {
-    text-align: center !important;
-    justify-content: center !important;
-  }
-  footer .row.align-items-center a {
-    display: inline-block;
-    margin-bottom: 0.5rem;
-  }
   
   /* Center reservation header on mobile */
   .reservation-header h1,
@@ -1210,17 +1155,6 @@ footer a[href^="mailto:"] {
     }
 }
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 @keyframes expandLine {
     from {
         width: 0;
@@ -1486,13 +1420,6 @@ img.hero-media {
     overflow: hidden;
 }
 
-.hero-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(139, 69, 19, 0.35), rgba(212, 165, 116, 0.25)), linear-gradient(to bottom, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.45));
-    z-index: 1;
-}
-
 /* Footer utility classes */
 .footer-content-width {
     max-width: 320px;
@@ -1603,11 +1530,6 @@ img.hero-media {
     inset: 0;
     background: linear-gradient(135deg, rgba(139, 69, 19, 0.35), rgba(212, 165, 116, 0.25)), linear-gradient(to bottom, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.45));
     z-index: 1;
-}
-
-.reservation-header .container {
-    position: relative;
-    z-index: 2;
 }
 
 .reservation-header h1,
