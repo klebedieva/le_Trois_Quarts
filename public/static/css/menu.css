@@ -552,7 +552,11 @@
         .quantity-btn:hover {
             background: var(--primary-color);
             color: white;
-            transform: scale(1.1);
+            transform: none;
+        }
+
+        .quantity-btn:active {
+            transform: scale(1.05);
         }
 
         .quantity-display {
@@ -579,8 +583,28 @@
         }
 
         .add-to-cart-btn:hover {
-            transform: scale(1.15);
-            box-shadow: 0 8px 25px rgba(212, 165, 116, 0.4);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .add-to-cart-btn:active {
+            transform: scale(1.05);
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            .quantity-btn:hover {
+                transform: scale(1.1);
+            }
+
+            .add-to-cart-btn:hover {
+                transform: scale(1.15);
+                box-shadow: 0 8px 25px rgba(212, 165, 116, 0.4);
+            }
+
+            .add-to-cart-btn:active,
+            .quantity-btn:active {
+                transform: scale(1.1);
+            }
         }
 
 

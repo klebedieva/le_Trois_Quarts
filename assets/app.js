@@ -6,4 +6,4 @@
  */
 // import './styles/app.css'; // Commented out as file doesn't exist
 
-console.log('This log comes from assets/app.js - welcome to AssetMapper! 🎉');
+// Removed default AssetMapper console log to keep console clean.
