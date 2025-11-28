@@ -45,6 +45,7 @@ Usage:
                             {% endfor %}
                         </div>
                         <small class="text-muted" id="{{ modal_id|default('addReviewModal') ~ 'RatingHelp' }}">Cliquez ou utilisez les flèches pour sélectionner une note</small>
+                        <label for="{{ modal_id|default('addReviewModal') }}Rating" class="visually-hidden">Note sélectionnée</label>
                         <input type="hidden" id="{{ modal_id|default('addReviewModal') }}Rating" name="rating" value="0" aria-describedby="{{ modal_id|default('addReviewModal') ~ 'RatingHelp' }}">
                         <div class="invalid-feedback" id="{{ modal_id|default('addReviewModal') }}RatingError"></div>
                     </div>
