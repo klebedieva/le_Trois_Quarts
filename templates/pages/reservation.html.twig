@@ -81,55 +81,55 @@
                         {{ form_start(reservationForm, {'attr': {'id': 'reservationForm', 'class': 'contact-form', 'novalidate': 'novalidate'}}) }}
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    {{ form_label(reservationForm.firstName, null, {'label_attr': {'class': 'form-label text-dark'}}) }} <span class="text-danger">*</span>
-                                    {{ form_widget(reservationForm.firstName, {'attr': {'class': 'form-control form-control-custom'}}) }}
+                                    {{ form_label(reservationForm.firstName, null, {'label_attr': {'class': 'form-label text-dark', 'for': reservationForm.firstName.vars.id}}) }} <span class="text-danger">*</span>
+                                    {{ form_widget(reservationForm.firstName, {'attr': {'class': 'form-control form-control-custom', 'id': reservationForm.firstName.vars.id}}) }}
                                     <div class="invalid-feedback" id="reservation_firstNameError"></div>
                                     {{ form_errors(reservationForm.firstName) }}
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    {{ form_label(reservationForm.lastName, null, {'label_attr': {'class': 'form-label text-dark'}}) }} <span class="text-danger">*</span>
-                                    {{ form_widget(reservationForm.lastName, {'attr': {'class': 'form-control form-control-custom'}}) }}
+                                    {{ form_label(reservationForm.lastName, null, {'label_attr': {'class': 'form-label text-dark', 'for': reservationForm.lastName.vars.id}}) }} <span class="text-danger">*</span>
+                                    {{ form_widget(reservationForm.lastName, {'attr': {'class': 'form-control form-control-custom', 'id': reservationForm.lastName.vars.id}}) }}
                                     <div class="invalid-feedback" id="reservation_lastNameError"></div>
                                     {{ form_errors(reservationForm.lastName) }}
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    {{ form_label(reservationForm.email, null, {'label_attr': {'class': 'form-label text-dark'}}) }} <span class="text-danger">*</span>
-                                    {{ form_widget(reservationForm.email, {'attr': {'class': 'form-control form-control-custom'}}) }}
+                                    {{ form_label(reservationForm.email, null, {'label_attr': {'class': 'form-label text-dark', 'for': reservationForm.email.vars.id}}) }} <span class="text-danger">*</span>
+                                    {{ form_widget(reservationForm.email, {'attr': {'class': 'form-control form-control-custom', 'id': reservationForm.email.vars.id}}) }}
                                     <div class="invalid-feedback" id="reservation_emailError"></div>
                                     {{ form_errors(reservationForm.email) }}
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    {{ form_label(reservationForm.phone, null, {'label_attr': {'class': 'form-label text-dark'}}) }} <span class="text-danger">*</span>
-                                    {{ form_widget(reservationForm.phone, {'attr': {'class': 'form-control form-control-custom'}}) }}
+                                    {{ form_label(reservationForm.phone, null, {'label_attr': {'class': 'form-label text-dark', 'for': reservationForm.phone.vars.id}}) }} <span class="text-danger">*</span>
+                                    {{ form_widget(reservationForm.phone, {'attr': {'class': 'form-control form-control-custom', 'id': reservationForm.phone.vars.id}}) }}
                                     <div class="invalid-feedback" id="reservation_phoneError"></div>
                                     {{ form_errors(reservationForm.phone) }}
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    {{ form_label(reservationForm.date, null, {'label_attr': {'class': 'form-label text-dark'}}) }} <span class="text-danger">*</span>
-                                    {{ form_widget(reservationForm.date, {'attr': {'class': 'form-control form-control-custom'}}) }}
+                                    {{ form_label(reservationForm.date, null, {'label_attr': {'class': 'form-label text-dark', 'for': reservationForm.date.vars.id}}) }} <span class="text-danger">*</span>
+                                    {{ form_widget(reservationForm.date, {'attr': {'class': 'form-control form-control-custom', 'id': reservationForm.date.vars.id}}) }}
                                     <div class="invalid-feedback" id="reservation_dateError"></div>
                                     {{ form_errors(reservationForm.date) }}
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    {{ form_label(reservationForm.time, null, {'label_attr': {'class': 'form-label text-dark'}}) }} <span class="text-danger">*</span>
-                                    {{ form_widget(reservationForm.time, {'attr': {'class': 'form-select form-select-custom'}}) }}
+                                    {{ form_label(reservationForm.time, null, {'label_attr': {'class': 'form-label text-dark', 'for': reservationForm.time.vars.id}}) }} <span class="text-danger">*</span>
+                                    {{ form_widget(reservationForm.time, {'attr': {'class': 'form-select form-select-custom', 'id': reservationForm.time.vars.id}}) }}
                                     <div class="invalid-feedback" id="reservation_timeError"></div>
                                     {{ form_errors(reservationForm.time) }}
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    {{ form_label(reservationForm.guests, null, {'label_attr': {'class': 'form-label text-dark'}}) }} <span class="text-danger">*</span>
-                                    {{ form_widget(reservationForm.guests, {'attr': {'class': 'form-select form-select-custom'}}) }}
+                                    {{ form_label(reservationForm.guests, null, {'label_attr': {'class': 'form-label text-dark', 'for': reservationForm.guests.vars.id}}) }} <span class="text-danger">*</span>
+                                    {{ form_widget(reservationForm.guests, {'attr': {'class': 'form-select form-select-custom', 'id': reservationForm.guests.vars.id}}) }}
                                     <div class="invalid-feedback" id="reservation_guestsError"></div>
                                     {{ form_errors(reservationForm.guests) }}
                                 </div>
                             </div>
                             <div class="mb-3">
-                                {{ form_label(reservationForm.message, null, {'label_attr': {'class': 'form-label text-dark'}}) }}
-                                {{ form_widget(reservationForm.message, {'attr': {'class': 'form-control form-control-custom', 'rows': 3, 'placeholder': 'Demandes spéciales, allergies...'}}) }}
+                                {{ form_label(reservationForm.message, null, {'label_attr': {'class': 'form-label text-dark', 'for': reservationForm.message.vars.id}}) }}
+                                {{ form_widget(reservationForm.message, {'attr': {'class': 'form-control form-control-custom', 'rows': 3, 'placeholder': 'Demandes spéciales, allergies...', 'id': reservationForm.message.vars.id}}) }}
                                 <div class="invalid-feedback" id="reservation_messageError"></div>
                                 {{ form_errors(reservationForm.message) }}
                             </div>

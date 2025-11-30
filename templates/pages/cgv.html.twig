@@ -7,8 +7,9 @@
     <link rel="stylesheet" href="{{ asset('static/css/cgv.css') }}?v={{ 'now'|date('YmdHis') }}">
 {% endblock %}
 
+{% block body_class %} class="cgv-page"{% endblock %}
+
 {% block body %}
-<body class="cgv-page">
     <!-- CGV Header -->
     <section class="cgv-header d-flex align-items-center justify-content-center">
         <div class="container">
@@ -311,7 +312,6 @@
             </div>
         </div>
     </section>
-</body>
 {% endblock %}
 
 {% block javascripts %}

@@ -316,7 +316,7 @@ class OrderCrudController extends AbstractCrudController
             $actions = $actions->update(Crud::PAGE_INDEX, Action::DELETE, function(Action $action){
                 return $action->setIcon('fa fa-trash')
                     ->setLabel('Supprimer')
-                    ->setCssClass('action-delete btn btn-soft-danger btn-sm');
+                    ->setCssClass('btn btn-soft-danger btn-sm');
             });
         } else {
             // Remove delete action completely for moderators

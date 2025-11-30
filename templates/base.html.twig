@@ -90,7 +90,9 @@
     {% block extra_head %}{% endblock %}
 
     {# Favicon #}
+    <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     <link rel="icon" href="{{ asset('favicon.png') }}" type="image/png">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
 
     {# Stylesheets block (can be overridden on child pages) #}
     {% block stylesheets %}
@@ -166,7 +168,7 @@
         </script>
     {% endblock %}
 </head>
-<body>
+<body{% block body_class %}{% endblock %}>
     {# Include header partial (navigation) #}
     {% include 'partials/header.html.twig' %}
 

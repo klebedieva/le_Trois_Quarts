@@ -291,6 +291,21 @@ section .text-center.mb-5 {
     filter: brightness(0.85) contrast(1.1) sepia(0.15) saturate(1.1);
 }
 
+/* Center image on screens smaller than 991px */
+@media (max-width: 991.98px) {
+    .about-image {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+    }
+    
+    .about-image .about-photo {
+        margin: 0 auto;
+        display: block;
+    }
+}
+
 .about-image img:hover {
     transform: scale(1.05);
 }
@@ -1535,8 +1550,17 @@ img.hero-media {
     }
 }
 
-/* Center "Informations pratiques" on screens smaller than 992px */
-@media (max-width: 991.98px) {
+/* Center "Informations pratiques" on screens smaller than 1400px */
+@media (max-width: 1399.98px) {
+    /* Force columns to full width and stack vertically */
+    #reservation .col-lg-6,
+    #reservation .col-xl-5,
+    #reservation .col-xl-7 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    
     #reservation .col-lg-6:first-child {
         display: flex;
         flex-direction: column;
@@ -1560,6 +1584,16 @@ img.hero-media {
     #reservation .col-lg-6:first-child .reservation-info .info-item {
         justify-content: center;
         width: 100%;
+    }
+    
+    /* Ensure form is also centered on smaller screens */
+    #reservation .col-lg-6:last-child {
+        margin-top: 0;
+    }
+    
+    /* Override Bootstrap's text alignment classes */
+    #reservation .text-lg-start {
+        text-align: center !important;
     }
 }
 
